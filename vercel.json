@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "version": 2,
   "buildCommand": "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/portal-pfvl run build",
   "outputDirectory": "artifacts/portal-pfvl/dist/public",
