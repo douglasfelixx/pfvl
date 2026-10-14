@@ -1,4 +1,8 @@
-import express from "express";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { pinoHttp } from "pino-http";
@@ -60,7 +64,7 @@ app.use(
 );
 app.use(express.json({ limit: "100kb" }));
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     next();
     return;
