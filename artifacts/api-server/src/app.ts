@@ -1,8 +1,5 @@
-import express, {
-  type NextFunction,
-  type Request,
-  type Response,
-} from "express";
+import express from "express";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { pinoHttp } from "pino-http";
@@ -64,17 +61,26 @@ app.use(
 );
 app.use(express.json({ limit: "100kb" }));
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+app.use(
+  (
+    req: IncomingMessage,
+    res: ServerResponse,
+    next: (...args: unknown[]) => void,
+  ) => {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method ?? "")) {
     next();
     return;
   }
 
-  const origin = req.get("origin");
+  const getHeader = (name: string) => {
+    const value = req.headers[name.toLowerCase()];
+    return Array.isArray(value) ? value[0] : value;
+  };
+  const origin = getHeader("origin");
   if (origin) {
     const requestHost = (
-      req.get("x-forwarded-host")?.split(",")[0] ??
-      req.get("host") ??
+      getHeader("x-forwarded-host")?.split(",")[0] ??
+      getHeader("host") ??
       ""
     ).trim();
     try {
@@ -82,20 +88,30 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         new URL(origin).host !== requestHost &&
         !allowedOrigins.has(origin)
       ) {
-        res.status(403).json({ error: "Origem da solicitação não permitida" });
+        res.statusCode = 403;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ error: "Origem da solicitação não permitida" }));
         return;
       }
     } catch {
-      res.status(403).json({ error: "Origem da solicitação inválida" });
+      res.statusCode = 403;
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.end(JSON.stringify({ error: "Origem da solicitação inválida" }));
       return;
     }
-  } else if (!req.is("application/json")) {
-    res.status(403).json({ error: "Solicitação inválida" });
+  } else if (
+    getHeader("content-type")?.split(";")[0].trim().toLowerCase() !==
+    "application/json"
+  ) {
+    res.statusCode = 403;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify({ error: "Solicitação inválida" }));
     return;
   }
 
   next();
-});
+  },
+);
 
 app.use("/api", router);
 
