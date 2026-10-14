@@ -1,11 +1,11 @@
-import express, { type Application } from "express";
+import express from "express";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { pinoHttp } from "pino-http";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
-const app: Application = express();
+const app = express();
 const clerkSecretKey = process.env.CLERK_SECRET_KEY?.trim();
 const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY?.trim();
 const clerkConfigured = Boolean(
