@@ -58,7 +58,7 @@ import {
   getPfvlUser,
   requireAdmin,
   requirePfvlUser,
-} from "../lib/pfvl-auth";
+} from "../lib/pfvl-auth.js";
 
 const router: IRouter = Router();
 
