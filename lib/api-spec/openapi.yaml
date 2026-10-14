@@ -1,0 +1,709 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API do portal PFVL para conteúdo público e participação autenticada
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: content
+    description: Conteúdo público, comunidade e artigos de ajuda
+  - name: suggestions
+    description: Roadmap público de sugestões
+  - name: indicators
+    description: Indicadores econômicos
+  - name: account
+    description: Conta autenticada e participação da comunidade
+  - name: admin
+    description: Administração de conteúdo, usuários e moderação
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [content]
+      summary: Resumo da página inicial
+      responses:
+        "200":
+          description: Contagens e publicações recentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /posts:
+    get:
+      operationId: listPosts
+      tags: [content]
+      summary: Lista publicações, tópicos, novidades e artigos de ajuda publicados
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PostKind"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Publicações encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+    post:
+      operationId: createPost
+      tags: [content]
+      summary: Cria uma publicação ou tópico da comunidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostInput"
+      responses:
+        "201":
+          description: Publicação criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /posts/{postId}:
+    get:
+      operationId: getPost
+      tags: [content]
+      summary: Busca uma publicação
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Publicação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updatePost
+      tags: [content]
+      summary: Atualiza uma publicação própria ou administrada
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePostInput"
+      responses:
+        "200":
+          description: Publicação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deletePost
+      tags: [content]
+      summary: Exclui uma publicação própria ou administrada
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "204":
+          description: Publicação excluída
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /posts/{postId}/comments:
+    get:
+      operationId: listComments
+      tags: [content]
+      summary: Lista comentários da publicação
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Comentários da publicação
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [account]
+      summary: Comenta ou responde a uma publicação
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentInput"
+      responses:
+        "201":
+          description: Comentário criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /polls/active:
+    get:
+      operationId: getActivePoll
+      tags: [content]
+      summary: Obtém a enquete ativa e os resultados atuais
+      responses:
+        "200":
+          description: Enquete ativa ou ausência de enquete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivePoll"
+  /polls/{pollId}/vote:
+    post:
+      operationId: votePoll
+      tags: [account]
+      summary: Registra ou altera o voto do usuário autenticado
+      parameters:
+        - $ref: "#/components/parameters/PollId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PollVoteInput"
+      responses:
+        "200":
+          description: Enquete atualizada com a escolha do usuário
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: A enquete não aceita mais votos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /comments/{commentId}:
+    delete:
+      operationId: deleteComment
+      tags: [account]
+      summary: Exclui um comentário próprio ou administrado
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Comentário excluído
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [account]
+      summary: Obtém a conta PFVL autenticada
+      responses:
+        "200":
+          description: Perfil PFVL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /uploads/presign:
+    post:
+      operationId: createImageUpload
+      tags: [account]
+      summary: Gera URL temporária para enviar uma imagem ao Cloudflare R2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageUploadInput"
+      responses:
+        "200":
+          description: Endereço temporário para envio e endereço público da imagem
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUpload"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /admin/posts:
+    get:
+      operationId: listAdminPosts
+      tags: [admin]
+      summary: Lista todas as publicações para administração
+      responses:
+        "200":
+          description: Publicações e rascunhos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/polls:
+    get:
+      operationId: listAdminPolls
+      tags: [admin]
+      summary: Lista enquetes e seus resultados para administração
+      responses:
+        "200":
+          description: Enquetes recentes e resultados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PollSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminPoll
+      tags: [admin]
+      summary: Cria uma enquete e encerra a enquete ativa anterior
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPollInput"
+      responses:
+        "201":
+          description: Enquete criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/polls/{pollId}/close:
+    post:
+      operationId: closeAdminPoll
+      tags: [admin]
+      summary: Encerra uma enquete ativa
+      parameters:
+        - $ref: "#/components/parameters/PollId"
+      responses:
+        "200":
+          description: Enquete encerrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: Lista contas registradas no portal
+      responses:
+        "200":
+          description: Contas e permissões
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/users/{userId}:
+    patch:
+      operationId: updateAdminUser
+      tags: [admin]
+      summary: Altera papel ou situação de uma conta
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Conta atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/suggestions/{suggestionId}:
+    patch:
+      operationId: updateAdminSuggestion
+      tags: [admin]
+      summary: Altera o andamento de uma sugestão
+      parameters:
+        - name: suggestionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSuggestionInput"
+      responses:
+        "200":
+          description: Sugestão atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suggestion"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /suggestions:
+    get:
+      operationId: listSuggestions
+      tags: [suggestions]
+      summary: Lista sugestões agrupáveis por status
+      responses:
+        "200":
+          description: Sugestões da comunidade
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Suggestion"
+  /indicators:
+    get:
+      operationId: listIndicators
+      tags: [indicators]
+      summary: Consulta indicadores econômicos
+      responses:
+        "200":
+          description: Indicadores publicados pelo provedor configurado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Indicator"
+components:
+  parameters:
+    PostId:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: integer
+    PollId:
+      name: pollId
+      in: path
+      required: true
+      schema:
+        type: integer
+  responses:
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: É necessário entrar na conta
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Permissão insuficiente
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unavailable:
+      description: Serviço ainda não configurado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string }
+      required: [status]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    PostKind:
+      type: string
+      enum: [blog, news, forum, help]
+    PostStatus:
+      type: string
+      enum: [draft, published, hidden]
+    Post:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        excerpt: { type: string }
+        body: { type: string }
+        kind: { $ref: "#/components/schemas/PostKind" }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        authorName: { type: string }
+        coverImageUrl: { type: ["string", "null"] }
+        videoUrl: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/PostStatus" }
+        commentCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, title, excerpt, body, kind, category, tags, authorName, coverImageUrl, videoUrl, status, commentCount, createdAt, updatedAt]
+    Comment:
+      type: object
+      properties:
+        id: { type: integer }
+        postId: { type: integer }
+        parentCommentId: { type: ["integer", "null"] }
+        authorName: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, postId, parentCommentId, authorName, body, createdAt]
+    CreateCommentInput:
+      type: object
+      properties:
+        body: { type: string, minLength: 2, maxLength: 5000 }
+        parentCommentId: { type: ["integer", "null"] }
+      required: [body]
+    PollVote:
+      type: string
+      enum: [like, dislike]
+    PollStatus:
+      type: string
+      enum: [active, closed]
+    PollSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        question: { type: string }
+        details: { type: string }
+        status: { $ref: "#/components/schemas/PollStatus" }
+        likeCount: { type: integer }
+        dislikeCount: { type: integer }
+        userVote: { anyOf: [{ $ref: "#/components/schemas/PollVote" }, { type: "null" }] }
+        createdAt: { type: string, format: date-time }
+        closedAt: { type: ["string", "null"], format: date-time }
+      required: [id, question, details, status, likeCount, dislikeCount, userVote, createdAt, closedAt]
+    ActivePoll:
+      type: object
+      properties:
+        poll: { anyOf: [{ $ref: "#/components/schemas/PollSummary" }, { type: "null" }] }
+      required: [poll]
+    AdminPollInput:
+      type: object
+      properties:
+        question: { type: string, minLength: 5, maxLength: 220 }
+        details: { type: string, maxLength: 1200 }
+      required: [question]
+    PollVoteInput:
+      type: object
+      properties:
+        vote: { $ref: "#/components/schemas/PollVote" }
+      required: [vote]
+    CreatePostInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 4, maxLength: 220 }
+        excerpt: { type: string, maxLength: 500 }
+        body: { type: string, minLength: 10, maxLength: 20000 }
+        kind: { $ref: "#/components/schemas/PostKind" }
+        category: { type: string, minLength: 2, maxLength: 100 }
+        tags:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 40 }
+        coverImageUrl: { type: ["string", "null"] }
+        videoUrl: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/PostStatus" }
+      required: [title, body, kind, category]
+    UpdatePostInput:
+      type: object
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 4, maxLength: 220 }
+        excerpt: { type: string, maxLength: 500 }
+        body: { type: string, minLength: 10, maxLength: 20000 }
+        category: { type: string, minLength: 2, maxLength: 100 }
+        tags:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 40 }
+        coverImageUrl: { type: ["string", "null"] }
+        videoUrl: { type: ["string", "null"] }
+        status: { $ref: "#/components/schemas/PostStatus" }
+    UserRole:
+      type: string
+      enum: [member, admin]
+    UserStatus:
+      type: string
+      enum: [active, suspended]
+    UserProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        displayName: { type: string }
+        role: { $ref: "#/components/schemas/UserRole" }
+        status: { $ref: "#/components/schemas/UserStatus" }
+        createdAt: { type: string, format: date-time }
+      required: [id, email, displayName, role, status, createdAt]
+    UpdateUserInput:
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/UserRole" }
+        status: { $ref: "#/components/schemas/UserStatus" }
+      minProperties: 1
+    UpdateSuggestionInput:
+      type: object
+      properties:
+        status: { $ref: "#/components/schemas/SuggestionStatus" }
+      required: [status]
+    ImageUploadInput:
+      type: object
+      properties:
+        fileName: { type: string, minLength: 1, maxLength: 160 }
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes: { type: integer, minimum: 1, maximum: 5242880 }
+      required: [fileName, contentType, sizeBytes]
+    ImageUpload:
+      type: object
+      properties:
+        uploadUrl: { type: string, format: uri }
+        publicUrl: { type: string, format: uri }
+      required: [uploadUrl, publicUrl]
+    SuggestionStatus:
+      type: string
+      enum: [under_review, planned, in_progress, completed]
+    Suggestion:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        details: { type: string }
+        category: { type: string }
+        status: { $ref: "#/components/schemas/SuggestionStatus" }
+        authorName: { type: string }
+        voteCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, title, details, category, status, authorName, voteCount, createdAt]
+    Indicator:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        change: { type: number }
+        updatedAt: { type: string, format: date-time }
+        source: { type: string }
+        illustrative: { type: boolean }
+        history:
+          type: array
+          items: { type: number }
+      required: [code, name, value, unit, change, updatedAt, source, illustrative, history]
+    Dashboard:
+      type: object
+      properties:
+        publishedPosts: { type: integer }
+        forumTopics: { type: integer }
+        openSuggestions: { type: integer }
+        recentPosts:
+          type: array
+          items: { $ref: "#/components/schemas/Post" }
+        recentSuggestions:
+          type: array
+          items: { $ref: "#/components/schemas/Suggestion" }
+      required: [publishedPosts, forumTopics, openSuggestions, recentPosts, recentSuggestions]
