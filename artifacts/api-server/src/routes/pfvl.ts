@@ -1008,10 +1008,15 @@ router.get("/indicators", async (req: ExpressRequest, res: ExpressResponse): Pro
   }
 
   try {
-    const result = await globalThis.fetch(providerUrl, {
+    // Keep the Node fetch contract independent of Vercel's ambient Response typings.
+    const result = (await globalThis.fetch(providerUrl, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(8_000),
-    });
+    })) as unknown as {
+      readonly ok: boolean;
+      readonly status: number;
+      json(): Promise<unknown>;
+    };
     if (!result.ok) {
       logger.error(
         { status: result.status },
