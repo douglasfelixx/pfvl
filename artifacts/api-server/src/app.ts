@@ -1,4 +1,5 @@
 import express from "express";
+import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
@@ -6,6 +7,7 @@ import { pinoHttp } from "pino-http";
 import healthRouter from "./routes/health.js";
 import pfvlRouter from "./routes/pfvl.js";
 import { logger } from "./lib/logger.js";
+import { describeApiError } from "./lib/api-errors.js";
 
 const app = express();
 const clerkSecretKey = process.env.CLERK_SECRET_KEY?.trim();
@@ -115,5 +117,26 @@ app.use(
 );
 
 app.use("/api", healthRouter, pfvlRouter);
+
+app.use((error: unknown, req: IncomingMessage, res: ServerResponse, next: (error?: unknown) => void) => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+  const failure = describeApiError(error);
+  const requestId = randomUUID();
+  logger.error(
+    { requestId, path: req.url?.split("?")[0], ...failure },
+    "PFVL API request failed",
+  );
+  res.statusCode = failure.status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify({
+    error: failure.status < 500 ? "Solicitação inválida" : "Não foi possível concluir a solicitação",
+    code: failure.code,
+    causeCode: failure.causeCodes.at(-1) ?? null,
+    requestId,
+  }));
+});
 
 export default app;
