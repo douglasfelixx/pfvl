@@ -3,7 +3,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { pinoHttp } from "pino-http";
-import router from "./routes/index.js";
+import healthRouter from "./routes/health.js";
+import pfvlRouter from "./routes/pfvl.js";
 import { logger } from "./lib/logger.js";
 
 const app = express();
@@ -113,6 +114,6 @@ app.use(
   },
 );
 
-app.use("/api", router);
+app.use("/api", healthRouter, pfvlRouter);
 
 export default app;
