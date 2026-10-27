@@ -1,11 +1,11 @@
 import { clerkClient, getAuth } from "@clerk/express";
-import type { Request, RequestHandler } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, eq, usersTable } from "@workspace/db";
+import { logger } from "./logger.js";
+import type { PfvlNext, PfvlRequest, PfvlResponse } from "./route-types.js";
 
 export type PfvlUser = typeof usersTable.$inferSelect;
 
-type AuthenticatedRequest = Request & { pfvlUser?: PfvlUser };
+type AuthenticatedRequest = PfvlRequest & { pfvlUser?: PfvlUser };
 
 const clerkSecretKey = process.env.CLERK_SECRET_KEY?.trim();
 const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY?.trim();
@@ -15,7 +15,7 @@ export const clerkConfigured = Boolean(
 );
 
 async function getOrProvisionUser(
-  req: Request,
+  req: PfvlRequest,
   userId: string,
 ): Promise<PfvlUser | null> {
   const [existing] = await db
@@ -27,7 +27,8 @@ async function getOrProvisionUser(
 
   const clerkUser = await clerkClient.users.getUser(userId);
   const primaryEmail = clerkUser.emailAddresses.find(
-    (email) => email.id === clerkUser.primaryEmailAddressId,
+    (email: (typeof clerkUser.emailAddresses)[number]) =>
+      email.id === clerkUser.primaryEmailAddressId,
   );
   if (!primaryEmail || primaryEmail.verification?.status !== "verified") {
     return null;
@@ -59,13 +60,17 @@ async function getOrProvisionUser(
     .limit(1);
 
   if (!created) {
-    req.log?.error({ userId }, "PFVL account could not be provisioned");
+    logger.error({ userId }, "PFVL account could not be provisioned");
     return null;
   }
   return created;
 }
 
-export const requirePfvlUser: RequestHandler = async (req, res, next) => {
+export const requirePfvlUser = async (
+  req: PfvlRequest,
+  res: PfvlResponse,
+  next: PfvlNext,
+): Promise<void> => {
   if (!clerkConfigured) {
     res.status(503).json({ error: "Autenticação ainda não configurada" });
     return;
@@ -73,7 +78,9 @@ export const requirePfvlUser: RequestHandler = async (req, res, next) => {
 
   let userId: string | null = null;
   try {
-    userId = getAuth(req).userId;
+    userId = getAuth(
+      req as unknown as Parameters<typeof getAuth>[0],
+    ).userId;
   } catch {
     res.status(401).json({ error: "Entre na sua conta PFVL para continuar" });
     return;
@@ -97,12 +104,16 @@ export const requirePfvlUser: RequestHandler = async (req, res, next) => {
     (req as AuthenticatedRequest).pfvlUser = user;
     next();
   } catch (error) {
-    req.log?.error({ err: error }, "PFVL account verification failed");
+    logger.error({ err: error }, "PFVL account verification failed");
     res.status(503).json({ error: "Não foi possível validar sua conta agora" });
   }
 };
 
-export const requireAdmin: RequestHandler = (req, res, next) => {
+export const requireAdmin = (
+  req: PfvlRequest,
+  res: PfvlResponse,
+  next: PfvlNext,
+): void => {
   const user = (req as AuthenticatedRequest).pfvlUser;
   if (!user) {
     res.status(401).json({ error: "Entre na sua conta PFVL para continuar" });
@@ -115,7 +126,7 @@ export const requireAdmin: RequestHandler = (req, res, next) => {
   next();
 };
 
-export function getPfvlUser(req: Request): PfvlUser {
+export function getPfvlUser(req: unknown): PfvlUser {
   const user = (req as AuthenticatedRequest).pfvlUser;
   if (!user) throw new Error("Authenticated PFVL profile is missing");
   return user;

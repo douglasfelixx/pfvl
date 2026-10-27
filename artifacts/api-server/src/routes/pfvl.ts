@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getAuth } from "@clerk/express";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router } from "express";
 import {
   CloseAdminPollParams,
@@ -46,14 +45,26 @@ import {
   VotePollResponse,
 } from "@workspace/api-zod";
 import {
+  and,
   commentsTable,
+  desc,
   db,
+  eq,
+  ilike,
+  inArray,
+  or,
   postsTable,
   pollVotesTable,
   pollsTable,
+  sql,
   suggestionsTable,
   usersTable,
 } from "@workspace/db";
+import { logger } from "../lib/logger.js";
+import type {
+  PfvlRequest as ExpressRequest,
+  PfvlResponse as ExpressResponse,
+} from "../lib/route-types.js";
 import {
   getPfvlUser,
   requireAdmin,
@@ -105,9 +116,11 @@ function postResponse(post: PublicPostRow) {
   };
 }
 
-async function optionalPfvlUserId(req: Parameters<typeof getAuth>[0]): Promise<number | null> {
+async function optionalPfvlUserId(req: ExpressRequest): Promise<number | null> {
   try {
-    const clerkUserId = getAuth(req).userId;
+    const clerkUserId = getAuth(
+      req as unknown as Parameters<typeof getAuth>[0],
+    ).userId;
     if (!clerkUserId) return null;
     const [user] = await db
       .select({ id: usersTable.id })
@@ -188,7 +201,7 @@ function safeCoverUrl(value: string | null | undefined): boolean {
   }
 }
 
-router.get("/dashboard", async (_req, res): Promise<void> => {
+router.get("/dashboard", async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const [posts, suggestions] = await Promise.all([
     db
       .select(publicPostColumns)
@@ -211,7 +224,7 @@ router.get("/dashboard", async (_req, res): Promise<void> => {
   res.json(GetDashboardResponse.parse(response));
 });
 
-router.get("/posts", async (req, res): Promise<void> => {
+router.get("/posts", async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const parsed = ListPostsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -244,7 +257,7 @@ router.get("/posts", async (req, res): Promise<void> => {
   res.json(ListPostsResponse.parse(response));
 });
 
-router.get("/posts/:postId", async (req, res): Promise<void> => {
+router.get("/posts/:postId", async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const params = GetPostParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -274,7 +287,7 @@ router.get("/posts/:postId", async (req, res): Promise<void> => {
 
 router.get(
   "/posts/:postId/comments",
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = ListCommentsParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -314,7 +327,7 @@ router.get(
   },
 );
 
-router.get("/polls/active", async (req, res): Promise<void> => {
+router.get("/polls/active", async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const [poll] = await db
     .select()
     .from(pollsTable)
@@ -326,11 +339,11 @@ router.get("/polls/active", async (req, res): Promise<void> => {
   res.json(GetActivePollResponse.parse({ poll: summary ?? null }));
 });
 
-router.get("/me", requirePfvlUser, (req, res): void => {
+router.get("/me", requirePfvlUser, (req: ExpressRequest, res: ExpressResponse): void => {
   res.json(GetCurrentUserResponse.parse(getPfvlUser(req)));
 });
 
-router.post("/posts", requirePfvlUser, async (req, res): Promise<void> => {
+router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const parsed = CreatePostBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -378,7 +391,7 @@ router.post("/posts", requirePfvlUser, async (req, res): Promise<void> => {
 router.patch(
   "/posts/:postId",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = UpdatePostParams.safeParse(req.params);
     const parsed = UpdatePostBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -448,7 +461,7 @@ router.patch(
 router.delete(
   "/posts/:postId",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = DeletePostParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -478,7 +491,7 @@ router.delete(
 router.post(
   "/posts/:postId/comments",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = ListCommentsParams.safeParse(req.params);
     const parsed = CreateCommentBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -554,7 +567,7 @@ router.post(
 router.post(
   "/polls/:pollId/vote",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = VotePollParams.safeParse(req.params);
     const parsed = VotePollBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -609,7 +622,7 @@ router.post(
 router.delete(
   "/comments/:commentId",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = DeleteCommentParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -657,7 +670,7 @@ router.get(
   "/admin/posts",
   requirePfvlUser,
   requireAdmin,
-  async (_req, res): Promise<void> => {
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const rows = await db
       .select()
       .from(postsTable)
@@ -670,7 +683,7 @@ router.get(
   "/admin/polls",
   requirePfvlUser,
   requireAdmin,
-  async (_req, res): Promise<void> => {
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const rows = await db
       .select()
       .from(pollsTable)
@@ -684,7 +697,7 @@ router.post(
   "/admin/polls",
   requirePfvlUser,
   requireAdmin,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const parsed = CreateAdminPollBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
@@ -724,7 +737,7 @@ router.post(
   "/admin/polls/:pollId/close",
   requirePfvlUser,
   requireAdmin,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = CloseAdminPollParams.safeParse(req.params);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -759,7 +772,7 @@ router.get(
   "/admin/users",
   requirePfvlUser,
   requireAdmin,
-  async (_req, res): Promise<void> => {
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const rows = await db
       .select()
       .from(usersTable)
@@ -772,7 +785,7 @@ router.patch(
   "/admin/users/:userId",
   requirePfvlUser,
   requireAdmin,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = UpdateAdminUserParams.safeParse(req.params);
     const parsed = UpdateAdminUserBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -834,7 +847,7 @@ router.patch(
   "/admin/suggestions/:suggestionId",
   requirePfvlUser,
   requireAdmin,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = UpdateAdminSuggestionParams.safeParse(req.params);
     const parsed = UpdateAdminSuggestionBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -861,7 +874,7 @@ router.patch(
 router.post(
   "/uploads/presign",
   requirePfvlUser,
-  async (req, res): Promise<void> => {
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const parsed = CreateImageUploadBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
@@ -924,7 +937,7 @@ router.post(
       const publicUrl = `${base.toString().replace(/\/+$/, "")}/${key}`;
       res.json(CreateImageUploadResponse.parse({ uploadUrl, publicUrl }));
     } catch (error) {
-      req.log?.error({ err: error }, "Could not create a Cloudflare R2 upload URL");
+      logger.error({ err: error }, "Could not create a Cloudflare R2 upload URL");
       res.status(503).json({ error: "Não foi possível preparar o envio da imagem" });
     } finally {
       client.destroy();
@@ -932,7 +945,7 @@ router.post(
   },
 );
 
-router.get("/suggestions", async (_req, res): Promise<void> => {
+router.get("/suggestions", async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const rows = await db
     .select()
     .from(suggestionsTable)
@@ -987,7 +1000,7 @@ const illustrativeIndicators: Indicator[] = [
   },
 ];
 
-router.get("/indicators", async (req, res): Promise<void> => {
+router.get("/indicators", async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const providerUrl = process.env.PFVL_INDICATORS_API_URL;
   if (!providerUrl) {
     res.json(ListIndicatorsResponse.parse(illustrativeIndicators));
@@ -995,12 +1008,12 @@ router.get("/indicators", async (req, res): Promise<void> => {
   }
 
   try {
-    const result = await fetch(providerUrl, {
+    const result = await globalThis.fetch(providerUrl, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(8_000),
     });
     if (!result.ok) {
-      req.log.error(
+      logger.error(
         { status: result.status },
         "PFVL indicators provider returned an error",
       );
@@ -1011,7 +1024,7 @@ router.get("/indicators", async (req, res): Promise<void> => {
     const payload: unknown = await result.json();
     const parsed = ListIndicatorsResponse.safeParse(payload);
     if (!parsed.success) {
-      req.log.error(
+      logger.error(
         { errors: parsed.error.message },
         "PFVL indicators provider returned an invalid response",
       );
@@ -1021,7 +1034,7 @@ router.get("/indicators", async (req, res): Promise<void> => {
 
     res.json(parsed.data);
   } catch (error) {
-    req.log.error({ err: error }, "Could not reach PFVL indicators provider");
+    logger.error({ err: error }, "Could not reach PFVL indicators provider");
     res.status(502).json({ error: "Fonte de indicadores indisponível" });
   }
 });

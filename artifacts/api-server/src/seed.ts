@@ -1,5 +1,11 @@
-import { and, eq } from "drizzle-orm";
-import { db, commentsTable, postsTable, suggestionsTable } from "@workspace/db";
+import {
+  and,
+  commentsTable,
+  db,
+  eq,
+  postsTable,
+  suggestionsTable,
+} from "@workspace/db";
 
 const posts = [
   {
