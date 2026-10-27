@@ -6,7 +6,7 @@ O portal é uma aplicação React/Vite com API Express. A implantação Vercel i
 
 ## Vercel
 
-1. Importe o repositório como um projeto Vercel usando a raiz do monorepo. O build e a pasta estática estão definidos em `vercel.json`; a pasta `api/` encaminha `/api/*` para o Express.
+1. Importe o repositório como um projeto Vercel usando a raiz do monorepo. O build e a pasta estática estão definidos em `vercel.json`; o build gera `artifacts/api-server/dist/app.mjs` com o Express e os pacotes internos incorporados, e a pasta `api/` encaminha `/api/*` para esse bundle ESM.
 2. Configure estas variáveis no ambiente Vercel (Production e Preview):
    - `DATABASE_URL`: conexão PostgreSQL do Neon com SSL.
    - `CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY`: chaves do projeto Clerk PFVL.

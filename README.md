@@ -15,7 +15,7 @@ Extraia este pacote e envie o conteúdo da pasta pfvl-github-export para um repo
 
 ## Importar na Vercel
 
-Importe o repositório no painel da Vercel com a raiz do repositório como Root Directory. O build está definido em vercel.json; ele compila o portal e encaminha todas as rotas /api/* para a função Express compartilhada api/index.ts.
+Importe o repositório no painel da Vercel com a raiz do repositório como Root Directory. O build está definido em vercel.json; ele compila o portal e a função Express compartilhada. O handler usa o bundle ESM gerado em artifacts/api-server/dist/app.mjs, incluindo os pacotes internos do workspace para evitar imports de arquivos TypeScript não disponíveis no runtime da Vercel.
 
 Cadastre as variáveis abaixo no próprio projeto da Vercel, com o ambiente Production selecionado. Elas não estão incluídas no ZIP. Um build bem-sucedido não garante que a API iniciou: DATABASE_URL é obrigatória em tempo de execução. Use esse nome para a conexão Neon; NEON_DATABASE_URL é usada apenas pelos comandos de esquema.
 
