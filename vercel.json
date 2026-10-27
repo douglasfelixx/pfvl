@@ -4,5 +4,8 @@
   "version": 2,
   "buildCommand": "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/portal-pfvl run build",
   "outputDirectory": "artifacts/portal-pfvl/dist/public",
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }
