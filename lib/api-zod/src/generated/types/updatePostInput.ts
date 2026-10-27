@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { PostStatus } from './postStatus';
+import type { PostStatus } from './postStatus.js';
 
 export interface UpdatePostInput {
   /**

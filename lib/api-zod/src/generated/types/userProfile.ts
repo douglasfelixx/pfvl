@@ -5,8 +5,8 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { UserRole } from './userRole';
-import type { UserStatus } from './userStatus';
+import type { UserRole } from './userRole.js';
+import type { UserStatus } from './userStatus.js';
 
 export interface UserProfile {
   id: number;

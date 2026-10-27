@@ -5,8 +5,8 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { Post } from './post';
-import type { Suggestion } from './suggestion';
+import type { Post } from './post.js';
+import type { Suggestion } from './suggestion.js';
 
 export interface Dashboard {
   publishedPosts: number;

@@ -3,7 +3,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getAuth } from "@clerk/express";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import {
   CloseAdminPollParams,
   CloseAdminPollResponse,
@@ -60,7 +60,7 @@ import {
   requirePfvlUser,
 } from "../lib/pfvl-auth.js";
 
-const router: IRouter = Router();
+const router = Router();
 
 type PublicPostRow = Omit<typeof postsTable.$inferSelect, "authorUserId">;
 type PublicCommentRow = Omit<
