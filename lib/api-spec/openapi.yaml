@@ -1005,7 +1005,7 @@ components:
       type: object
       properties:
         uploadUrl: { type: string, format: uri }
-        publicUrl: { type: string, format: uri }
+        publicUrl: { type: string, format: uri-reference }
       required: [uploadUrl, publicUrl]
     SiteMediaSlot:
       type: string

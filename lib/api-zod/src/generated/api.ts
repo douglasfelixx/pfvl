@@ -362,7 +362,7 @@ export const CreateImageUploadBody = zod.object({
 
 export const CreateImageUploadResponse = zod.object({
   "uploadUrl": zod.string().url(),
-  "publicUrl": zod.string().url()
+  "publicUrl": zod.string()
 })
 
 
