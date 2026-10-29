@@ -23,6 +23,7 @@ import {
 import { Link } from 'wouter';
 import type { Post } from '@workspace/api-client-react';
 import { EmptyState, formatDate, LoadingState, QueryError } from '@/components/portal-ui';
+import { translateText } from '@/lib/i18n';
 
 const dashboardSections = [
   { label: 'Visão geral', icon: BarChart3, active: true },
@@ -54,24 +55,24 @@ export function HomeDashboardPreview({
     <figure className="home-preview-figure">
       {previewImageUrl ? (
         <img
-          alt="Imagem principal do PFVL"
+          alt={translateText('Imagem principal do PFVL')}
           className="dashboard-preview-image"
           src={previewImageUrl}
         />
       ) : (
-      <div className="dashboard-preview" id="demo-pfvl" aria-label="Prévia ilustrativa do painel PFVL">
+      <div className="dashboard-preview" id="demo-pfvl" aria-label={translateText('Prévia ilustrativa do painel PFVL')}>
       <aside className="dashboard-preview-sidebar">
         <div className="preview-brand">
           <span className="preview-brand-mark"><BarChart3 size={14} /></span>
           <strong>PFVL</strong>
         </div>
-        <nav aria-label="Navegação ilustrativa do painel">
+        <nav aria-label={translateText('Navegação ilustrativa do painel')}>
           {dashboardSections.map((section) => {
             const Icon = section.icon;
             return (
               <div className={`preview-nav-item ${section.active ? 'preview-nav-active' : ''}`} key={section.label}>
                 <Icon size={11} />
-                <span>{section.label}</span>
+                <span>{translateText(section.label)}</span>
               </div>
             );
           })}
@@ -80,12 +81,12 @@ export function HomeDashboardPreview({
       <div className="dashboard-preview-content">
         <div className="preview-topline">
           <div>
-            <p className="preview-greeting">Olá, João!</p>
-            <p className="preview-subtitle">Aqui está o resumo da sua vida financeira.</p>
+            <p className="preview-greeting">{translateText('Olá, João!')}</p>
+            <p className="preview-subtitle">{translateText('Aqui está o resumo da sua vida financeira.')}</p>
           </div>
-          <span className="preview-month"><CalendarDays size={10} /> Este mês</span>
+          <span className="preview-month"><CalendarDays size={10} /> {translateText('Este mês')}</span>
         </div>
-        <p className="preview-demo-notice">Prévia ilustrativa · sem conexão bancária</p>
+        <p className="preview-demo-notice">{translateText('Prévia ilustrativa · sem conexão bancária')}</p>
         <div className="preview-chart-grid">
           <PreviewChart title="Patrimônio líquido" value="R$ 248.420,00" variation="12,5%" kind="assets" />
           <PreviewChart title="Receitas no mês" value="R$ 8.450,00" variation="8,1%" kind="income" />
@@ -94,8 +95,8 @@ export function HomeDashboardPreview({
         <div className="preview-lower-grid">
           <section className="preview-widget goals-widget">
             <div className="preview-widget-title">
-              <strong>Metas em andamento</strong>
-              <span>Ver todas</span>
+              <strong>{translateText('Metas em andamento')}</strong>
+              <span>{translateText('Ver todas')}</span>
             </div>
             <ProgressGoal icon={<Plane size={12} />} title="Viagem para Europa" value="R$ 12.650,00 / R$ 25.000,00" progress={51} />
             <ProgressGoal icon={<PiggyBank size={12} />} title="Reserva de emergência" value="R$ 8.900,00 / R$ 15.000,00" progress={59} />
@@ -103,8 +104,8 @@ export function HomeDashboardPreview({
           </section>
           <section className="preview-widget bills-widget">
             <div className="preview-widget-title">
-              <strong>Próximas despesas</strong>
-              <span>Ver todas</span>
+              <strong>{translateText('Próximas despesas')}</strong>
+              <span>{translateText('Ver todas')}</span>
             </div>
             <BillRow icon={<CreditCard size={10} />} title="Cartão de crédito" value="R$ 1.250,00" date="12/05" />
             <BillRow icon={<House size={10} />} title="Aluguel" value="R$ 2.300,00" date="15/05" />
@@ -122,7 +123,7 @@ export function HomeDashboardPreview({
 function PreviewChart({ title, value, variation, kind }: { title: string; value: string; variation: string; kind: 'assets' | 'income' | 'expenses' }) {
   return (
     <section className="preview-chart-card">
-      <p className="preview-chart-title">{title}</p>
+      <p className="preview-chart-title">{translateText(title)}</p>
       <strong className="preview-chart-value">{value}</strong>
       <span className={`preview-variation ${kind === 'expenses' ? 'variation-down' : ''}`}>{variation}</span>
       {kind === 'assets' && <AssetChart />}
@@ -134,7 +135,7 @@ function PreviewChart({ title, value, variation, kind }: { title: string; value:
 
 function AssetChart() {
   return (
-    <svg className="preview-asset-chart" viewBox="0 0 180 61" preserveAspectRatio="none" aria-label="Gráfico ilustrativo de patrimônio">
+    <svg className="preview-asset-chart" viewBox="0 0 180 61" preserveAspectRatio="none" aria-label={translateText('Gráfico ilustrativo de patrimônio')}>
       <path d="M4 51 C22 47, 26 31, 43 37 S64 41, 78 25 S99 38, 114 25 S142 24, 158 10 S172 15, 177 3" fill="none" stroke="#233a59" strokeWidth="2.5" strokeLinecap="round" />
       <path d="M4 51 C22 47, 26 31, 43 37 S64 41, 78 25 S99 38, 114 25 S142 24, 158 10 S172 15, 177 3 L177 61 L4 61 Z" fill="url(#asset-fill)" opacity=".18" />
       <defs>
@@ -150,7 +151,7 @@ function AssetChart() {
 function IncomeBars() {
   const heights = [26, 38, 33, 48, 42, 58, 52, 46, 61, 55, 64];
   return (
-    <div className="preview-income-bars" aria-label="Gráfico ilustrativo de receitas">
+    <div className="preview-income-bars" aria-label={translateText('Gráfico ilustrativo de receitas')}>
       {heights.map((height, index) => <span key={`${height}-${index}`} style={{ height: `${height}%` }} />)}
     </div>
   );
@@ -158,13 +159,13 @@ function IncomeBars() {
 
 function ExpenseDonut() {
   return (
-    <div className="preview-expense-chart" aria-label="Gráfico ilustrativo de despesas">
+    <div className="preview-expense-chart" aria-label={translateText('Gráfico ilustrativo de despesas')}>
       <div className="expense-donut" />
       <ul>
-        <li><i className="legend-blue" /> Moradia <span>32%</span></li>
-        <li><i className="legend-green" /> Transporte <span>18%</span></li>
-        <li><i className="legend-orange" /> Alimentação <span>15%</span></li>
-        <li><i className="legend-violet" /> Outros <span>35%</span></li>
+        <li><i className="legend-blue" /> {translateText('Moradia')} <span>32%</span></li>
+        <li><i className="legend-green" /> {translateText('Transporte')} <span>18%</span></li>
+        <li><i className="legend-orange" /> {translateText('Alimentação')} <span>15%</span></li>
+        <li><i className="legend-violet" /> {translateText('Outros')} <span>35%</span></li>
       </ul>
     </div>
   );
@@ -176,7 +177,7 @@ function ProgressGoal({ icon, title, value, progress }: { icon: ReactNode; title
       <span className="preview-goal-icon">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <strong>{title}</strong>
+          <strong>{translateText(title)}</strong>
           <span>{progress}%</span>
         </div>
         <div className="preview-progress-track"><span style={{ width: `${progress}%` }} /></div>
@@ -190,7 +191,7 @@ function BillRow({ icon, title, value, date }: { icon: ReactNode; title: string;
   return (
     <div className="preview-bill-row">
       <span className="preview-bill-icon">{icon}</span>
-      <strong>{title}</strong>
+      <strong>{translateText(title)}</strong>
       <b>{value}</b>
       <small>{date}</small>
     </div>
@@ -201,7 +202,7 @@ export function HomeFeatureColumn() {
   return (
     <section className="home-content-column home-features-column" id="recursos">
       <div className="home-column-heading">
-        <h2>Seu presente e seu futuro no mesmo plano</h2>
+          <h2>{translateText('Seu presente e seu futuro no mesmo plano')}</h2>
       </div>
       <div className="feature-grid">
         {features.map((feature) => {
@@ -210,8 +211,8 @@ export function HomeFeatureColumn() {
             <article className="feature-item" key={feature.title}>
               <span className={`feature-icon feature-${feature.tone}`}><Icon size={15} /></span>
               <div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
+                <h3>{translateText(feature.title)}</h3>
+                <p>{translateText(feature.description)}</p>
               </div>
             </article>
           );
@@ -223,14 +224,14 @@ export function HomeFeatureColumn() {
 
 export function ProductAppLink({ className, label = 'Acessar o PFVL' }: { className: string; label?: string }) {
   const appUrl = import.meta.env.VITE_PFVL_APP_URL?.trim();
-  const content = <>{label}<ArrowRight size={15} /></>;
+  const content = <>{translateText(label)}<ArrowRight size={15} /></>;
 
   if (!appUrl) {
     return (
       <span
         aria-disabled="true"
         className={`${className} product-app-link-disabled`}
-        title="Configure o endereço do sistema para este ambiente."
+        title={translateText('Configure o endereço do sistema para este ambiente.')}
       >
         {content}
       </span>
@@ -244,8 +245,8 @@ export function HomeNewsColumn({ posts, isLoading, isError, retry }: { posts: Po
   return (
     <section className="home-content-column home-news-column">
       <div className="home-column-heading">
-        <h2>Novidades recentes</h2>
-        <Link href="/news">Ver todas <ArrowRight size={11} /></Link>
+          <h2>{translateText('Novidades recentes')}</h2>
+          <Link href="/news">{translateText('Ver todas')} <ArrowRight size={11} /></Link>
       </div>
       {isLoading ? (
         <LoadingState rows={2} />
@@ -288,12 +289,12 @@ export function HomeBottomCta() {
         <span className="cta-orbit cta-orbit-b" />
       </div>
       <div className="cta-copy">
-        <h2>Seu próximo passo começa<br className="hidden sm:block" /> com um plano.</h2>
-        <p>Conheça o PFVL e descubra como conectar suas escolhas de hoje aos objetivos que você quer alcançar.</p>
+         <h2>{translateText('Seu próximo passo começa')}<br className="hidden sm:block" />{translateText(' com um plano.')}</h2>
+         <p>{translateText('Conheça o PFVL e descubra como conectar suas escolhas de hoje aos objetivos que você quer alcançar.')}</p>
       </div>
       <div className="cta-actions">
         <ProductAppLink className="cta-primary-link" />
-        <Link className="cta-secondary-link" href="/#recursos">Conhecer os recursos</Link>
+        <Link className="cta-secondary-link" href="/#recursos">{translateText('Conhecer os recursos')}</Link>
       </div>
     </section>
   );

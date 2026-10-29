@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { formatDate, LoadingState } from "@/components/portal-ui";
+import { translateText } from "@/lib/i18n";
 
 export function CommunityPoll() {
   const client = useQueryClient();
@@ -35,23 +36,23 @@ export function CommunityPoll() {
   return (
     <aside className="community-poll" aria-labelledby="community-poll-title" data-testid="panel-active-poll">
       <div className="community-poll-topline">
-        <span className="community-poll-kicker"><span aria-hidden="true" /> Enquete da comunidade</span>
+        <span className="community-poll-kicker"><span aria-hidden="true" /> {translateText("Enquete da comunidade")}</span>
         <span className={poll ? "community-poll-live" : "community-poll-live community-poll-unavailable"}>
           {poll ? "Ativa" : query.isError ? "Indisponível" : "Votação"}
         </span>
       </div>
       {query.isLoading ? <LoadingState rows={1} /> : query.isError ? (
         <div className="community-poll-message" role="alert">
-          <p>Não foi possível carregar a enquete.</p>
-          <button onClick={() => void query.refetch()} type="button">Tentar novamente</button>
+          <p>{translateText("Não foi possível carregar a enquete.")}</p>
+          <button onClick={() => void query.refetch()} type="button">{translateText("Tentar novamente")}</button>
         </div>
       ) : poll ? (
         <>
           <h2 id="community-poll-title">{poll.question}</h2>
           {poll.details && <p className="community-poll-details">{poll.details}</p>}
-          <div className="community-poll-votes" aria-label={`${poll.likeCount} curtidas e ${poll.dislikeCount} não curtidas`}>
-            <span><ThumbsUp size={15} /> {poll.likeCount} <small>curtidas</small></span>
-            <span><ThumbsDown size={15} /> {poll.dislikeCount} <small>não curtidas</small></span>
+          <div className="community-poll-votes" aria-label={`${poll.likeCount} ${translateText("curtidas")} ${translateText("e")} ${poll.dislikeCount} ${translateText("não curtidas")}`}>
+            <span><ThumbsUp size={15} /> {poll.likeCount} <small>{translateText("curtidas")}</small></span>
+            <span><ThumbsDown size={15} /> {poll.dislikeCount} <small>{translateText("não curtidas")}</small></span>
           </div>
           <AuthActionGate>
             <div className="community-poll-actions">
@@ -74,13 +75,13 @@ export function CommunityPoll() {
             </div>
           </AuthActionGate>
           {voteMessage && <p className="community-poll-message" role="alert">{voteMessage}</p>}
-          {vote.isPending && <p className="community-poll-note" role="status">Registrando sua avaliação…</p>}
-          <p className="community-poll-note">Enquete publicada em {formatDate(poll.createdAt)}. Você pode alterar seu voto.</p>
+          {vote.isPending && <p className="community-poll-note" role="status">{translateText("Registrando sua avaliação…")}</p>}
+          <p className="community-poll-note">{translateText("Enquete publicada em")} {formatDate(poll.createdAt)}{translateText(". Você pode alterar seu voto.")}</p>
         </>
       ) : (
         <div className="community-poll-empty">
-          <h2 id="community-poll-title">A comunidade está ouvindo.</h2>
-          <p>Uma enquete da equipe aparecerá aqui quando estiver disponível.</p>
+          <h2 id="community-poll-title">{translateText("A comunidade está ouvindo.")}</h2>
+          <p>{translateText("Uma enquete da equipe aparecerá aqui quando estiver disponível.")}</p>
         </div>
       )}
     </aside>

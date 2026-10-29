@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { AuthActionGate } from "@/components/auth-ui";
+import { translateText } from "@/lib/i18n";
 import {
   EmptyState,
   formatDate,
@@ -132,7 +133,7 @@ function NotificationsList() {
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-[#012140]">{notification.title}</span>
-                      {!notification.isRead && <span className="h-2 w-2 rounded-full bg-[#286bd4]" aria-label="Não lida" />}
+                      {!notification.isRead && <span className="h-2 w-2 rounded-full bg-[#286bd4]" aria-label={translateText('Não lida')} />}
                     </span>
                     <span className="mt-1 block text-sm leading-6 text-[#4b5563]">{notification.message}</span>
                     <span className="mt-2 block text-xs text-muted-foreground">
@@ -143,18 +144,18 @@ function NotificationsList() {
                 <div className="flex items-center gap-2 sm:justify-end">
                   {!notification.isRead && (
                     <button
-                      aria-label="Marcar como lida"
+                      aria-label={translateText('Marcar como lida')}
                       className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#233a59]/15 px-3 text-xs font-semibold text-[#233a59] hover:bg-[#233a59]/5 disabled:opacity-50"
                       disabled={markRead.isPending}
                       onClick={() => void markAsRead(notification.id)}
                       type="button"
                     >
                       <Check aria-hidden="true" size={15} />
-                      <span>Marcar como lida</span>
+                      <span>{translateText('Marcar como lida')}</span>
                     </button>
                   )}
                   <button
-                    aria-label="Excluir notificação"
+                    aria-label={translateText('Excluir notificação')}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#233a59]/15 text-[#233a59] hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                     disabled={remove.isPending}
                     onClick={() => void deleteNotification(notification.id)}

@@ -54,6 +54,25 @@ export const GetDashboardResponse = zod.object({
 
 
 /**
+ * @summary Lista depoimentos aprovados para a página inicial
+ */
+export const listTestimonialsResponseRatingMax = 5;
+
+
+
+export const ListTestimonialsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "rating": zod.number().int().min(1).max(listTestimonialsResponseRatingMax),
+  "body": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListTestimonialsResponse = zod.array(ListTestimonialsResponseItem)
+
+
+/**
  * @summary Lista publicações, tópicos, novidades e artigos de ajuda publicados
  */
 export const ListPostsQueryParams = zod.object({
@@ -341,7 +360,143 @@ export const GetCurrentUserResponse = zod.object({
   "displayName": zod.string(),
   "role": zod.enum(['member', 'admin']),
   "status": zod.enum(['active', 'suspended']),
+  "preferredLanguage": zod.enum(['pt-BR', 'en-US']),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Atualiza o idioma preferido da conta autenticada
+ */
+export const UpdateMyProfileBody = zod.object({
+  "preferredLanguage": zod.enum(['pt-BR', 'en-US'])
+})
+
+export const UpdateMyProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string().email(),
+  "displayName": zod.string(),
+  "role": zod.enum(['member', 'admin']),
+  "status": zod.enum(['active', 'suspended']),
+  "preferredLanguage": zod.enum(['pt-BR', 'en-US']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista tópicos da comunidade criados pela conta autenticada
+ */
+export const ListMyCommunityPostsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "excerpt": zod.string(),
+  "body": zod.string(),
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "authorName": zod.string(),
+  "coverImageUrl": zod.string().nullable(),
+  "videoUrl": zod.string().nullable(),
+  "status": zod.enum(['draft', 'published', 'hidden']),
+  "commentCount": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMyCommunityPostsResponse = zod.array(ListMyCommunityPostsResponseItem)
+
+
+/**
+ * @summary Obtém o depoimento enviado pela conta autenticada
+ */
+export const getMyTestimonialResponseTestimonialOneRatingMax = 5;
+
+
+
+export const GetMyTestimonialResponse = zod.object({
+  "testimonial": zod.union([zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "rating": zod.number().int().min(1).max(getMyTestimonialResponseTestimonialOneRatingMax),
+  "body": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Cria ou atualiza o depoimento da conta autenticada
+ */
+export const upsertMyTestimonialBodyRatingMax = 5;
+
+export const upsertMyTestimonialBodyBodyMin = 10;
+export const upsertMyTestimonialBodyBodyMax = 1500;
+
+
+
+export const UpsertMyTestimonialBody = zod.object({
+  "rating": zod.number().int().min(1).max(upsertMyTestimonialBodyRatingMax),
+  "body": zod.string().min(upsertMyTestimonialBodyBodyMin).max(upsertMyTestimonialBodyBodyMax)
+})
+
+export const upsertMyTestimonialResponseRatingMax = 5;
+
+
+
+export const UpsertMyTestimonialResponse = zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "rating": zod.number().int().min(1).max(upsertMyTestimonialResponseRatingMax),
+  "body": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista depoimentos para aprovação administrativa
+ */
+export const listAdminTestimonialsResponseRatingMax = 5;
+
+
+
+export const ListAdminTestimonialsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "rating": zod.number().int().min(1).max(listAdminTestimonialsResponseRatingMax),
+  "body": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminTestimonialsResponse = zod.array(ListAdminTestimonialsResponseItem)
+
+
+/**
+ * @summary Aprova ou rejeita um depoimento
+ */
+export const UpdateAdminTestimonialParams = zod.object({
+  "testimonialId": zod.coerce.number().int()
+})
+
+export const UpdateAdminTestimonialBody = zod.object({
+  "status": zod.enum(['approved', 'rejected'])
+})
+
+export const updateAdminTestimonialResponseRatingMax = 5;
+
+
+
+export const UpdateAdminTestimonialResponse = zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "rating": zod.number().int().min(1).max(updateAdminTestimonialResponseRatingMax),
+  "body": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 
@@ -600,6 +755,7 @@ export const ListAdminUsersResponseItem = zod.object({
   "displayName": zod.string(),
   "role": zod.enum(['member', 'admin']),
   "status": zod.enum(['active', 'suspended']),
+  "preferredLanguage": zod.enum(['pt-BR', 'en-US']),
   "createdAt": zod.coerce.date()
 })
 export const ListAdminUsersResponse = zod.array(ListAdminUsersResponseItem)
@@ -623,6 +779,7 @@ export const UpdateAdminUserResponse = zod.object({
   "displayName": zod.string(),
   "role": zod.enum(['member', 'admin']),
   "status": zod.enum(['active', 'suspended']),
+  "preferredLanguage": zod.enum(['pt-BR', 'en-US']),
   "createdAt": zod.coerce.date()
 })
 

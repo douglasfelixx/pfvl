@@ -46,6 +46,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dashboard"
+  /testimonials:
+    get:
+      operationId: listTestimonials
+      tags: [content]
+      summary: Lista depoimentos aprovados para a página inicial
+      responses:
+        "200":
+          description: Depoimentos públicos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Testimonial"
   /posts:
     get:
       operationId: listPosts
@@ -289,6 +303,126 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    patch:
+      operationId: updateMyProfile
+      tags: [account]
+      summary: Atualiza o idioma preferido da conta autenticada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyProfileInput"
+      responses:
+        "200":
+          description: Perfil atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /me/posts:
+    get:
+      operationId: listMyCommunityPosts
+      tags: [account]
+      summary: Lista tópicos da comunidade criados pela conta autenticada
+      responses:
+        "200":
+          description: Publicações da conta
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /me/testimonial:
+    get:
+      operationId: getMyTestimonial
+      tags: [account]
+      summary: Obtém o depoimento enviado pela conta autenticada
+      responses:
+        "200":
+          description: Depoimento atual ou ausência de depoimento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyTestimonial"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: upsertMyTestimonial
+      tags: [account]
+      summary: Cria ou atualiza o depoimento da conta autenticada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestimonialInput"
+      responses:
+        "200":
+          description: Depoimento enviado para aprovação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Testimonial"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/testimonials:
+    get:
+      operationId: listAdminTestimonials
+      tags: [admin]
+      summary: Lista depoimentos para aprovação administrativa
+      responses:
+        "200":
+          description: Depoimentos enviados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Testimonial"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/testimonials/{testimonialId}:
+    patch:
+      operationId: updateAdminTestimonial
+      tags: [admin]
+      summary: Aprova ou rejeita um depoimento
+      parameters:
+        - name: testimonialId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTestimonialUpdate"
+      responses:
+        "200":
+          description: Depoimento moderado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Testimonial"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /uploads/presign:
     post:
       operationId: createImageUpload
@@ -972,8 +1106,52 @@ components:
         displayName: { type: string }
         role: { $ref: "#/components/schemas/UserRole" }
         status: { $ref: "#/components/schemas/UserStatus" }
+        preferredLanguage: { $ref: "#/components/schemas/PreferredLanguage" }
         createdAt: { type: string, format: date-time }
-      required: [id, email, displayName, role, status, createdAt]
+      required: [id, email, displayName, role, status, preferredLanguage, createdAt]
+    PreferredLanguage:
+      type: string
+      enum: [pt-BR, en-US]
+    UpdateMyProfileInput:
+      type: object
+      properties:
+        preferredLanguage: { $ref: "#/components/schemas/PreferredLanguage" }
+      required: [preferredLanguage]
+    TestimonialStatus:
+      type: string
+      enum: [pending, approved, rejected]
+    Testimonial:
+      type: object
+      properties:
+        id: { type: integer }
+        authorName: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string }
+        status: { $ref: "#/components/schemas/TestimonialStatus" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, authorName, rating, body, status, createdAt, updatedAt]
+    MyTestimonial:
+      type: object
+      properties:
+        testimonial:
+          oneOf:
+            - $ref: "#/components/schemas/Testimonial"
+            - type: "null"
+      required: [testimonial]
+    TestimonialInput:
+      type: object
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string, minLength: 10, maxLength: 1500 }
+      required: [rating, body]
+    AdminTestimonialUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected]
+      required: [status]
     UpdateUserInput:
       type: object
       properties:

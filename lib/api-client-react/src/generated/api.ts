@@ -22,6 +22,7 @@ import type {
 import type {
   ActivePoll,
   AdminPollInput,
+  AdminTestimonialUpdate,
   BadRequestResponse,
   Comment,
   CreateCommentInput,
@@ -35,6 +36,7 @@ import type {
   Indicator,
   ListPostsParams,
   ListTaxonomyParams,
+  MyTestimonial,
   NotFoundResponse,
   Notification,
   Notifications,
@@ -50,8 +52,11 @@ import type {
   TaxonomyInput,
   TaxonomyItem,
   TaxonomyUpdate,
+  Testimonial,
+  TestimonialInput,
   UnauthorizedResponse,
   UnavailableResponse,
+  UpdateMyProfileInput,
   UpdatePostInput,
   UpdateSuggestionInput,
   UpdateUserInput,
@@ -228,6 +233,83 @@ export function useGetDashboard<TData = Awaited<ReturnType<typeof getDashboard>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTestimonialsUrl = () => {
+
+
+
+
+  return `/api/testimonials`
+}
+
+/**
+ * @summary Lista depoimentos aprovados para a página inicial
+ */
+export const listTestimonials = async ( options?: Parameters<typeof customFetch>[1]): Promise<Testimonial[]> => {
+
+  return customFetch<Testimonial[]>(getListTestimonialsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTestimonialsQueryKey = () => {
+    return [
+    `/api/testimonials`
+    ] as const;
+    }
+
+
+export const getListTestimonialsQueryOptions = <TData = Awaited<ReturnType<typeof listTestimonials>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTestimonials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTestimonialsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTestimonials>>> = ({ signal }) => listTestimonials({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTestimonials>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTestimonialsQueryResult = NonNullable<Awaited<ReturnType<typeof listTestimonials>>>
+export type ListTestimonialsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista depoimentos aprovados para a página inicial
+ */
+
+export function useListTestimonials<TData = Awaited<ReturnType<typeof listTestimonials>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTestimonials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTestimonialsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1218,6 +1300,502 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
 
 
 
+
+export const getUpdateMyProfileUrl = () => {
+
+
+
+
+  return `/api/me`
+}
+
+/**
+ * @summary Atualiza o idioma preferido da conta autenticada
+ */
+export const updateMyProfile = async (updateMyProfileInput: UpdateMyProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<UserProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UserProfile>(getUpdateMyProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateMyProfileInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyProfileMutationKey = () => ['updateMyProfile'] as const;
+
+export const getUpdateMyProfileMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyProfile>>, TError,UpdateMyProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyProfile>>, TError,UpdateMyProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMyProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyProfile>>, UpdateMyProfileMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMyProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyProfile>>>
+    export type UpdateMyProfileMutationBody = BodyType<UpdateMyProfileInput>
+    export type UpdateMyProfileMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+    export type UpdateMyProfileMutationVariables = {data: BodyType<UpdateMyProfileInput>}
+
+    /**
+ * @summary Atualiza o idioma preferido da conta autenticada
+ */
+export const useUpdateMyProfile = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyProfile>>, TError,UpdateMyProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyProfile>>,
+        TError,
+        UpdateMyProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMyProfileMutationOptions(options));
+    }
+
+export const getListMyCommunityPostsUrl = () => {
+
+
+
+
+  return `/api/me/posts`
+}
+
+/**
+ * @summary Lista tópicos da comunidade criados pela conta autenticada
+ */
+export const listMyCommunityPosts = async ( options?: Parameters<typeof customFetch>[1]): Promise<Post[]> => {
+
+  return customFetch<Post[]>(getListMyCommunityPostsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyCommunityPostsQueryKey = () => {
+    return [
+    `/api/me/posts`
+    ] as const;
+    }
+
+
+export const getListMyCommunityPostsQueryOptions = <TData = Awaited<ReturnType<typeof listMyCommunityPosts>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyCommunityPosts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyCommunityPostsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyCommunityPosts>>> = ({ signal }) => listMyCommunityPosts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyCommunityPosts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyCommunityPostsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyCommunityPosts>>>
+export type ListMyCommunityPostsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista tópicos da comunidade criados pela conta autenticada
+ */
+
+export function useListMyCommunityPosts<TData = Awaited<ReturnType<typeof listMyCommunityPosts>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyCommunityPosts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyCommunityPostsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyTestimonialUrl = () => {
+
+
+
+
+  return `/api/me/testimonial`
+}
+
+/**
+ * @summary Obtém o depoimento enviado pela conta autenticada
+ */
+export const getMyTestimonial = async ( options?: Parameters<typeof customFetch>[1]): Promise<MyTestimonial> => {
+
+  return customFetch<MyTestimonial>(getGetMyTestimonialUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyTestimonialQueryKey = () => {
+    return [
+    `/api/me/testimonial`
+    ] as const;
+    }
+
+
+export const getGetMyTestimonialQueryOptions = <TData = Awaited<ReturnType<typeof getMyTestimonial>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTestimonial>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyTestimonialQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyTestimonial>>> = ({ signal }) => getMyTestimonial({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyTestimonial>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyTestimonialQueryResult = NonNullable<Awaited<ReturnType<typeof getMyTestimonial>>>
+export type GetMyTestimonialQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Obtém o depoimento enviado pela conta autenticada
+ */
+
+export function useGetMyTestimonial<TData = Awaited<ReturnType<typeof getMyTestimonial>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyTestimonial>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyTestimonialQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertMyTestimonialUrl = () => {
+
+
+
+
+  return `/api/me/testimonial`
+}
+
+/**
+ * @summary Cria ou atualiza o depoimento da conta autenticada
+ */
+export const upsertMyTestimonial = async (testimonialInput: TestimonialInput, options?: Parameters<typeof customFetch>[1]): Promise<Testimonial> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Testimonial>(getUpsertMyTestimonialUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(testimonialInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertMyTestimonialMutationKey = () => ['upsertMyTestimonial'] as const;
+
+export const getUpsertMyTestimonialMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertMyTestimonial>>, TError,UpsertMyTestimonialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertMyTestimonial>>, TError,UpsertMyTestimonialMutationVariables, TContext> => {
+
+const mutationKey = getUpsertMyTestimonialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertMyTestimonial>>, UpsertMyTestimonialMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertMyTestimonial(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertMyTestimonialMutationResult = NonNullable<Awaited<ReturnType<typeof upsertMyTestimonial>>>
+    export type UpsertMyTestimonialMutationBody = BodyType<TestimonialInput>
+    export type UpsertMyTestimonialMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+    export type UpsertMyTestimonialMutationVariables = {data: BodyType<TestimonialInput>}
+
+    /**
+ * @summary Cria ou atualiza o depoimento da conta autenticada
+ */
+export const useUpsertMyTestimonial = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertMyTestimonial>>, TError,UpsertMyTestimonialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertMyTestimonial>>,
+        TError,
+        UpsertMyTestimonialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpsertMyTestimonialMutationOptions(options));
+    }
+
+export const getListAdminTestimonialsUrl = () => {
+
+
+
+
+  return `/api/admin/testimonials`
+}
+
+/**
+ * @summary Lista depoimentos para aprovação administrativa
+ */
+export const listAdminTestimonials = async ( options?: Parameters<typeof customFetch>[1]): Promise<Testimonial[]> => {
+
+  return customFetch<Testimonial[]>(getListAdminTestimonialsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminTestimonialsQueryKey = () => {
+    return [
+    `/api/admin/testimonials`
+    ] as const;
+    }
+
+
+export const getListAdminTestimonialsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminTestimonials>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTestimonials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminTestimonialsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminTestimonials>>> = ({ signal }) => listAdminTestimonials({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminTestimonials>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminTestimonialsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminTestimonials>>>
+export type ListAdminTestimonialsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Lista depoimentos para aprovação administrativa
+ */
+
+export function useListAdminTestimonials<TData = Awaited<ReturnType<typeof listAdminTestimonials>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTestimonials>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminTestimonialsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminTestimonialUrl = (testimonialId: number,) => {
+
+
+
+
+  return `/api/admin/testimonials/${testimonialId}`
+}
+
+/**
+ * @summary Aprova ou rejeita um depoimento
+ */
+export const updateAdminTestimonial = async (testimonialId: number,
+    adminTestimonialUpdate: AdminTestimonialUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Testimonial> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Testimonial>(getUpdateAdminTestimonialUrl(testimonialId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminTestimonialUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminTestimonialMutationKey = () => ['updateAdminTestimonial'] as const;
+
+export const getUpdateAdminTestimonialMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTestimonial>>, TError,UpdateAdminTestimonialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminTestimonial>>, TError,UpdateAdminTestimonialMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminTestimonialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminTestimonial>>, UpdateAdminTestimonialMutationVariables> = (props) => {
+          const {testimonialId,data} = props ?? {};
+
+          return  updateAdminTestimonial(testimonialId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminTestimonialMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminTestimonial>>>
+    export type UpdateAdminTestimonialMutationBody = BodyType<AdminTestimonialUpdate>
+    export type UpdateAdminTestimonialMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+    export type UpdateAdminTestimonialMutationVariables = {testimonialId: number;data: BodyType<AdminTestimonialUpdate>}
+
+    /**
+ * @summary Aprova ou rejeita um depoimento
+ */
+export const useUpdateAdminTestimonial = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTestimonial>>, TError,UpdateAdminTestimonialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminTestimonial>>,
+        TError,
+        UpdateAdminTestimonialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminTestimonialMutationOptions(options));
+    }
 
 export const getCreateImageUploadUrl = () => {
 

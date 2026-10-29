@@ -38,7 +38,9 @@ import {
   GetActivePollResponse,
   GetDashboardResponse,
   GetCurrentUserResponse,
+  GetMyTestimonialResponse,
   ListNotificationsResponse,
+  ListAdminTestimonialsResponse,
   GetPostParams,
   GetPostResponse,
   GetSiteMediaFileHeader,
@@ -53,8 +55,10 @@ import {
   ListCommentsParams,
   ListCommentsResponse,
   ListIndicatorsResponse,
+  ListMyCommunityPostsResponse,
   ListPostsQueryParams,
   ListPostsResponse,
+  ListTestimonialsResponse,
   ListTaxonomyQueryParams,
   ListTaxonomyResponse,
   ListSuggestionsResponse,
@@ -64,12 +68,19 @@ import {
   UpdateAdminSuggestionBody,
   UpdateAdminSuggestionParams,
   UpdateAdminSuggestionResponse,
+  UpdateAdminTestimonialBody,
+  UpdateAdminTestimonialParams,
+  UpdateAdminTestimonialResponse,
   UpdateAdminUserBody,
   UpdateAdminUserParams,
   UpdateAdminUserResponse,
   UpdatePostBody,
   UpdatePostParams,
   UpdatePostResponse,
+  UpdateMyProfileBody,
+  UpdateMyProfileResponse,
+  UpsertMyTestimonialBody,
+  UpsertMyTestimonialResponse,
   VotePollBody,
   VotePollParams,
   VotePollResponse,
@@ -91,6 +102,7 @@ import {
   siteMediaTable,
   suggestionsTable,
   taxonomyTable,
+  testimonialsTable,
   usersTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger.js";
@@ -385,6 +397,19 @@ router.get("/dashboard", async (_req: ExpressRequest, res: ExpressResponse): Pro
   res.json(GetDashboardResponse.parse(response));
 });
 
+router.get(
+  "/testimonials",
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const rows = await db
+      .select()
+      .from(testimonialsTable)
+      .where(eq(testimonialsTable.status, "approved"))
+      .orderBy(desc(testimonialsTable.createdAt))
+      .limit(6);
+    res.json(ListTestimonialsResponse.parse(rows));
+  },
+);
+
 router.get("/site-media", async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const rows = await db.select().from(siteMediaTable);
   const bySlot = new Map(rows.map((row) => [row.slot, row]));
@@ -537,6 +562,105 @@ router.get("/polls/active", async (req: ExpressRequest, res: ExpressResponse): P
 router.get("/me", requirePfvlUser, (req: ExpressRequest, res: ExpressResponse): void => {
   res.json(GetCurrentUserResponse.parse(getPfvlUser(req)));
 });
+
+router.patch(
+  "/me",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = UpdateMyProfileBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const user = getPfvlUser(req);
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        preferredLanguage: parsed.data.preferredLanguage,
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Conta não encontrada" });
+      return;
+    }
+    res.json(UpdateMyProfileResponse.parse(updated));
+  },
+);
+
+router.get(
+  "/me/posts",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const user = getPfvlUser(req);
+    const rows = await db
+      .select(publicPostColumns)
+      .from(postsTable)
+      .where(
+        and(
+          eq(postsTable.authorUserId, user.id),
+          eq(postsTable.kind, "forum"),
+          eq(postsTable.status, "published"),
+        ),
+      )
+      .orderBy(desc(postsTable.createdAt));
+    res.json(ListMyCommunityPostsResponse.parse(rows));
+  },
+);
+
+router.get(
+  "/me/testimonial",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const user = getPfvlUser(req);
+    const [testimonial] = await db
+      .select()
+      .from(testimonialsTable)
+      .where(eq(testimonialsTable.userId, user.id))
+      .limit(1);
+    res.json(GetMyTestimonialResponse.parse({ testimonial: testimonial ?? null }));
+  },
+);
+
+router.put(
+  "/me/testimonial",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = UpsertMyTestimonialBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const user = getPfvlUser(req);
+    const body = parsed.data.body.trim();
+    if (body.length < 10) {
+      res.status(400).json({ error: "O depoimento precisa ter pelo menos 10 caracteres." });
+      return;
+    }
+    const [testimonial] = await db
+      .insert(testimonialsTable)
+      .values({
+        userId: user.id,
+        authorName: user.displayName,
+        rating: parsed.data.rating,
+        body,
+        status: "pending",
+      })
+      .onConflictDoUpdate({
+        target: testimonialsTable.userId,
+        set: {
+          authorName: user.displayName,
+          rating: parsed.data.rating,
+          body,
+          status: "pending",
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    res.json(UpsertMyTestimonialResponse.parse(testimonial));
+  },
+);
 
 router.get(
   "/notifications",
@@ -1324,6 +1448,51 @@ router.get(
       .from(postsTable)
       .orderBy(desc(postsTable.updatedAt));
     res.json(ListAdminPostsResponse.parse(rows.map(postResponse)));
+  },
+);
+
+router.get(
+  "/admin/testimonials",
+  requirePfvlUser,
+  requireAdmin,
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const rows = await db
+      .select()
+      .from(testimonialsTable)
+      .orderBy(
+        sql`CASE WHEN ${testimonialsTable.status} = 'pending' THEN 0 ELSE 1 END`,
+        desc(testimonialsTable.createdAt),
+      )
+      .limit(200);
+    res.json(ListAdminTestimonialsResponse.parse(rows));
+  },
+);
+
+router.patch(
+  "/admin/testimonials/:testimonialId",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const params = UpdateAdminTestimonialParams.safeParse(req.params);
+    const parsed = UpdateAdminTestimonialBody.safeParse(req.body);
+    if (!params.success || !parsed.success) {
+      res.status(400).json({
+        error: !params.success
+          ? params.error.message
+          : parsed.error?.message ?? "Dados inválidos",
+      });
+      return;
+    }
+    const [updated] = await db
+      .update(testimonialsTable)
+      .set({ status: parsed.data.status, updatedAt: new Date() })
+      .where(eq(testimonialsTable.id, params.data.testimonialId))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Depoimento não encontrado" });
+      return;
+    }
+    res.json(UpdateAdminTestimonialResponse.parse(updated));
   },
 );
 

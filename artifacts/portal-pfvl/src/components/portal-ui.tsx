@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { ArrowRight, CircleHelp, RefreshCw, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
+import { getLocale, translateText } from '@/lib/i18n';
 import type { Post } from '@workspace/api-client-react';
 import planningCover from '../assets/posts/pfvl-cover-planning.jpg';
 import investingCover from '../assets/posts/pfvl-cover-investing.jpg';
@@ -20,9 +21,9 @@ export function getPostCoverImage(post: Pick<Post, 'kind' | 'category' | 'coverI
 export function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return (
     <header className="mb-8 max-w-3xl">
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-primary">{eyebrow}</p>
-      <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-[-.04em] text-foreground sm:text-5xl">{title}</h1>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">{description}</p>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-primary">{translateText(eyebrow)}</p>
+      <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-[-.04em] text-foreground sm:text-5xl">{translateText(title)}</h1>
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">{translateText(description)}</p>
     </header>
   );
 }
@@ -30,10 +31,10 @@ export function PageHeading({ eyebrow, title, description }: { eyebrow: string; 
 export function SectionHeading({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-4">
-      <h2 className="font-display text-[22px] font-semibold tracking-[-.03em]">{title}</h2>
+        <h2 className="font-display text-[22px] font-semibold tracking-[-.03em]">{translateText(title)}</h2>
       {href && linkLabel && (
         <Link href={href} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-primary hover:gap-2">
-          {linkLabel}
+          {translateText(linkLabel)}
           <ArrowRight size={14} />
         </Link>
       )}
@@ -43,7 +44,7 @@ export function SectionHeading({ title, href, linkLabel }: { title: string; href
 
 export function LoadingState({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="space-y-3" role="status" aria-label="Carregando conteúdo">
+    <div className="space-y-3" role="status" aria-label={translateText('Carregando conteúdo')}>
       {Array.from({ length: rows }, (_, index) => (
         <div className="skeleton-card" key={index}>
           <div className="skeleton-line w-24" />
@@ -59,11 +60,11 @@ export function LoadingState({ rows = 3 }: { rows?: number }) {
 export function QueryError({ retry }: { retry: () => void }) {
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900" role="alert">
-      <p className="font-bold">Não foi possível carregar este conteúdo.</p>
-      <p className="mt-1 text-red-800">Confira sua conexão e tente novamente.</p>
+      <p className="font-bold">{translateText('Não foi possível carregar este conteúdo.')}</p>
+      <p className="mt-1 text-red-800">{translateText('Confira sua conexão e tente novamente.')}</p>
       <button className="mt-4 inline-flex items-center gap-2 font-bold underline" onClick={retry} type="button">
         <RefreshCw size={14} />
-        Tentar novamente
+        {translateText('Tentar novamente')}
       </button>
     </div>
   );
@@ -75,8 +76,8 @@ export function EmptyState({ title, description }: { title: string; description:
       <span className="mx-auto grid h-11 w-11 place-items-center rounded-2xl bg-accent text-accent-foreground">
         <Sparkles size={19} />
       </span>
-      <h3 className="mt-3 font-display text-lg font-semibold">{title}</h3>
-      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      <h3 className="mt-3 font-display text-lg font-semibold">{translateText(title)}</h3>
+      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">{translateText(description)}</p>
     </div>
   );
 }
@@ -88,8 +89,8 @@ export function ReadOnlyBanner({ compact = false }: { compact?: boolean }) {
         <CircleHelp size={17} />
       </span>
       <p className="text-xs leading-5 text-[#35574d]">
-        <strong className="font-bold">Espaço público para consulta.</strong>
-        {' '}A participação e a administração serão habilitadas depois da configuração da autenticação.
+        <strong className="font-bold">{translateText('Espaço público para consulta.')}</strong>
+        {' '}{translateText('A participação e a administração serão habilitadas depois da configuração da autenticação.')}
       </p>
     </aside>
   );
@@ -98,8 +99,8 @@ export function ReadOnlyBanner({ compact = false }: { compact?: boolean }) {
 export function formatDate(date: string) {
   const parsed = new Date(date);
   return Number.isNaN(parsed.getTime())
-    ? 'Data indisponível'
-    : new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
+    ? translateText('Data indisponível')
+    : new Intl.DateTimeFormat(getLocale(), { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
 }
 
 const postLabels: Record<string, string> = {
@@ -119,7 +120,7 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
         <img className="mb-5 aspect-video w-full rounded-xl object-cover" src={coverImageUrl} alt={post.title} width="1200" height="675" loading="lazy" />
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="eyebrow-pill">{postLabels[post.kind] ?? post.kind}</span>
+        <span className="eyebrow-pill">{translateText(postLabels[post.kind] ?? post.kind)}</span>
         <span className="text-[11px] font-medium text-muted-foreground">{post.category}</span>
         <span className="ml-auto text-[11px] text-muted-foreground">{formatDate(post.createdAt)}</span>
       </div>
@@ -130,9 +131,9 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
       </Link>
       <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-muted-foreground">{post.excerpt || post.body}</p>
       <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-3">
-        <span className="text-[11px] text-muted-foreground">Por <strong className="text-foreground">{post.authorName}</strong></span>
+         <span className="text-[11px] text-muted-foreground">{translateText('Por')} <strong className="text-foreground">{post.authorName}</strong></span>
         <Link href={detailHref} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary">
-          {post.kind === 'forum' ? `${post.commentCount} comentários` : 'Ler conteúdo'}
+           {post.kind === 'forum' ? `${post.commentCount} ${translateText('comentários')}` : translateText('Ler conteúdo')}
           <ArrowRight size={13} />
         </Link>
       </div>

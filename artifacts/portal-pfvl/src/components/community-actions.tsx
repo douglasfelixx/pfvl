@@ -15,6 +15,7 @@ import {
   type PostStatus,
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
+import { translateText } from "@/lib/i18n";
 
 const fieldClass = "mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10";
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir a solicitação.";
@@ -59,14 +60,14 @@ export function ImageUploadField({ imageUrl, onImageUrlChange, required = false 
   }
   return (
     <div>
-      <label className="block text-sm font-semibold text-[#012140]">Imagem de capa{required ? " *" : ""}
+      <label className="block text-sm font-semibold text-[#012140]">{translateText("Imagem de capa")}{required ? " *" : ""}
         <input accept="image/jpeg,image/png,image/webp" className={fieldClass} disabled={upload.isPending} onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} type="file" />
       </label>
-      <p className="mt-1 text-xs text-muted-foreground">JPG, PNG ou WebP até 5 MB. Também é possível informar um endereço HTTPS.</p>
-      <input aria-label="Endereço HTTPS da imagem" className={fieldClass} onChange={(event) => onImageUrlChange(event.target.value)} placeholder="https://..." type="url" value={imageUrl} />
-      {upload.isPending && <p className="mt-2 text-xs text-muted-foreground">Enviando imagem…</p>}
-      {message && <p className="mt-2 text-xs text-[#233a59]" role="status">{message}</p>}
-      {imageUrl && <img alt="Prévia da imagem de capa" className="mt-3 max-h-52 w-full rounded-xl object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} onLoad={(event) => { event.currentTarget.style.display = "block"; }} src={imageUrl} />}
+      <p className="mt-1 text-xs text-muted-foreground">{translateText("JPG, PNG ou WebP até 5 MB. Também é possível informar um endereço HTTPS.")}</p>
+      <input aria-label={translateText("Endereço HTTPS da imagem")} className={fieldClass} onChange={(event) => onImageUrlChange(event.target.value)} placeholder="https://..." type="url" value={imageUrl} />
+      {upload.isPending && <p className="mt-2 text-xs text-muted-foreground">{translateText("Enviando imagem…")}</p>}
+      {message && <p className="mt-2 text-xs text-[#233a59]" role="status">{translateText(message)}</p>}
+      {imageUrl && <img alt={translateText("Prévia da imagem de capa")} className="mt-3 max-h-52 w-full rounded-xl object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} onLoad={(event) => { event.currentTarget.style.display = "block"; }} src={imageUrl} />}
     </div>
   );
 }
@@ -123,24 +124,24 @@ export function CreatePostForm({
       <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" onSubmit={submit}>
         <div><p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p><h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{mode === "community" ? "Compartilhe com a comunidade." : "Criar conteúdo"}</h2></div>
         {mode === "admin" && <div className={`grid gap-3 ${fixedKind ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
-          {!fixedKind && <label className="block text-sm font-semibold text-[#012140]">Área<select className={fieldClass} onChange={(event) => { setKind(event.target.value as PostKind); setCategory(""); setTags([]); }} value={kind}><option value="blog">Conteúdos</option><option value="forum">Comunidade</option><option value="news">Novidades</option><option value="help">Central de Ajuda</option></select></label>}
-          <label className="block text-sm font-semibold text-[#012140]">Situação<select className={fieldClass} onChange={(event) => setStatus(event.target.value as PostStatus)} value={status}><option value="published">Publicado</option><option value="draft">Rascunho</option><option value="hidden">Oculto</option></select></label>
+          {!fixedKind && <label className="block text-sm font-semibold text-[#012140]">{translateText("Área")}<select className={fieldClass} onChange={(event) => { setKind(event.target.value as PostKind); setCategory(""); setTags([]); }} value={kind}><option value="blog">{translateText("Conteúdos")}</option><option value="forum">{translateText("Comunidade")}</option><option value="news">{translateText("Novidades")}</option><option value="help">{translateText("Central de Ajuda")}</option></select></label>}
+          <label className="block text-sm font-semibold text-[#012140]">{translateText("Situação")}<select className={fieldClass} onChange={(event) => setStatus(event.target.value as PostStatus)} value={status}><option value="published">{translateText("Publicado")}</option><option value="draft">{translateText("Rascunho")}</option><option value="hidden">{translateText("Oculto")}</option></select></label>
         </div>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm font-semibold text-[#012140]">Título<input className={fieldClass} maxLength={220} minLength={4} onChange={(event) => setTitle(event.target.value)} required value={title} /></label>
-          <label className="block text-sm font-semibold text-[#012140]">Categoria
+          <label className="block text-sm font-semibold text-[#012140]">{translateText("Título")}<input className={fieldClass} maxLength={220} minLength={4} onChange={(event) => setTitle(event.target.value)} required value={title} /></label>
+          <label className="block text-sm font-semibold text-[#012140]">{translateText("Categoria")}
             <select className={fieldClass} disabled={taxonomy.isLoading || categories.length === 0} onChange={(event) => setCategory(event.target.value)} required value={category}>
-              <option value="">{taxonomy.isLoading ? "Carregando opções…" : "Selecione uma categoria"}</option>
+              <option value="">{translateText(taxonomy.isLoading ? "Carregando opções…" : "Selecione uma categoria")}</option>
               {categories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
             </select>
           </label>
         </div>
-        {taxonomy.isError && <p className="text-sm text-red-700" role="alert">Não foi possível carregar as opções desta área. Atualize a página e tente novamente.</p>}
-        {categories.length === 0 && !taxonomy.isLoading && !taxonomy.isError && <p className="text-sm text-amber-800">Ainda não há categorias para esta área. Peça ao administrador para cadastrá-las no painel.</p>}
-        <label className="block text-sm font-semibold text-[#012140]">Conteúdo<textarea className={`${fieldClass} min-h-40 resize-y`} maxLength={20000} minLength={10} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
+        {taxonomy.isError && <p className="text-sm text-red-700" role="alert">{translateText("Não foi possível carregar as opções desta área. Atualize a página e tente novamente.")}</p>}
+        {categories.length === 0 && !taxonomy.isLoading && !taxonomy.isError && <p className="text-sm text-amber-800">{translateText("Ainda não há categorias para esta área. Peça ao administrador para cadastrá-las no painel.")}</p>}
+        <label className="block text-sm font-semibold text-[#012140]">{translateText("Conteúdo")}<textarea className={`${fieldClass} min-h-40 resize-y`} maxLength={20000} minLength={10} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
         <ImageUploadField imageUrl={image} onImageUrlChange={setImage} required={kind === "blog" || kind === "forum"} />
         <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-[#012140]">Marcadores <span className="font-normal text-muted-foreground">(opcional, até 8)</span></legend>
+          <legend className="text-sm font-semibold text-[#012140]">{translateText("Marcadores")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>
           {tagOptions.length ? (
             <div className="flex flex-wrap gap-2">
               {tagOptions.map((item) => {
@@ -158,10 +159,10 @@ export function CreatePostForm({
                 );
               })}
             </div>
-          ) : <p className="text-sm text-muted-foreground">Não há marcadores cadastrados para esta área.</p>}
+          ) : <p className="text-sm text-muted-foreground">{translateText("Não há marcadores cadastrados para esta área.")}</p>}
         </fieldset>
-        {message && <p className="text-sm text-[#233a59]" role="status">{message}</p>}
-        <button className="auth-header-primary" disabled={mutation.isPending || !category || categories.length === 0 || taxonomy.isLoading || taxonomy.isError || ((kind === "blog" || kind === "forum") && !image.trim())} type="submit">{mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar"}</button>
+        {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
+        <button className="auth-header-primary" disabled={mutation.isPending || !category || categories.length === 0 || taxonomy.isLoading || taxonomy.isError || ((kind === "blog" || kind === "forum") && !image.trim())} type="submit">{translateText(mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar")}</button>
       </form>
     </AuthActionGate>
   );
@@ -169,7 +170,7 @@ export function CreatePostForm({
 
 export function CommunityCreatePanel() {
   const [open, setOpen] = useState(false);
-  return open ? <div className="community-create-panel space-y-3"><button className="text-sm font-semibold text-[#233a59]" onClick={() => setOpen(false)} type="button">← Fechar formulário</button><CreatePostForm mode="community" onCreated={() => setOpen(false)} /></div> : <section className="community-create-panel"><AuthActionGate><button className="auth-header-primary" onClick={() => setOpen(true)} type="button">Criar tópico</button></AuthActionGate></section>;
+  return open ? <div className="community-create-panel space-y-3"><button className="text-sm font-semibold text-[#233a59]" onClick={() => setOpen(false)} type="button">← {translateText("Fechar formulário")}</button><CreatePostForm mode="community" onCreated={() => setOpen(false)} /></div> : <section className="community-create-panel"><AuthActionGate><button className="auth-header-primary" onClick={() => setOpen(true)} type="button">{translateText("Criar tópico")}</button></AuthActionGate></section>;
 }
 
 export function CommentComposer({ postId, parentCommentId = null, onCancel }: { postId: number; parentCommentId?: number | null; onCancel?: () => void }) {
@@ -191,13 +192,13 @@ function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId
     } catch (error) { setMessage(errorText(error)); }
   }
   return <form className="space-y-3 rounded-2xl border border-[#233a59]/15 bg-white p-4" onSubmit={submit}>
-    <label className="block text-sm font-semibold text-[#012140]">{parentCommentId ? "Sua resposta" : "Escreva um comentário"}<textarea className={`${fieldClass} min-h-24 resize-y`} maxLength={5000} minLength={2} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
-    {message && <p className="text-xs text-[#233a59]" role="status">{message}</p>}
-    <div className="flex gap-2"><button className="auth-header-primary" disabled={mutation.isPending} type="submit">{mutation.isPending ? "Enviando…" : "Enviar"}</button>{onCancel && <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" onClick={onCancel} type="button">Cancelar</button>}</div>
+    <label className="block text-sm font-semibold text-[#012140]">{translateText(parentCommentId ? "Sua resposta" : "Escreva um comentário")}<textarea className={`${fieldClass} min-h-24 resize-y`} maxLength={5000} minLength={2} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
+    {message && <p className="text-xs text-[#233a59]" role="status">{translateText(message)}</p>}
+    <div className="flex gap-2"><button className="auth-header-primary" disabled={mutation.isPending} type="submit">{translateText(mutation.isPending ? "Enviando…" : "Enviar")}</button>{onCancel && <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" onClick={onCancel} type="button">{translateText("Cancelar")}</button>}</div>
   </form>;
 }
 
 export function ReplyControl({ postId, commentId }: { postId: number; commentId: number }) {
   const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).get("pfvlReply") === String(commentId));
-  return <div className="mt-3">{open ? <CommentComposer postId={postId} parentCommentId={commentId} onCancel={() => { clearReplyIntent(commentId); setOpen(false); }} /> : <button className="text-xs font-semibold text-[#233a59] hover:underline" onClick={() => setOpen(true)} type="button">Responder</button>}</div>;
+  return <div className="mt-3">{open ? <CommentComposer postId={postId} parentCommentId={commentId} onCancel={() => { clearReplyIntent(commentId); setOpen(false); }} /> : <button className="text-xs font-semibold text-[#233a59] hover:underline" onClick={() => setOpen(true)} type="button">{translateText("Responder")}</button>}</div>;
 }

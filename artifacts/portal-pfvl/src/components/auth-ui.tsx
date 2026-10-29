@@ -1,6 +1,7 @@
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useEffect } from "react";
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from "@clerk/react";
-import { Bell } from "lucide-react";
+import { enUS, ptBR } from "@clerk/localizations";
+import { Bell, UserRound } from "lucide-react";
 import {
   getGetCurrentUserQueryKey,
   getListNotificationsQueryKey,
@@ -8,6 +9,7 @@ import {
   useListNotifications,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
+import { translateText, useI18n } from "@/lib/i18n";
 
 export const AuthAvailabilityContext = createContext(false);
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -33,8 +35,9 @@ function authHref(path: "/sign-in" | "/sign-up", returnTo?: string): string {
 }
 
 export function AuthContextProvider({ children }: { children: ReactNode }) {
+  const { locale } = useI18n();
   return clerkAuthReady && publishableKey ? (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider publishableKey={publishableKey} localization={locale === "en-US" ? enUS : ptBR}>
       <AuthAvailabilityContext.Provider value>{children}</AuthAvailabilityContext.Provider>
     </ClerkProvider>
   ) : (
@@ -43,13 +46,14 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthHeaderActions() {
-  return useContext(AuthAvailabilityContext) ? <ClerkHeader /> : <span className="public-access-label">Acesso público</span>;
+  return useContext(AuthAvailabilityContext) ? <ClerkHeader /> : <span className="public-access-label">{translateText("Acesso público")}</span>;
 }
 
 function ClerkHeader() {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { locale, setLocale } = useI18n();
   const profile = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), enabled: isSignedIn === true, retry: false } });
   const notifications = useListNotifications({
     query: {
@@ -58,16 +62,25 @@ function ClerkHeader() {
       refetchInterval: 30_000,
     },
   });
-  if (!isLoaded) return <span className="public-access-label">Carregando conta…</span>;
+  useEffect(() => {
+    if (isSignedIn && profile.data?.preferredLanguage && profile.data.preferredLanguage !== locale) {
+      setLocale(profile.data.preferredLanguage);
+    }
+  }, [isSignedIn, profile.data?.id, profile.data?.preferredLanguage, setLocale]);
+  if (!isLoaded) return <span className="public-access-label">{translateText("Carregando conta…")}</span>;
   if (!isSignedIn) {
-    return <div className="flex items-center gap-2"><Link className="auth-header-link" href={authHref("/sign-in")}>Entrar</Link><Link className="auth-header-primary" href={authHref("/sign-up")}>Criar conta</Link></div>;
+    return <div className="header-auth-actions flex items-center gap-2"><Link className="auth-header-link" href={authHref("/sign-in")}>{translateText("Entrar")}</Link><Link className="auth-header-primary" href={authHref("/sign-up")}>{translateText("Criar conta")}</Link></div>;
   }
+  const unreadCount = notifications.data?.unreadCount ?? 0;
   return (
-    <div className="flex items-center gap-2">
-      {profile.data?.role === "admin" && <Link className="auth-header-link" href="/admin">Painel</Link>}
-      <span className="hidden max-w-32 truncate text-xs font-semibold text-white/90 sm:block">{user?.firstName || profile.data?.displayName || "Minha conta"}</span>
+    <div className="header-auth-actions flex items-center gap-2">
+      {profile.data?.role === "admin" && <Link className="auth-header-link" href="/admin">{translateText("Painel")}</Link>}
+      <Link aria-label={translateText("Meu perfil")} className="auth-header-link !px-2.5" href="/profile" data-testid="link-profile">
+        <UserRound aria-hidden="true" size={16} /><span className="sr-only">{translateText("Perfil")}</span>
+      </Link>
+      <span className="hidden max-w-32 truncate text-xs font-semibold text-white/90 sm:block">{user?.firstName || profile.data?.displayName || translateText("Minha conta")}</span>
       <Link
-        aria-label={`Notificações${notifications.data?.unreadCount ? `, ${notifications.data.unreadCount} não lidas` : ""}`}
+        aria-label={`${translateText("Notificações")}${unreadCount ? `, ${unreadCount} ${translateText("não lidas")}` : ""}`}
         className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white transition hover:bg-white/10"
         href="/notifications"
       >
@@ -78,7 +91,7 @@ function ClerkHeader() {
           </span>
         )}
       </Link>
-      <button className="auth-header-link" onClick={() => void signOut({ redirectUrl: "/" })} type="button">Sair</button>
+      <button className="auth-header-link" onClick={() => void signOut({ redirectUrl: "/" })} type="button">{translateText("Sair")}</button>
     </div>
   );
 }
@@ -99,9 +112,9 @@ function ClerkAuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
   return (
     <div className="page-enter flex min-h-[65vh] items-center justify-center px-2 py-10">
       <div className="w-full max-w-[460px] text-center">
-        <p className="eyebrow-pill">{mode === "sign-in" ? "Bem-vindo de volta" : "Comunidade PFVL"}</p>
-        <h1 className="mt-3 font-display text-3xl font-semibold text-[#012140]">{mode === "sign-in" ? "Entre na sua conta." : "Crie sua conta PFVL."}</h1>
-        <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">Participe das conversas e responda aos artigos.</p>
+        <p className="eyebrow-pill">{translateText(mode === "sign-in" ? "Bem-vindo de volta" : "Comunidade PFVL")}</p>
+        <h1 className="mt-3 font-display text-3xl font-semibold text-[#012140]">{translateText(mode === "sign-in" ? "Entre na sua conta." : "Crie sua conta PFVL.")}</h1>
+        <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">{translateText("Participe das conversas e responda aos artigos.")}</p>
         <div className="flex justify-center">
           {mode === "sign-in"
             ? <SignIn {...common} path="/sign-in" signUpUrl={authHref("/sign-up", redirectUrl)} />
@@ -118,12 +131,12 @@ export function AuthActionGate({ children, returnTo }: { children: ReactNode; re
 
 function SignedInGate({ children, returnTo }: { children: ReactNode; returnTo?: string }) {
   const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <p className="rounded-xl border bg-white p-4 text-sm text-muted-foreground">Verificando sua conta…</p>;
+  if (!isLoaded) return <p className="rounded-xl border bg-white p-4 text-sm text-muted-foreground">{translateText("Verificando sua conta…")}</p>;
   if (!isSignedIn) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#233a59]/15 bg-white p-5">
-        <div><p className="font-semibold text-[#012140]">Entre para participar.</p><p className="mt-1 text-sm text-muted-foreground">Sua conta permite publicar e responder.</p></div>
-        <div className="flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href={authHref("/sign-in", returnTo)}>Entrar</Link><Link className="auth-header-primary" href={authHref("/sign-up", returnTo)}>Criar conta</Link></div>
+        <div><p className="font-semibold text-[#012140]">{translateText("Entre para participar.")}</p><p className="mt-1 text-sm text-muted-foreground">{translateText("Sua conta permite publicar e responder.")}</p></div>
+        <div className="flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href={authHref("/sign-in", returnTo)}>{translateText("Entrar")}</Link><Link className="auth-header-primary" href={authHref("/sign-up", returnTo)}>{translateText("Criar conta")}</Link></div>
       </div>
     );
   }
@@ -131,17 +144,17 @@ function SignedInGate({ children, returnTo }: { children: ReactNode; returnTo?: 
 }
 
 function AuthSetupNotice() {
-  return <div className="rounded-2xl border border-[#233a59]/15 bg-white p-5 text-sm text-[#233a59]">O acesso do Clerk precisa ser configurado para liberar contas e publicações.</div>;
+  return <div className="rounded-2xl border border-[#233a59]/15 bg-white p-5 text-sm text-[#233a59]">{translateText("O acesso do Clerk precisa ser configurado para liberar contas e publicações.")}</div>;
 }
 
 function AuthSetupCard() {
   return (
     <div className="page-enter mx-auto flex min-h-[60vh] max-w-2xl items-center">
       <section className="w-full rounded-3xl border border-[#233a59]/15 bg-white p-7 shadow-sm sm:p-10">
-        <p className="eyebrow-pill">Acesso PFVL</p>
-        <h1 className="mt-4 font-display text-3xl font-semibold text-[#012140]">Login ainda não conectado.</h1>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">Configure as chaves do Clerk no ambiente do portal para liberar contas, publicações e respostas.</p>
-        <Link className="auth-header-primary mt-6 inline-flex" href="/">Voltar ao início</Link>
+        <p className="eyebrow-pill">{translateText("Acesso PFVL")}</p>
+        <h1 className="mt-4 font-display text-3xl font-semibold text-[#012140]">{translateText("Login ainda não conectado.")}</h1>
+        <p className="mt-3 text-sm leading-7 text-muted-foreground">{translateText("Configure as chaves do Clerk no ambiente do portal para liberar contas, publicações e respostas.")}</p>
+        <Link className="auth-header-primary mt-6 inline-flex" href="/">{translateText("Voltar ao início")}</Link>
       </section>
     </div>
   );

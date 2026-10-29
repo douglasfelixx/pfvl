@@ -229,13 +229,78 @@ export const UserStatus = {
   suspended: 'suspended',
 } as const;
 
+export type PreferredLanguage = typeof PreferredLanguage[keyof typeof PreferredLanguage];
+
+
+export const PreferredLanguage = {
+  'pt-BR': 'pt-BR',
+  'en-US': 'en-US',
+} as const;
+
 export interface UserProfile {
   id: number;
   email: string;
   displayName: string;
   role: UserRole;
   status: UserStatus;
+  preferredLanguage: PreferredLanguage;
   createdAt: string;
+}
+
+export interface UpdateMyProfileInput {
+  preferredLanguage: PreferredLanguage;
+}
+
+export type TestimonialStatus = typeof TestimonialStatus[keyof typeof TestimonialStatus];
+
+
+export const TestimonialStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface Testimonial {
+  id: number;
+  authorName: string;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  body: string;
+  status: TestimonialStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MyTestimonial {
+  testimonial: Testimonial | null;
+}
+
+export interface TestimonialInput {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /**
+     * @minLength 10
+     * @maxLength 1500
+     */
+  body: string;
+}
+
+export type AdminTestimonialUpdateStatus = typeof AdminTestimonialUpdateStatus[keyof typeof AdminTestimonialUpdateStatus];
+
+
+export const AdminTestimonialUpdateStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface AdminTestimonialUpdate {
+  status: AdminTestimonialUpdateStatus;
 }
 
 export interface UpdateUserInput {

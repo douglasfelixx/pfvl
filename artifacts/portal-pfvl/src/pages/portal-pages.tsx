@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Play,
   Search,
+  Star,
   SlidersHorizontal,
 } from 'lucide-react';
 import {
@@ -19,6 +20,7 @@ import {
   getListIndicatorsQueryKey,
   getListPostsQueryKey,
   getListSuggestionsQueryKey,
+  getListTestimonialsQueryKey,
   useGetPost,
   useGetSiteMedia,
   useCreateSuggestion,
@@ -26,12 +28,14 @@ import {
   useListIndicators,
   useListPosts,
   useListSuggestions,
+  useListTestimonials,
   type Indicator,
   type PostKind,
   type SuggestionStatus,
 } from '@workspace/api-client-react';
 import { Link, useParams } from 'wouter';
 import { AuthActionGate } from '@/components/auth-ui';
+import { getLocale, translateText } from '@/lib/i18n';
 import {
   CommentComposer,
   CommunityCreatePanel,
@@ -100,17 +104,17 @@ function IndicatorCard({ indicator }: { indicator: Indicator }) {
       </div>
       <div className="mt-5 flex items-end justify-between gap-2">
         <p className="font-display text-[27px] font-semibold tracking-[-.04em]">
-          {indicator.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+          {indicator.value.toLocaleString(getLocale(), { maximumFractionDigits: 2 })}
           <span className="ml-1.5 text-xs font-medium text-muted-foreground">{indicator.unit}</span>
         </p>
         <span className="mb-1 inline-flex items-center gap-0.5 rounded-lg bg-[#e8e8e8] px-2 py-1 text-[10px] font-bold text-[#233a59]">
           {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-          {Math.abs(indicator.change).toLocaleString('pt-BR')}%
+          {Math.abs(indicator.change).toLocaleString(getLocale())}%
         </span>
       </div>
-      {indicator.illustrative && <p className="mt-3 rounded-lg bg-[#e8e8e8] px-2.5 py-2 text-[10px] font-bold text-[#233a59]">Dado ilustrativo · não é cotação ao vivo</p>}
-      <p className="mt-3 text-[10px] text-muted-foreground">Atualizado em {formatDate(indicator.updatedAt)}</p>
-      <p className="mt-1 text-[10px] text-muted-foreground">Fonte: {indicator.source}</p>
+      {indicator.illustrative && <p className="mt-3 rounded-lg bg-[#e8e8e8] px-2.5 py-2 text-[10px] font-bold text-[#233a59]">{translateText('Dado ilustrativo · não é cotação ao vivo')}</p>}
+      <p className="mt-3 text-[10px] text-muted-foreground">{translateText('Atualizado em')} {formatDate(indicator.updatedAt)}</p>
+      <p className="mt-1 text-[10px] text-muted-foreground">{translateText('Fonte:')} {indicator.source}</p>
     </article>
   );
 }
@@ -120,25 +124,26 @@ export function HomePage() {
     query: { queryKey: getGetSiteMediaQueryKey() },
   });
   const news = useListPosts({ kind: 'news' }, { query: { queryKey: getListPostsQueryKey({ kind: 'news' }) } });
+  const testimonials = useListTestimonials({ query: { queryKey: getListTestimonialsQueryKey() } });
   const heroImageUrl = siteMedia.data?.homeImageUrl;
   return (
     <div className="page-enter home-page">
       <section className="home-hero-band">
         <div className="home-hero-inner">
           <div className="home-hero-copy">
-            <p className="home-welcome"><span /> Seja bem-vindo ao PFVL</p>
-            <h1>Planeje hoje.<br /><span>Realize</span> amanhã.</h1>
-            <p className="home-hero-description">Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir. Com o PFVL, suas contas e objetivos fazem parte do mesmo plano.</p>
+            <p className="home-welcome"><span /> {translateText('Seja bem-vindo ao PFVL')}</p>
+            <h1>{translateText('Planeje hoje.')}<br /><span>{translateText('Realize')}</span>{translateText(' amanhã.')}</h1>
+            <p className="home-hero-description">{translateText('Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir. Com o PFVL, suas contas e objetivos fazem parte do mesmo plano.')}</p>
             <div className="home-hero-actions">
               <ProductAppLink className="home-cta-primary" />
-              <Link className="home-cta-outline" href="/apresentacao">Assistir à apresentação <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
+              <Link className="home-cta-outline" href="/apresentacao">{translateText('Assistir à apresentação')} <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
             </div>
           </div>
           <HomeDashboardPreview previewImageUrl={heroImageUrl} />
         </div>
       </section>
 
-      <section className="home-content-grid" aria-label="Recursos e novidades do PFVL">
+      <section className="home-content-grid" aria-label={translateText('Recursos e novidades do PFVL')}>
         <HomeFeatureColumn />
         <HomeNewsColumn
           posts={news.data ?? []}
@@ -149,6 +154,27 @@ export function HomePage() {
       </section>
 
       <HomeBottomCta />
+      {testimonials.isLoading && <section className="home-testimonials-loading" aria-label={translateText("Depoimentos da comunidade")}><div className="skeleton-line" /><div className="skeleton-line" /></section>}
+      {testimonials.isError && <div className="home-testimonials-error" role="status"><span>{translateText("Não foi possível carregar os depoimentos.")}</span><button onClick={() => void testimonials.refetch()} type="button">{translateText("Tentar novamente")}</button></div>}
+      {testimonials.data?.length ? (
+        <section className="home-testimonials" aria-labelledby="home-testimonials-title">
+          <div className="home-testimonials-heading">
+            <div><p className="profile-eyebrow">{translateText("Vozes da comunidade")}</p><h2 id="home-testimonials-title">{translateText("Experiências compartilhadas.")}</h2></div>
+            <Link className="home-testimonials-link" href="/profile">{translateText("Compartilhe a sua")}</Link>
+          </div>
+          <div className="home-testimonials-grid">
+            {testimonials.data.map((item) => (
+              <article className="home-testimonial-card" key={item.id} data-testid={`testimonial-card-${item.id}`}>
+                <div className="testimonial-display-stars" aria-label={`${item.rating} ${translateText(item.rating === 1 ? "estrela" : "estrelas")}`}>
+                  {Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} fill={index < item.rating ? "currentColor" : "none"} />)}
+                </div>
+                <blockquote>{item.body}</blockquote>
+                <div className="home-testimonial-author"><span>{item.authorName.trim().slice(0, 1).toLocaleUpperCase()}</span><strong>{item.authorName}</strong></div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -169,13 +195,13 @@ export function CommunityPage() {
     <div className="page-enter community-page">
       <header className="community-heading">
         <div>
-          <p className="community-kicker">Comunidade PFVL <span>·</span> Fórum</p>
-          <h1>Conversa de dinheiro,<br /><em>sem complicação.</em></h1>
-          <p className="community-heading-copy">Pergunte, conte o que funcionou e aprenda com quem está vivendo escolhas financeiras parecidas.</p>
+          <p className="community-kicker">{translateText('Comunidade PFVL')} <span>·</span> {translateText('Fórum')}</p>
+          <h1>{translateText('Conversa de dinheiro,')}<br /><em>{translateText('sem complicação.')}</em></h1>
+          <p className="community-heading-copy">{translateText('Pergunte, conte o que funcionou e aprenda com quem está vivendo escolhas financeiras parecidas.')}</p>
         </div>
         <div className="community-heading-aside" aria-hidden="true">
           <MessageCircle size={27} strokeWidth={1.4} />
-          <span>Uma dúvida real<br />pode ajudar muita gente.</span>
+          <span>{translateText('Uma dúvida real')}<br />{translateText('pode ajudar muita gente.')}</span>
         </div>
       </header>
 
@@ -183,34 +209,34 @@ export function CommunityPage() {
         <main className="community-feed">
           <div className="community-toolbar">
             <div className="community-toolbar-title">
-              <div><span className="community-live-dot" /> Espaço de conversa</div>
-              <span>Experiências da comunidade, não artigos editoriais.</span>
+              <div><span className="community-live-dot" /> {translateText('Espaço de conversa')}</div>
+              <span>{translateText('Experiências da comunidade, não artigos editoriais.')}</span>
             </div>
             <CommunityCreatePanel />
           </div>
           <div className="community-controls">
             <label className="search-field community-search">
               <Search size={17} aria-hidden="true" />
-              <span className="sr-only">Buscar tópicos</span>
-              <input data-testid="input-community-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar conversas, temas ou palavras" type="search" />
-              {search && <button aria-label="Limpar busca" className="text-xs font-bold text-primary" onClick={() => setSearch('')} type="button">Limpar</button>}
+              <span className="sr-only">{translateText('Buscar tópicos')}</span>
+              <input data-testid="input-community-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText('Buscar conversas, temas ou palavras')} type="search" />
+              {search && <button aria-label={translateText('Limpar busca')} className="text-xs font-bold text-primary" onClick={() => setSearch('')} type="button">{translateText('Limpar')}</button>}
             </label>
             <label className="community-select-label">
               <SlidersHorizontal size={15} aria-hidden="true" />
-              <span className="sr-only">Ordenar conversas</span>
-              <select aria-label="Ordenar conversas" data-testid="select-community-sort" onChange={(event) => setSort(event.target.value as 'recent' | 'discussed')} value={sort}>
-                <option value="recent">Mais recentes</option>
-                <option value="discussed">Mais respondidas</option>
+              <span className="sr-only">{translateText('Ordenar conversas')}</span>
+              <select aria-label={translateText('Ordenar conversas')} data-testid="select-community-sort" onChange={(event) => setSort(event.target.value as 'recent' | 'discussed')} value={sort}>
+                <option value="recent">{translateText('Mais recentes')}</option>
+                <option value="discussed">{translateText('Mais respondidas')}</option>
               </select>
             </label>
           </div>
-          <div className="community-category-row" aria-label="Filtrar por categoria">
-            <button aria-pressed={category === 'all'} className={category === 'all' ? 'community-filter active' : 'community-filter'} onClick={() => setCategory('all')} type="button">Todos os tópicos</button>
+          <div className="community-category-row" aria-label={translateText('Filtrar por categoria')}>
+            <button aria-pressed={category === 'all'} className={category === 'all' ? 'community-filter active' : 'community-filter'} onClick={() => setCategory('all')} type="button">{translateText('Todos os tópicos')}</button>
             {categories.map((item) => <button aria-pressed={category === item} className={category === item ? 'community-filter active' : 'community-filter'} key={item} onClick={() => setCategory(item)} type="button">{item}</button>)}
           </div>
           <div className="community-list-heading">
-            <h2>Conversas abertas</h2>
-            <span>{posts.length} {posts.length === 1 ? 'tópico' : 'tópicos'}</span>
+            <h2>{translateText('Conversas abertas')}</h2>
+            <span>{posts.length} {translateText(posts.length === 1 ? 'tópico' : 'tópicos')}</span>
           </div>
           {query.isLoading ? <LoadingState rows={4} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : posts.length ? (
             <div className="community-topic-list" data-testid="list-community-topics">
@@ -231,7 +257,7 @@ export function CommunityPage() {
                     <div className="topic-meta"><span className="topic-category">{post.category}</span><span>{formatDate(post.createdAt)}</span></div>
                     <Link className="topic-title" href={`/community/${post.id}`}>{post.title}</Link>
                     <p className="topic-excerpt">{post.excerpt || post.body}</p>
-                    <div className="topic-footer"><span>Iniciado por <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}</span></div>
+                    <div className="topic-footer"><span>{translateText('Iniciado por')} <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}</span></div>
                   </div>
                   <Link aria-label={`${post.commentCount} respostas em ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
                     <MessageCircle size={17} />
@@ -247,9 +273,9 @@ export function CommunityPage() {
           <CommunityPoll />
           <div className="community-guideline">
             <span className="guideline-index">01</span>
-            <div><strong>Prática antes de perfeita.</strong><p>Contexto real e respeito ajudam mais do que respostas prontas.</p></div>
+            <div><strong>{translateText('Prática antes de perfeita.')}</strong><p>{translateText('Contexto real e respeito ajudam mais do que respostas prontas.')}</p></div>
           </div>
-          <p className="community-editorial-note">Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite <Link href="/blog">Conteúdos PFVL</Link>.</p>
+          <p className="community-editorial-note">{translateText('Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite')} <Link href="/blog">{translateText('Conteúdos PFVL')}</Link>.</p>
         </aside>
       </div>
     </div>
@@ -298,7 +324,7 @@ export function PostDetailPage() {
   const coverImageUrl = post.data ? getPostCoverImage(post.data) : null;
   return (
     <div className="page-enter mx-auto max-w-[900px]">
-      <Link href={backHref} className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-primary">← Voltar</Link>
+      <Link href={backHref} className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-primary">← {translateText('Voltar')}</Link>
       {post.isLoading ? <LoadingState rows={1} /> : post.isError || !post.data ? (
         <QueryError retry={() => void post.refetch()} />
       ) : (
@@ -310,20 +336,20 @@ export function PostDetailPage() {
               <span className="text-xs text-muted-foreground">{formatDate(post.data.createdAt)}</span>
             </div>
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
-            {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>Publicado por <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} respostas</span></div>}
+            {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText('respostas')}</span></div>}
             {post.data.excerpt && !isForum && <p className="mt-4 border-l-2 border-primary/45 pl-4 text-base leading-7 text-muted-foreground">{post.data.excerpt}</p>}
             {coverImageUrl && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
-            {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">Assistir vídeo relacionado <ArrowRight size={15} /></a>}
-            {isForum && <div className="forum-post-label"><MessageCircle size={15} /> Publicação original</div>}
+            {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
+            {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
             <div className={`prose-content whitespace-pre-wrap text-sm leading-8 text-[#1d1d1b] ${isForum ? 'mt-3 forum-post-body' : 'mt-7'}`}>{post.data.body}</div>
             <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border pt-5">
-              {!isForum && <span className="text-xs text-muted-foreground">Publicado por <strong className="text-foreground">{post.data.authorName}</strong></span>}
+              {!isForum && <span className="text-xs text-muted-foreground">{translateText('Publicado por')} <strong className="text-foreground">{post.data.authorName}</strong></span>}
               {post.data.tags?.map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}
             </div>
           </article>
           <section className="mt-8 scroll-mt-6" id="comments">
             <SectionHeading title={isForum ? `Respostas (${comments.data?.length ?? post.data.commentCount})` : `Comentários (${comments.data?.length ?? post.data.commentCount})`} />
-            {isForum && <p className="mb-4 text-sm leading-6 text-muted-foreground">Compartilhe uma resposta útil, uma pergunta complementar ou o que funcionou na sua realidade.</p>}
+            {isForum && <p className="mb-4 text-sm leading-6 text-muted-foreground">{translateText('Compartilhe uma resposta útil, uma pergunta complementar ou o que funcionou na sua realidade.')}</p>}
             <CommentComposer postId={postId} />
             {comments.isLoading ? <div className="mt-4"><LoadingState rows={2} /></div> : comments.isError ? <div className="mt-4"><QueryError retry={() => void comments.refetch()} /></div> : roots.length ? (
               <div className="mt-4 space-y-3">
@@ -366,7 +392,7 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
       <PageHeading eyebrow={eyebrow} title={title} description={description} />
       <label className="search-field mb-5">
         <Search size={17} />
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar neste espaço" type="search" />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText('Buscar neste espaço')} type="search" />
       </label>
       {query.isLoading ? <LoadingState rows={4} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{query.data.map((post) => <PostCard key={post.id} post={post} />)}</div>
@@ -407,13 +433,13 @@ export function IndicatorsPage() {
       <PageHeading eyebrow="Panorama econômico" title="Indicadores sem mistério." description="Acompanhe referências econômicas importantes e entenda a variação apresentada em cada série." />
       <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#233a59] bg-[#e8e8e8] p-4 text-xs leading-5 text-[#1d1d1b]">
         <CircleDollarSign className="mt-0.5 shrink-0" size={17} />
-        <p>Indicadores têm contextos e periodicidades diferentes. Os dados marcados como ilustrativos servem apenas para demonstração e não representam cotações ao vivo.</p>
+        <p>{translateText("Indicadores têm contextos e periodicidades diferentes. Os dados marcados como ilustrativos servem apenas para demonstração e não representam cotações ao vivo.")}</p>
       </div>
       {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
         <>
-          {query.data.some((indicator) => indicator.illustrative) && <p className="mb-3 text-[11px] font-bold uppercase tracking-[.13em] text-[#233a59]">Dados ilustrativos identificados</p>}
+          {query.data.some((indicator) => indicator.illustrative) && <p className="mb-3 text-[11px] font-bold uppercase tracking-[.13em] text-[#233a59]">{translateText("Dados ilustrativos identificados")}</p>}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{query.data.map((indicator) => <IndicatorCard key={indicator.code} indicator={indicator} />)}</div>
-          <p className="mt-5 text-xs text-muted-foreground">Fontes informadas pela API para cada indicador. Última atualização individual exibida no respectivo cartão.</p>
+          <p className="mt-5 text-xs text-muted-foreground">{translateText("Fontes informadas pela API para cada indicador. Última atualização individual exibida no respectivo cartão.")}</p>
         </>
       ) : <EmptyState title="Nenhum indicador disponível" description="Quando houver dados publicados, eles aparecerão nesta página." />}
     </div>
@@ -437,8 +463,8 @@ export function SuggestionsPage() {
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <span className={`status-dot status-${status}`} />
-                    <h2 className="font-display text-lg font-semibold">{suggestionStatusNames[status]}</h2>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{suggestionStatusNotes[status]}</p>
+                    <h2 className="font-display text-lg font-semibold">{translateText(suggestionStatusNames[status])}</h2>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{translateText(suggestionStatusNotes[status])}</p>
                   </div>
                   <span className="count-pill">{suggestions.length}</span>
                 </div>
@@ -452,11 +478,11 @@ export function SuggestionsPage() {
                       <h3 className="mt-3 font-display text-lg font-semibold leading-snug">{suggestion.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{suggestion.details}</p>
                       <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
-                        <span>Sugerido por {suggestion.authorName}</span>
-                        <span className="inline-flex items-center gap-1"><Check size={12} /> {suggestion.voteCount} apoios</span>
+                        <span>{translateText('Sugerido por')} {suggestion.authorName}</span>
+                        <span className="inline-flex items-center gap-1"><Check size={12} /> {suggestion.voteCount} {translateText('apoios')}</span>
                       </div>
                     </article>
-                  )) : <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">Nenhuma sugestão nesta etapa.</p>}
+                  )) : <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">{translateText("Nenhuma sugestão nesta etapa.")}</p>}
                 </div>
               </section>
             );
@@ -497,54 +523,54 @@ function SuggestionSubmissionForm() {
     <AuthActionGate returnTo="/suggestions">
       <form className="rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6" onSubmit={submit}>
         <div className="mb-4">
-          <p className="eyebrow-pill">Participe do roadmap</p>
-          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">O que você gostaria de ver no PFVL?</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">Envie uma ideia. A equipe vai analisá-la e atualizar o andamento por aqui.</p>
+          <p className="eyebrow-pill">{translateText("Participe do roadmap")}</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{translateText("O que você gostaria de ver no PFVL?")}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Envie uma ideia. A equipe vai analisá-la e atualizar o andamento por aqui.")}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
           <label className="block text-sm font-semibold text-[#012140]">
-            Título da sugestão
+            {translateText("Título da sugestão")}
             <input
               className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
               maxLength={220}
               minLength={4}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Ex.: permitir exportar os relatórios"
+              placeholder={translateText("Ex.: permitir exportar os relatórios")}
               required
               value={title}
             />
           </label>
           <label className="block text-sm font-semibold text-[#012140]">
-            Categoria
+            {translateText("Categoria")}
             <select
               className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
               onChange={(event) => setCategory(event.target.value)}
               value={category}
             >
-              <option>Nova funcionalidade</option>
-              <option>Conteúdo e educação</option>
-              <option>Comunidade</option>
-              <option>Outro</option>
+              <option>{translateText("Nova funcionalidade")}</option>
+              <option>{translateText("Conteúdo e educação")}</option>
+              <option>{translateText("Comunidade")}</option>
+              <option>{translateText("Outro")}</option>
             </select>
           </label>
         </div>
         <label className="mt-3 block text-sm font-semibold text-[#012140]">
-          Como essa ideia ajudaria?
+          {translateText("Como essa ideia ajudaria?")}
           <textarea
             className="mt-1.5 min-h-28 w-full resize-y rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
             maxLength={5000}
             minLength={10}
             onChange={(event) => setDetails(event.target.value)}
-            placeholder="Descreva sua sugestão com alguns detalhes."
+            placeholder={translateText("Descreva sua sugestão com alguns detalhes.")}
             required
             value={details}
           />
         </label>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button className="auth-header-primary" disabled={mutation.isPending} type="submit">
-            {mutation.isPending ? 'Enviando…' : 'Enviar sugestão'}
+            {translateText(mutation.isPending ? 'Enviando…' : 'Enviar sugestão')}
           </button>
-          {message && <p className="text-sm text-[#233a59]" role="status">{message}</p>}
+          {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
         </div>
       </form>
     </AuthActionGate>

@@ -5,6 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
+import type { PreferredLanguage } from './preferredLanguage';
 import type { UserRole } from './userRole';
 import type { UserStatus } from './userStatus';
 
@@ -14,5 +15,6 @@ export interface UserProfile {
   displayName: string;
   role: UserRole;
   status: UserStatus;
+  preferredLanguage: PreferredLanguage;
   createdAt: Date;
 }

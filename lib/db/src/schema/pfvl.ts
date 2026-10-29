@@ -17,6 +17,9 @@ export const usersTable = pgTable("pfvl_users", {
   displayName: varchar("display_name", { length: 100 }).notNull(),
   role: varchar("role", { length: 24 }).notNull().default("member"),
   status: varchar("status", { length: 24 }).notNull().default("active"),
+  preferredLanguage: varchar("preferred_language", { length: 5 })
+    .notNull()
+    .default("pt-BR"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

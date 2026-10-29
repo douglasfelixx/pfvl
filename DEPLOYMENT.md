@@ -14,9 +14,8 @@ O portal é uma aplicação React/Vite com API Express. A implantação Vercel i
    - `VITE_SITE_URL`: domínio final do portal.
    - `VITE_PFVL_APP_URL`: endereço do aplicativo PFVL. Configure valores diferentes nos ambientes Development, Preview e Production do Vercel; o botão da página inicial usa o valor do ambiente em que o portal foi compilado.
    - `VITE_PFVL_PRESENTATION_VIDEO_URL`: URL pública do vídeo MP4 de apresentação. O player do site não inicia automaticamente; deixe vazio até o vídeo estar pronto.
+   - `VITE_PFVL_PRODUCT_PREVIEW_IMAGE_URL`: URL pública da imagem aprovada da interface, opcional. Quando configurada, ela substitui a prévia ilustrativa da página inicial.
    - Para upload no R2: `CLOUDFLARE_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_PUBLIC_BASE_URL`.
-
-A imagem principal da Home e o vídeo são referências a objetos já existentes no R2. Configure o nome e a extensão no painel administrativo, em **Imagem / Vídeo**; a página não faz upload desses arquivos.
 3. Crie primeiro o banco Neon de destino e confirme que a connection string está no ambiente correto. Depois execute `pnpm --filter @workspace/db run push` apontando explicitamente para esse Neon. Não execute a migração antes de confirmar o banco.
 4. Se for necessário cadastrar o conteúdo demonstrativo inicial, execute `pnpm --filter @workspace/api-server run seed` uma vez, também apontando para o Neon de destino.
 5. Configure `PFVL_INDICATORS_API_URL` somente quando a fonte real do PFVL estiver disponível; ela deve responder no formato `Indicator`.
