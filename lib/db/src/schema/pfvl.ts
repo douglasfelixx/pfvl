@@ -129,6 +129,9 @@ export const suggestionsTable = pgTable("pfvl_suggestions", {
   category: varchar("category", { length: 100 }).notNull(),
   status: varchar("status", { length: 24 }).notNull().default("under_review"),
   authorName: varchar("author_name", { length: 100 }).notNull(),
+  authorUserId: integer("author_user_id").references(() => usersTable.id, {
+    onDelete: "set null",
+  }),
   voteCount: integer("vote_count").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

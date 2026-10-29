@@ -512,6 +512,83 @@ export const ListSuggestionsResponse = zod.array(ListSuggestionsResponseItem)
 
 
 /**
+ * @summary Envia uma sugestão da comunidade
+ */
+export const createSuggestionBodyTitleMin = 4;
+export const createSuggestionBodyTitleMax = 220;
+
+export const createSuggestionBodyDetailsMin = 10;
+export const createSuggestionBodyDetailsMax = 5000;
+
+export const createSuggestionBodyCategoryMin = 2;
+export const createSuggestionBodyCategoryMax = 100;
+
+
+
+export const CreateSuggestionBody = zod.object({
+  "title": zod.string().min(createSuggestionBodyTitleMin).max(createSuggestionBodyTitleMax),
+  "details": zod.string().min(createSuggestionBodyDetailsMin).max(createSuggestionBodyDetailsMax),
+  "category": zod.string().min(createSuggestionBodyCategoryMin).max(createSuggestionBodyCategoryMax)
+})
+
+export const CreateSuggestionResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "details": zod.string(),
+  "category": zod.string(),
+  "status": zod.enum(['under_review', 'planned', 'in_progress', 'completed']),
+  "authorName": zod.string(),
+  "voteCount": zod.number().int(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista notificações da conta autenticada
+ */
+export const ListNotificationsResponse = zod.object({
+  "notifications": zod.array(zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['new_update', 'new_publication', 'comment_reply', 'new_suggestion', 'suggestion_status']),
+  "title": zod.string(),
+  "message": zod.string(),
+  "href": zod.string(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})),
+  "unreadCount": zod.number().int()
+})
+
+
+/**
+ * @summary Marca uma notificação como lida
+ */
+export const MarkNotificationReadParams = zod.object({
+  "notificationId": zod.coerce.number().int()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['new_update', 'new_publication', 'comment_reply', 'new_suggestion', 'suggestion_status']),
+  "title": zod.string(),
+  "message": zod.string(),
+  "href": zod.string(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Exclui uma notificação da conta autenticada
+ */
+export const DeleteNotificationParams = zod.object({
+  "notificationId": zod.coerce.number().int()
+})
+
+export const DeleteNotificationResponse = zod.void()
+
+
+/**
  * @summary Consulta indicadores econômicos
  */
 export const ListIndicatorsResponseItem = zod.object({

@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { SuggestionStatus } from './suggestionStatus.js';
+import type { SuggestionStatus } from './suggestionStatus';
 
 export interface Suggestion {
   id: number;

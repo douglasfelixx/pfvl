@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Portal PFVL"
+description = "Portal financeiro PFVL com comunidade, blog, novidades, indicadores, sugestões e administração de conteúdo em português."
+version = "1.0.0"
+id = "artifacts/portal-pfvl"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22722
+
+[services.development]
+run = "pnpm --filter @workspace/portal-pfvl run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/portal-pfvl", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/portal-pfvl/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22722"
+BASE_PATH = "/"

@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { Error } from './error.js';
+import type { Error } from './error';
 
 /**
  * Recurso não encontrado

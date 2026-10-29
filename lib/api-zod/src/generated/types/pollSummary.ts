@@ -5,8 +5,8 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { PollStatus } from './pollStatus.js';
-import type { PollVote } from './pollVote.js';
+import type { PollStatus } from './pollStatus';
+import type { PollVote } from './pollVote';
 
 export interface PollSummary {
   id: number;

@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpen,
   CircleHelp,
+  Lightbulb,
   Menu,
   MessageCircle,
   Newspaper,
@@ -29,6 +30,7 @@ import {
   PostDetailPage,
   SuggestionsPage,
 } from '@/pages/portal-pages';
+import { NotificationsPage } from '@/pages/notifications-page';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +47,7 @@ const navigation = [
   { href: '/news', label: 'Novidades', icon: Newspaper },
   { href: '/blog', label: 'Blog', icon: BookOpen },
   { href: '/indicators', label: 'Indicadores', icon: BarChart3 },
+  { href: '/suggestions', label: 'Sugestões', icon: Lightbulb },
   { href: '/help', label: 'Central de Ajuda', icon: CircleHelp },
 ];
 
@@ -84,6 +87,11 @@ const pageMetadata = [
     title: 'Roadmap de sugestões | PFVL',
     description:
       'Consulte as sugestões da comunidade e acompanhe cada ideia por status.',
+  },
+  {
+    match: /^\/notifications$/,
+    title: 'Notificações | PFVL',
+    description: 'Acompanhe novidades, publicações, respostas e mudanças nas sugestões do PFVL.',
   },
   {
     match: /^\/help(?:\/\d+)?$/,
@@ -212,6 +220,7 @@ function RoutedContent() {
         <Route path="/news" component={NewsPage} />
         <Route path="/indicators" component={IndicatorsPage} />
         <Route path="/suggestions" component={SuggestionsPage} />
+        <Route path="/notifications" component={NotificationsPage} />
         <Route path="/help/:postId" component={PostDetailPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/sign-in/*?" component={() => <AuthRoute mode="sign-in" />} />

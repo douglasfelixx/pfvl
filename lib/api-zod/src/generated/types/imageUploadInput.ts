@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { ImageUploadInputContentType } from './imageUploadInputContentType.js';
+import type { ImageUploadInputContentType } from './imageUploadInputContentType';
 
 export interface ImageUploadInput {
   /**

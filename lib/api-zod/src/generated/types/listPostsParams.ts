@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { PostKind } from './postKind.js';
+import type { PostKind } from './postKind';
 
 export type ListPostsParams = {
 kind?: PostKind;

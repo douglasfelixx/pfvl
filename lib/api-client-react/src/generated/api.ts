@@ -22,6 +22,7 @@ import type {
 import type {
   ActivePoll,
   AdminPollInput,
+  BadRequestResponse,
   Comment,
   CreateCommentInput,
   CreatePostInput,
@@ -34,10 +35,13 @@ import type {
   Indicator,
   ListPostsParams,
   NotFoundResponse,
+  Notification,
+  Notifications,
   PollSummary,
   PollVoteInput,
   Post,
   Suggestion,
+  SuggestionInput,
   UnauthorizedResponse,
   UnavailableResponse,
   UpdatePostInput,
@@ -1858,6 +1862,319 @@ export function useListSuggestions<TData = Awaited<ReturnType<typeof listSuggest
 
 
 
+
+export const getCreateSuggestionUrl = () => {
+
+
+
+
+  return `/api/suggestions`
+}
+
+/**
+ * @summary Envia uma sugestão da comunidade
+ */
+export const createSuggestion = async (suggestionInput: SuggestionInput, options?: Parameters<typeof customFetch>[1]): Promise<Suggestion> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Suggestion>(getCreateSuggestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(suggestionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSuggestionMutationKey = () => ['createSuggestion'] as const;
+
+export const getCreateSuggestionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext> => {
+
+const mutationKey = getCreateSuggestionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSuggestion>>, CreateSuggestionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSuggestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof createSuggestion>>>
+    export type CreateSuggestionMutationBody = BodyType<SuggestionInput>
+    export type CreateSuggestionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type CreateSuggestionMutationVariables = {data: BodyType<SuggestionInput>}
+
+    /**
+ * @summary Envia uma sugestão da comunidade
+ */
+export const useCreateSuggestion = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSuggestion>>,
+        TError,
+        CreateSuggestionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSuggestionMutationOptions(options));
+    }
+
+export const getListNotificationsUrl = () => {
+
+
+
+
+  return `/api/notifications`
+}
+
+/**
+ * @summary Lista notificações da conta autenticada
+ */
+export const listNotifications = async ( options?: Parameters<typeof customFetch>[1]): Promise<Notifications> => {
+
+  return customFetch<Notifications>(getListNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNotificationsQueryKey = () => {
+    return [
+    `/api/notifications`
+    ] as const;
+    }
+
+
+export const getListNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listNotifications>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNotifications>>> = ({ signal }) => listNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listNotifications>>>
+export type ListNotificationsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista notificações da conta autenticada
+ */
+
+export function useListNotifications<TData = Awaited<ReturnType<typeof listNotifications>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkNotificationReadUrl = (notificationId: number,) => {
+
+
+
+
+  return `/api/notifications/${notificationId}/read`
+}
+
+/**
+ * @summary Marca uma notificação como lida
+ */
+export const markNotificationRead = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<Notification> => {
+
+  return customFetch<Notification>(getMarkNotificationReadUrl(notificationId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkNotificationReadMutationKey = () => ['markNotificationRead'] as const;
+
+export const getMarkNotificationReadMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,MarkNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,MarkNotificationReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkNotificationReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNotificationRead>>, MarkNotificationReadMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  markNotificationRead(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markNotificationRead>>>
+
+    export type MarkNotificationReadMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type MarkNotificationReadMutationVariables = {notificationId: number}
+
+    /**
+ * @summary Marca uma notificação como lida
+ */
+export const useMarkNotificationRead = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,MarkNotificationReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markNotificationRead>>,
+        TError,
+        MarkNotificationReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkNotificationReadMutationOptions(options));
+    }
+
+export const getDeleteNotificationUrl = (notificationId: number,) => {
+
+
+
+
+  return `/api/notifications/${notificationId}`
+}
+
+/**
+ * @summary Exclui uma notificação da conta autenticada
+ */
+export const deleteNotification = async (notificationId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteNotificationUrl(notificationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteNotificationMutationKey = () => ['deleteNotification'] as const;
+
+export const getDeleteNotificationMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNotification>>, TError,DeleteNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteNotification>>, TError,DeleteNotificationMutationVariables, TContext> => {
+
+const mutationKey = getDeleteNotificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteNotification>>, DeleteNotificationMutationVariables> = (props) => {
+          const {notificationId} = props ?? {};
+
+          return  deleteNotification(notificationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteNotificationMutationResult = NonNullable<Awaited<ReturnType<typeof deleteNotification>>>
+
+    export type DeleteNotificationMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteNotificationMutationVariables = {notificationId: number}
+
+    /**
+ * @summary Exclui uma notificação da conta autenticada
+ */
+export const useDeleteNotification = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNotification>>, TError,DeleteNotificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteNotification>>,
+        TError,
+        DeleteNotificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteNotificationMutationOptions(options));
+    }
 
 export const getListIndicatorsUrl = () => {
 

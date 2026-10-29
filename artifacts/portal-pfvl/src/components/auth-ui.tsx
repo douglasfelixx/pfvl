@@ -1,6 +1,12 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from "@clerk/react";
-import { getGetCurrentUserQueryKey, useGetCurrentUser } from "@workspace/api-client-react";
+import { Bell } from "lucide-react";
+import {
+  getGetCurrentUserQueryKey,
+  getListNotificationsQueryKey,
+  useGetCurrentUser,
+  useListNotifications,
+} from "@workspace/api-client-react";
 import { Link } from "wouter";
 
 export const AuthAvailabilityContext = createContext(false);
@@ -45,6 +51,13 @@ function ClerkHeader() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const profile = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), enabled: isSignedIn === true, retry: false } });
+  const notifications = useListNotifications({
+    query: {
+      queryKey: getListNotificationsQueryKey(),
+      enabled: isSignedIn === true,
+      refetchInterval: 30_000,
+    },
+  });
   if (!isLoaded) return <span className="public-access-label">Carregando conta…</span>;
   if (!isSignedIn) {
     return <div className="flex items-center gap-2"><Link className="auth-header-link" href={authHref("/sign-in")}>Entrar</Link><Link className="auth-header-primary" href={authHref("/sign-up")}>Criar conta</Link></div>;
@@ -53,6 +66,18 @@ function ClerkHeader() {
     <div className="flex items-center gap-2">
       {profile.data?.role === "admin" && <Link className="auth-header-link" href="/admin">Painel</Link>}
       <span className="hidden max-w-32 truncate text-xs font-semibold text-white/90 sm:block">{user?.firstName || profile.data?.displayName || "Minha conta"}</span>
+      <Link
+        aria-label={`Notificações${notifications.data?.unreadCount ? `, ${notifications.data.unreadCount} não lidas` : ""}`}
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white transition hover:bg-white/10"
+        href="/notifications"
+      >
+        <Bell aria-hidden="true" size={19} />
+        {!!notifications.data?.unreadCount && (
+          <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[#286bd4] px-1 text-center text-[10px] font-bold leading-5 text-white">
+            {notifications.data.unreadCount > 99 ? "99+" : notifications.data.unreadCount}
+          </span>
+        )}
+      </Link>
       <button className="auth-header-link" onClick={() => void signOut({ redirectUrl: "/" })} type="button">Sair</button>
     </div>
   );

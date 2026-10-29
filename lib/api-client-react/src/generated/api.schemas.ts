@@ -223,6 +223,24 @@ export interface UpdateSuggestionInput {
   status: SuggestionStatus;
 }
 
+export interface SuggestionInput {
+  /**
+     * @minLength 4
+     * @maxLength 220
+     */
+  title: string;
+  /**
+     * @minLength 10
+     * @maxLength 5000
+     */
+  details: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  category: string;
+}
+
 export type ImageUploadInputContentType = typeof ImageUploadInputContentType[keyof typeof ImageUploadInputContentType];
 
 
@@ -262,6 +280,32 @@ export interface Suggestion {
   createdAt: string;
 }
 
+export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
+
+
+export const NotificationType = {
+  new_update: 'new_update',
+  new_publication: 'new_publication',
+  comment_reply: 'comment_reply',
+  new_suggestion: 'new_suggestion',
+  suggestion_status: 'suggestion_status',
+} as const;
+
+export interface Notification {
+  id: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  href: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface Notifications {
+  notifications: Notification[];
+  unreadCount: number;
+}
+
 export interface Indicator {
   code: string;
   name: string;
@@ -281,6 +325,11 @@ export interface Dashboard {
   recentPosts: Post[];
   recentSuggestions: Suggestion[];
 }
+
+/**
+ * Dados inválidos
+ */
+export type BadRequestResponse = Error;
 
 /**
  * Recurso não encontrado

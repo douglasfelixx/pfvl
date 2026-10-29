@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -19,6 +20,7 @@ import {
   getListSuggestionsQueryKey,
   useGetDashboard,
   useGetPost,
+  useCreateSuggestion,
   useListComments,
   useListIndicators,
   useListPosts,
@@ -28,6 +30,7 @@ import {
   type SuggestionStatus,
 } from '@workspace/api-client-react';
 import { Link, useParams } from 'wouter';
+import { AuthActionGate } from '@/components/auth-ui';
 import {
   CommentComposer,
   CommunityCreatePanel,
@@ -446,7 +449,9 @@ export function SuggestionsPage() {
   return (
     <div className="page-enter">
       <PageHeading eyebrow="Construído em conjunto" title="Ideias no horizonte." description="Veja o que está sendo avaliado, planejado e desenvolvido para o portal." />
-      <ReadOnlyBanner compact />
+      <div className="mt-6">
+        <SuggestionSubmissionForm />
+      </div>
       {query.isLoading ? <div className="mt-6"><LoadingState rows={3} /></div> : query.isError ? <div className="mt-6"><QueryError retry={() => void query.refetch()} /></div> : query.data?.length ? (
         <div className="mt-7 grid gap-4 xl:grid-cols-2">
           {suggestionStatus.map((status) => {
@@ -483,6 +488,90 @@ export function SuggestionsPage() {
         </div>
       ) : <div className="mt-6"><EmptyState title="O roadmap está começando" description="As ideias publicadas e seu andamento aparecerão por aqui." /></div>}
     </div>
+  );
+}
+
+function SuggestionSubmissionForm() {
+  const queryClient = useQueryClient();
+  const mutation = useCreateSuggestion();
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
+  const [category, setCategory] = useState('Nova funcionalidade');
+  const [message, setMessage] = useState('');
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage('');
+    try {
+      await mutation.mutateAsync({ data: { title: title.trim(), details: details.trim(), category } });
+      setTitle('');
+      setDetails('');
+      setCategory('Nova funcionalidade');
+      setMessage('Sugestão enviada. Obrigado por ajudar a melhorar o PFVL!');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListSuggestionsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() }),
+      ]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível enviar sua sugestão agora.');
+    }
+  }
+
+  return (
+    <AuthActionGate returnTo="/suggestions">
+      <form className="rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6" onSubmit={submit}>
+        <div className="mb-4">
+          <p className="eyebrow-pill">Participe do roadmap</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">O que você gostaria de ver no PFVL?</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">Envie uma ideia. A equipe vai analisá-la e atualizar o andamento por aqui.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
+          <label className="block text-sm font-semibold text-[#012140]">
+            Título da sugestão
+            <input
+              className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+              maxLength={220}
+              minLength={4}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Ex.: permitir exportar os relatórios"
+              required
+              value={title}
+            />
+          </label>
+          <label className="block text-sm font-semibold text-[#012140]">
+            Categoria
+            <select
+              className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+              onChange={(event) => setCategory(event.target.value)}
+              value={category}
+            >
+              <option>Nova funcionalidade</option>
+              <option>Conteúdo e educação</option>
+              <option>Comunidade</option>
+              <option>Outro</option>
+            </select>
+          </label>
+        </div>
+        <label className="mt-3 block text-sm font-semibold text-[#012140]">
+          Como essa ideia ajudaria?
+          <textarea
+            className="mt-1.5 min-h-28 w-full resize-y rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+            maxLength={5000}
+            minLength={10}
+            onChange={(event) => setDetails(event.target.value)}
+            placeholder="Descreva sua sugestão com alguns detalhes."
+            required
+            value={details}
+          />
+        </label>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button className="auth-header-primary" disabled={mutation.isPending} type="submit">
+            {mutation.isPending ? 'Enviando…' : 'Enviar sugestão'}
+          </button>
+          {message && <p className="text-sm text-[#233a59]" role="status">{message}</p>}
+        </div>
+      </form>
+    </AuthActionGate>
   );
 }
 

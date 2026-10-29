@@ -12,13 +12,18 @@ import {
   CreateImageUploadResponse,
   CreatePostBody,
   CreatePostResponse,
+  CreateSuggestionBody,
+  CreateSuggestionResponse,
   CreateAdminPollBody,
   CreateAdminPollResponse,
+  DeleteNotificationParams,
+  DeleteNotificationResponse,
   DeleteCommentParams,
   DeletePostParams,
   GetActivePollResponse,
   GetDashboardResponse,
   GetCurrentUserResponse,
+  ListNotificationsResponse,
   GetPostParams,
   GetPostResponse,
   Indicator,
@@ -31,6 +36,9 @@ import {
   ListPostsQueryParams,
   ListPostsResponse,
   ListSuggestionsResponse,
+  MarkNotificationReadParams,
+  MarkNotificationReadResponse,
+  type NotificationType,
   UpdateAdminSuggestionBody,
   UpdateAdminSuggestionParams,
   UpdateAdminSuggestionResponse,
@@ -52,6 +60,7 @@ import {
   eq,
   ilike,
   inArray,
+  notificationsTable,
   or,
   postsTable,
   pollVotesTable,
@@ -79,6 +88,16 @@ type PublicCommentRow = Omit<
   "authorUserId"
 >;
 type PollRow = typeof pollsTable.$inferSelect;
+type NotificationInsert = typeof notificationsTable.$inferInsert;
+
+type NotificationEvent = {
+  eventKey: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  href: string;
+  actorUserId: number | null;
+};
 
 const publicPostColumns = {
   id: postsTable.id,
@@ -106,6 +125,61 @@ const publicCommentColumns = {
   status: sql<string>`COALESCE(to_jsonb(${commentsTable})->>'status', 'published')`,
   createdAt: commentsTable.createdAt,
 };
+
+function notificationRows(
+  recipientUserIds: number[],
+  event: NotificationEvent,
+  excludeActor = true,
+): NotificationInsert[] {
+  return [...new Set(recipientUserIds)]
+    .filter((recipientUserId) => !excludeActor || recipientUserId !== event.actorUserId)
+    .map((recipientUserId) => ({
+      recipientUserId,
+      actorUserId: event.actorUserId,
+      eventKey: event.eventKey,
+      type: event.type,
+      title: event.title,
+      message: event.message,
+      href: event.href,
+    }));
+}
+
+async function activeNotificationRecipients(): Promise<number[]> {
+  const users = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.status, "active"));
+  return users.map((user) => user.id);
+}
+
+function postHref(kind: string, postId: number): string {
+  if (kind === "blog") return `/blog/${postId}`;
+  if (kind === "news") return `/news/${postId}`;
+  if (kind === "help") return `/help/${postId}`;
+  return `/community/${postId}`;
+}
+
+function postNotification(
+  post: Pick<typeof postsTable.$inferSelect, "id" | "kind" | "title" | "excerpt">,
+  actorUserId: number,
+): NotificationEvent {
+  const isUpdate = post.kind === "news";
+  return {
+    eventKey: `published-post:${post.id}`,
+    type: isUpdate ? "new_update" : "new_publication",
+    title: isUpdate ? "Nova novidade no PFVL" : "Nova publicação no PFVL",
+    message: post.title || post.excerpt,
+    href: postHref(post.kind, post.id),
+    actorUserId,
+  };
+}
+
+async function persistNotificationBatch(
+  rows: NotificationInsert[],
+  persist: (batch: NotificationInsert[]) => Promise<void>,
+): Promise<void> {
+  if (rows.length) await persist(rows);
+}
 
 function postResponse(post: PublicPostRow) {
   return {
@@ -343,6 +417,115 @@ router.get("/me", requirePfvlUser, (req: ExpressRequest, res: ExpressResponse): 
   res.json(GetCurrentUserResponse.parse(getPfvlUser(req)));
 });
 
+router.get(
+  "/notifications",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const user = getPfvlUser(req);
+    const [notifications, unreadRows] = await Promise.all([
+      db
+        .select({
+          id: notificationsTable.id,
+          type: notificationsTable.type,
+          title: notificationsTable.title,
+          message: notificationsTable.message,
+          href: notificationsTable.href,
+          isRead: notificationsTable.isRead,
+          createdAt: notificationsTable.createdAt,
+        })
+        .from(notificationsTable)
+        .where(eq(notificationsTable.recipientUserId, user.id))
+        .orderBy(desc(notificationsTable.createdAt))
+        .limit(100),
+      db
+        .select({
+          count: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(notificationsTable)
+        .where(
+          and(
+            eq(notificationsTable.recipientUserId, user.id),
+            eq(notificationsTable.isRead, false),
+          ),
+        ),
+    ]);
+
+    res.json(
+      ListNotificationsResponse.parse({
+        notifications,
+        unreadCount: unreadRows[0]?.count ?? 0,
+      }),
+    );
+  },
+);
+
+router.patch(
+  "/notifications/:notificationId/read",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const params = MarkNotificationReadParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const user = getPfvlUser(req);
+    const [updated] = await db
+      .update(notificationsTable)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notificationsTable.id, params.data.notificationId),
+          eq(notificationsTable.recipientUserId, user.id),
+        ),
+      )
+      .returning({
+        id: notificationsTable.id,
+        type: notificationsTable.type,
+        title: notificationsTable.title,
+        message: notificationsTable.message,
+        href: notificationsTable.href,
+        isRead: notificationsTable.isRead,
+        createdAt: notificationsTable.createdAt,
+      });
+
+    if (!updated) {
+      res.status(404).json({ error: "Notificação não encontrada" });
+      return;
+    }
+    res.json(MarkNotificationReadResponse.parse(updated));
+  },
+);
+
+router.delete(
+  "/notifications/:notificationId",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const params = DeleteNotificationParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const user = getPfvlUser(req);
+    const [deleted] = await db
+      .delete(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.id, params.data.notificationId),
+          eq(notificationsTable.recipientUserId, user.id),
+        ),
+      )
+      .returning({ id: notificationsTable.id });
+    if (!deleted) {
+      res.status(404).json({ error: "Notificação não encontrada" });
+      return;
+    }
+    DeleteNotificationResponse.parse(undefined);
+    res.status(204).end();
+  },
+);
+
 router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const parsed = CreatePostBody.safeParse(req.body);
   if (!parsed.success) {
@@ -368,22 +551,38 @@ router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressR
     return;
   }
 
-  const [created] = await db
-    .insert(postsTable)
-    .values({
-      title: input.title.trim(),
-      excerpt: input.excerpt?.trim() || input.body.trim().slice(0, 220),
-      body: input.body.trim(),
-      kind: input.kind,
-      category: input.category.trim(),
-      tags: input.tags ?? [],
-      authorName: user.displayName,
-      authorUserId: user.id,
-      coverImageUrl: input.coverImageUrl ?? null,
-      videoUrl: input.videoUrl ?? null,
-      status: user.role === "admin" ? (input.status ?? "published") : "published",
-    })
-    .returning();
+  const status = user.role === "admin" ? (input.status ?? "published") : "published";
+  const recipients =
+    status === "published" ? await activeNotificationRecipients() : [];
+  const created = await db.transaction(async (tx) => {
+    const [post] = await tx
+      .insert(postsTable)
+      .values({
+        title: input.title.trim(),
+        excerpt: input.excerpt?.trim() || input.body.trim().slice(0, 220),
+        body: input.body.trim(),
+        kind: input.kind,
+        category: input.category.trim(),
+        tags: input.tags ?? [],
+        authorName: user.displayName,
+        authorUserId: user.id,
+        coverImageUrl: input.coverImageUrl ?? null,
+        videoUrl: input.videoUrl ?? null,
+        status,
+      })
+      .returning();
+
+    if (post.status === "published") {
+      const event = postNotification(post, user.id);
+      await persistNotificationBatch(
+        notificationRows(recipients, event),
+        async (batch) => {
+          await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
+        },
+      );
+    }
+    return post;
+  });
 
   res.status(201).json(CreatePostResponse.parse(postResponse(created)));
 });
@@ -440,19 +639,36 @@ router.patch(
       return;
     }
 
-    const [updated] = await db
-      .update(postsTable)
-      .set({
-        ...parsed.data,
-        title: parsed.data.title?.trim(),
-        excerpt: parsed.data.excerpt?.trim(),
-        body: parsed.data.body?.trim(),
-        category: parsed.data.category?.trim(),
-        authorUserId: post.authorUserId,
-        updatedAt: new Date(),
-      })
-      .where(eq(postsTable.id, post.id))
-      .returning();
+    const willPublish =
+      post.status !== "published" &&
+      (parsed.data.status ?? post.status) === "published";
+    const recipients = willPublish ? await activeNotificationRecipients() : [];
+    const updated = await db.transaction(async (tx) => {
+      const [updatedPost] = await tx
+        .update(postsTable)
+        .set({
+          ...parsed.data,
+          title: parsed.data.title?.trim(),
+          excerpt: parsed.data.excerpt?.trim(),
+          body: parsed.data.body?.trim(),
+          category: parsed.data.category?.trim(),
+          authorUserId: post.authorUserId,
+          updatedAt: new Date(),
+        })
+        .where(eq(postsTable.id, post.id))
+        .returning();
+
+      if (willPublish && updatedPost.status === "published") {
+        const event = postNotification(updatedPost, user.id);
+        await persistNotificationBatch(
+          notificationRows(recipients, event),
+          async (batch) => {
+            await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
+          },
+        );
+      }
+      return updatedPost;
+    });
 
     res.json(UpdatePostResponse.parse(postResponse(updated)));
   },
@@ -504,7 +720,11 @@ router.post(
     }
 
     const [post] = await db
-      .select({ id: postsTable.id })
+      .select({
+        id: postsTable.id,
+        kind: postsTable.kind,
+        authorUserId: postsTable.authorUserId,
+      })
       .from(postsTable)
       .where(
         and(
@@ -519,11 +739,13 @@ router.post(
     }
 
     const parentCommentId = parsed.data.parentCommentId ?? null;
+    let parentCommentAuthorUserId: number | null = null;
     if (parentCommentId !== null) {
       const [parent] = await db
         .select({
           id: commentsTable.id,
           parentCommentId: commentsTable.parentCommentId,
+          authorUserId: commentsTable.authorUserId,
         })
         .from(commentsTable)
         .where(
@@ -538,6 +760,7 @@ router.post(
         res.status(400).json({ error: "Selecione um comentário válido para responder" });
         return;
       }
+      parentCommentAuthorUserId = parent.authorUserId;
     }
 
     const user = getPfvlUser(req);
@@ -557,6 +780,30 @@ router.post(
         .update(postsTable)
         .set({ commentCount: sql`${postsTable.commentCount} + 1` })
         .where(eq(postsTable.id, post.id));
+
+      const recipientUserId =
+        parentCommentId === null
+          ? post.authorUserId
+          : parentCommentAuthorUserId ?? post.authorUserId;
+      if (recipientUserId !== null) {
+        const event: NotificationEvent = {
+          eventKey: `comment:${comment.id}:${parentCommentId === null ? "new" : "reply"}`,
+          type: "comment_reply",
+          title:
+            parentCommentId === null
+              ? "Novo comentário na sua publicação"
+              : "Responderam ao seu comentário",
+          message: comment.body.slice(0, 180),
+          href: `${postHref(post.kind, post.id)}#comment-${comment.id}`,
+          actorUserId: user.id,
+        };
+        await persistNotificationBatch(
+          notificationRows([recipientUserId], event),
+          async (batch) => {
+            await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
+          },
+        );
+      }
       return comment;
     });
 
@@ -858,11 +1105,49 @@ router.patch(
       });
       return;
     }
-    const [updated] = await db
-      .update(suggestionsTable)
-      .set({ status: parsed.data.status })
-      .where(eq(suggestionsTable.id, params.data.suggestionId))
-      .returning();
+    const admin = getPfvlUser(req);
+    const updated = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(suggestionsTable)
+        .where(eq(suggestionsTable.id, params.data.suggestionId))
+        .limit(1);
+      if (!current) return null;
+
+      const [suggestion] = await tx
+        .update(suggestionsTable)
+        .set({ status: parsed.data.status })
+        .where(eq(suggestionsTable.id, current.id))
+        .returning();
+
+      if (current.status !== suggestion.status) {
+        const recipients =
+          current.authorUserId === null
+            ? await activeNotificationRecipients()
+            : [current.authorUserId];
+        const statusLabels = {
+          under_review: "em análise",
+          planned: "planejada",
+          in_progress: "em andamento",
+          completed: "concluída",
+        } as const;
+        const event: NotificationEvent = {
+          eventKey: `suggestion:${suggestion.id}:status:${randomUUID()}`,
+          type: "suggestion_status",
+          title: "Sua sugestão teve uma atualização",
+          message: `"${suggestion.title}" agora está ${statusLabels[suggestion.status as keyof typeof statusLabels] ?? suggestion.status}.`,
+          href: "/suggestions",
+          actorUserId: admin.id,
+        };
+        await persistNotificationBatch(
+          notificationRows(recipients, event),
+          async (batch) => {
+            await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
+          },
+        );
+      }
+      return suggestion;
+    });
     if (!updated) {
       res.status(404).json({ error: "Sugestão não encontrada" });
       return;
@@ -942,6 +1227,51 @@ router.post(
     } finally {
       client.destroy();
     }
+  },
+);
+
+router.post(
+  "/suggestions",
+  requirePfvlUser,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = CreateSuggestionBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    const user = getPfvlUser(req);
+    const recipients = await activeNotificationRecipients();
+    const created = await db.transaction(async (tx) => {
+      const [suggestion] = await tx
+        .insert(suggestionsTable)
+        .values({
+          title: parsed.data.title.trim(),
+          details: parsed.data.details.trim(),
+          category: parsed.data.category.trim(),
+          authorName: user.displayName,
+          authorUserId: user.id,
+        })
+        .returning();
+
+      const event: NotificationEvent = {
+        eventKey: `suggestion:${suggestion.id}:new`,
+        type: "new_suggestion",
+        title: "Nova sugestão no roadmap",
+        message: `${user.displayName}: ${suggestion.title}`,
+        href: "/suggestions",
+        actorUserId: user.id,
+      };
+      await persistNotificationBatch(
+        notificationRows(recipients, event),
+        async (batch) => {
+          await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
+        },
+      );
+      return suggestion;
+    });
+
+    res.status(201).json(CreateSuggestionResponse.parse(created));
   },
 );
 

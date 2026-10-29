@@ -450,6 +450,77 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Suggestion"
+    post:
+      operationId: createSuggestion
+      tags: [suggestions]
+      summary: Envia uma sugestão da comunidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestionInput"
+      responses:
+        "201":
+          description: Sugestão recebida e adicionada ao roadmap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suggestion"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [account]
+      summary: Lista notificações da conta autenticada
+      responses:
+        "200":
+          description: Notificações recentes e quantidade não lida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notifications"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /notifications/{notificationId}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [account]
+      summary: Marca uma notificação como lida
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "200":
+          description: Notificação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /notifications/{notificationId}:
+    delete:
+      operationId: deleteNotification
+      tags: [account]
+      summary: Exclui uma notificação da conta autenticada
+      parameters:
+        - $ref: "#/components/parameters/NotificationId"
+      responses:
+        "204":
+          description: Notificação excluída
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /indicators:
     get:
       operationId: listIndicators
@@ -478,7 +549,19 @@ components:
       required: true
       schema:
         type: integer
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: integer
   responses:
+    BadRequest:
+      description: Dados inválidos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Recurso não encontrado
       content:
@@ -649,6 +732,13 @@ components:
       properties:
         status: { $ref: "#/components/schemas/SuggestionStatus" }
       required: [status]
+    SuggestionInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 4, maxLength: 220 }
+        details: { type: string, minLength: 10, maxLength: 5000 }
+        category: { type: string, minLength: 2, maxLength: 100 }
+      required: [title, details, category]
     ImageUploadInput:
       type: object
       properties:
@@ -679,6 +769,28 @@ components:
         voteCount: { type: integer }
         createdAt: { type: string, format: date-time }
       required: [id, title, details, category, status, authorName, voteCount, createdAt]
+    NotificationType:
+      type: string
+      enum: [new_update, new_publication, comment_reply, new_suggestion, suggestion_status]
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { $ref: "#/components/schemas/NotificationType" }
+        title: { type: string }
+        message: { type: string }
+        href: { type: string }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, type, title, message, href, isRead, createdAt]
+    Notifications:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        unreadCount: { type: integer }
+      required: [notifications, unreadCount]
     Indicator:
       type: object
       properties:
