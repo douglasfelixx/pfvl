@@ -12,11 +12,21 @@ O portal é uma aplicação React/Vite com API Express. A implantação Vercel i
    - `CLERK_PUBLISHABLE_KEY` e `CLERK_SECRET_KEY`: chaves do projeto Clerk PFVL.
    - `PFVL_ADMIN_EMAIL`: e-mail inicial de administrador informado pelo responsável. O papel administrativo é aplicado quando essa conta entrar pela primeira vez com o e-mail confirmado.
    - `VITE_SITE_URL`: domínio final do portal.
+   - `VITE_PFVL_APP_URL`: endereço do aplicativo PFVL. Configure valores diferentes nos ambientes Development, Preview e Production do Vercel; o botão da página inicial usa o valor do ambiente em que o portal foi compilado.
+   - `VITE_PFVL_PRESENTATION_VIDEO_URL`: URL pública do vídeo MP4 de apresentação. O player do site não inicia automaticamente; deixe vazio até o vídeo estar pronto.
    - Para upload no R2: `CLOUDFLARE_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_PUBLIC_BASE_URL`.
+
+A imagem principal da Home e o vídeo são referências a objetos já existentes no R2. Configure o nome e a extensão no painel administrativo, em **Imagem / Vídeo**; a página não faz upload desses arquivos.
 3. Crie primeiro o banco Neon de destino e confirme que a connection string está no ambiente correto. Depois execute `pnpm --filter @workspace/db run push` apontando explicitamente para esse Neon. Não execute a migração antes de confirmar o banco.
 4. Se for necessário cadastrar o conteúdo demonstrativo inicial, execute `pnpm --filter @workspace/api-server run seed` uma vez, também apontando para o Neon de destino.
 5. Configure `PFVL_INDICATORS_API_URL` somente quando a fonte real do PFVL estiver disponível; ela deve responder no formato `Indicator`.
 6. Configure o domínio e os endereços de retorno do site no painel Clerk antes de liberar o cadastro em produção.
+
+### Endereços por ambiente
+
+No Vercel, abra **Settings → Environment Variables** e configure `VITE_PFVL_APP_URL` para Development, Preview e Production separadamente. Assim, o portal de desenvolvimento/homologação pode apontar para o sistema de teste e o portal publicado para o sistema de produção. Depois de alterar uma variável `VITE_`, gere um novo deploy para incorporá-la ao site. Para execução local, use `.env.local` e não versione esse arquivo.
+
+O vídeo deve ser um MP4 acessível por HTTPS, como um objeto público do R2. O player usa controles nativos e não tem reprodução automática. Um vídeo do YouTube não garante que anúncios de terceiros não apareçam.
 
 O endpoint de envio limita imagens a 5 MB e aceita JPG, PNG e WebP. Crie um bucket no Cloudflare R2, habilite um domínio público HTTPS para leitura, gere uma chave com acesso restrito ao bucket e configure a CORS do bucket para permitir `PUT` com `Content-Type` apenas a partir dos domínios do portal.
 

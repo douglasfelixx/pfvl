@@ -131,6 +131,23 @@ export const CreatePostResponse = zod.object({
 
 
 /**
+ * @summary Lista categorias e marcadores disponíveis para uma área
+ */
+export const ListTaxonomyQueryParams = zod.object({
+  "kind": zod.enum(['blog', 'news', 'forum', 'help'])
+})
+
+export const ListTaxonomyResponseItem = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "type": zod.enum(['category', 'tag']),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTaxonomyResponse = zod.array(ListTaxonomyResponseItem)
+
+
+/**
  * @summary Busca uma publicação
  */
 export const GetPostParams = zod.object({
@@ -347,6 +364,144 @@ export const CreateImageUploadResponse = zod.object({
   "uploadUrl": zod.string().url(),
   "publicUrl": zod.string().url()
 })
+
+
+/**
+ * @summary Obtém as mídias públicas configuradas para o site
+ */
+export const GetSiteMediaResponse = zod.object({
+  "homeImageUrl": zod.string().nullable(),
+  "presentationVideoUrl": zod.string().nullable()
+})
+
+
+/**
+ * @summary Exibe um arquivo público configurado no R2
+ */
+export const GetSiteMediaFileParams = zod.object({
+  "slot": zod.enum(['home_image', 'presentation_video'])
+})
+
+export const GetSiteMediaFileHeader = zod.object({
+  "Range": zod.string().optional()
+})
+
+export const GetSiteMediaFileResponse = zod.unknown()
+
+
+/**
+ * @summary Lista os nomes e extensões das mídias da página inicial
+ */
+export const listAdminSiteMediaResponseNameMax = 120;
+
+
+
+export const ListAdminSiteMediaResponseItem = zod.object({
+  "slot": zod.enum(['home_image', 'presentation_video']),
+  "name": zod.string().max(listAdminSiteMediaResponseNameMax).nullable(),
+  "extension": zod.string()
+})
+export const ListAdminSiteMediaResponse = zod.array(ListAdminSiteMediaResponseItem)
+
+
+/**
+ * @summary Atualiza o nome ou a extensão de uma mídia existente no R2
+ */
+export const UpdateAdminSiteMediaParams = zod.object({
+  "slot": zod.enum(['home_image', 'presentation_video'])
+})
+
+export const updateAdminSiteMediaBodyNameMax = 120;
+
+
+export const updateAdminSiteMediaBodyNameRegExp = new RegExp('^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$');
+
+
+export const UpdateAdminSiteMediaBody = zod.object({
+  "name": zod.string().max(updateAdminSiteMediaBodyNameMax).regex(updateAdminSiteMediaBodyNameRegExp).nullable(),
+  "extension": zod.enum(['jpg', 'jpeg', 'png', 'webp', 'mp4', 'webm'])
+})
+
+export const updateAdminSiteMediaResponseNameMax = 120;
+
+
+
+export const UpdateAdminSiteMediaResponse = zod.object({
+  "slot": zod.enum(['home_image', 'presentation_video']),
+  "name": zod.string().max(updateAdminSiteMediaResponseNameMax).nullable(),
+  "extension": zod.string()
+})
+
+
+/**
+ * @summary Lista categorias e marcadores administráveis
+ */
+export const ListAdminTaxonomyResponseItem = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "type": zod.enum(['category', 'tag']),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminTaxonomyResponse = zod.array(ListAdminTaxonomyResponseItem)
+
+
+/**
+ * @summary Cria uma categoria ou marcador
+ */
+export const createAdminTaxonomyBodyNameMin = 2;
+export const createAdminTaxonomyBodyNameMax = 100;
+
+
+
+export const CreateAdminTaxonomyBody = zod.object({
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "type": zod.enum(['category', 'tag']),
+  "name": zod.string().min(createAdminTaxonomyBodyNameMin).max(createAdminTaxonomyBodyNameMax)
+})
+
+export const CreateAdminTaxonomyResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "type": zod.enum(['category', 'tag']),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Renomeia uma categoria ou marcador e atualiza as publicações que o utilizam
+ */
+export const UpdateAdminTaxonomyParams = zod.object({
+  "taxonomyId": zod.coerce.number().int()
+})
+
+export const updateAdminTaxonomyBodyNameMin = 2;
+export const updateAdminTaxonomyBodyNameMax = 100;
+
+
+
+export const UpdateAdminTaxonomyBody = zod.object({
+  "name": zod.string().min(updateAdminTaxonomyBodyNameMin).max(updateAdminTaxonomyBodyNameMax)
+})
+
+export const UpdateAdminTaxonomyResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
+  "type": zod.enum(['category', 'tag']),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Exclui uma categoria ou marcador não utilizado
+ */
+export const DeleteAdminTaxonomyParams = zod.object({
+  "taxonomyId": zod.coerce.number().int()
+})
+
+export const DeleteAdminTaxonomyResponse = zod.void()
 
 
 /**

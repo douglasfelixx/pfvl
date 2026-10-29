@@ -1,10 +1,10 @@
 node_modules/
-**/node_modules/
-**/dist/
+dist/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
+.vercel/
 coverage/
-*.tsbuildinfo
 .DS_Store
-generated-artifacts/
+Thumbs.db

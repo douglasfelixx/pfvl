@@ -1779,6 +1779,7 @@
 
 .footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 18px;
 }
 
@@ -2448,7 +2449,7 @@
 }
 
 .primary-nav-link {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .public-access-label,
@@ -2806,4 +2807,336 @@
   margin-right: 0;
   margin-bottom: 20px;
   padding-bottom: 20px;
+}
+
+/* Revised PFVL product landing page */
+.home-hero-copy {
+  max-width: 520px;
+}
+
+.home-hero-description {
+  max-width: 450px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.home-cta-primary,
+.home-cta-outline {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.home-preview-figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.dashboard-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(220, 231, 246, .85);
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 12px 35px rgba(2, 13, 34, .28);
+}
+
+
+.home-content-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(290px, .85fr);
+}
+
+.home-content-column {
+  padding: 22px;
+}
+
+.home-column-heading {
+  margin-bottom: 15px;
+}
+
+.home-column-heading h2 {
+  font-size: 18px;
+}
+
+.feature-grid {
+  gap: 10px;
+}
+
+.feature-item {
+  min-height: 91px;
+  align-items: flex-start;
+  gap: 11px;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.feature-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.feature-item h3 {
+  overflow: visible;
+  margin: 1px 0 5px;
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.feature-item p {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.home-news-item {
+  min-height: 60px;
+  gap: 10px;
+  padding: 8px 2px;
+}
+
+.home-news-copy strong {
+  font-size: 13px;
+}
+
+.home-news-copy small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.home-bottom-cta {
+  gap: 22px;
+}
+
+.cta-copy h2 {
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.cta-copy p {
+  max-width: 530px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cta-primary-link,
+.cta-secondary-link {
+  min-height: 44px;
+  padding: 0 15px;
+  font-size: 13px;
+}
+
+.product-app-link-disabled {
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.institutional-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.presentation-panel {
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(1, 33, 64, .07);
+}
+
+.presentation-video,
+.presentation-video-placeholder {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  background: #012140;
+}
+
+.presentation-video {
+  display: block;
+  object-fit: contain;
+}
+
+.presentation-video-placeholder {
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #e8e8e8;
+  text-align: center;
+}
+
+.presentation-play-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid rgba(232, 232, 232, .45);
+  border-radius: 50%;
+  color: #e8e8e8;
+}
+
+.presentation-video-placeholder h2,
+.presentation-video-placeholder p {
+  margin: 0;
+}
+
+.presentation-video-placeholder h2 {
+  font-size: clamp(20px, 3vw, 28px);
+}
+
+.presentation-video-placeholder p {
+  max-width: 520px;
+  color: #cbd5df;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.presentation-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 25px;
+}
+
+.presentation-copy h2,
+.institutional-copy-card h2,
+.institutional-notice h2 {
+  margin: 12px 0 0;
+  color: #012140;
+  font-family: var(--app-font-serif);
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.presentation-copy p:not(.eyebrow-pill),
+.institutional-copy-card p:not(.eyebrow-pill),
+.institutional-notice p {
+  margin: 9px 0 0;
+  color: #536272;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.institutional-primary-link {
+  display: inline-flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  background: #233a59;
+  padding: 0 16px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.institutional-primary-link:hover {
+  background: #31567f;
+}
+
+.institutional-content-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.institutional-copy-card,
+.institutional-notice {
+  padding: 24px;
+}
+
+.development-status {
+  display: inline-flex;
+  margin-top: 17px;
+  border-radius: 999px;
+  background: #e8e8e8;
+  padding: 7px 10px;
+  color: #233a59;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.company-domain-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+  color: #233a59;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.institutional-notice {
+  border-color: rgba(35, 58, 89, .2);
+  background: #fff;
+}
+
+@media (max-width: 767px) {
+  .home-content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-content-column {
+    padding: 19px 16px;
+  }
+
+  .home-column-heading h2 {
+    font-size: 18px;
+  }
+
+  .feature-item {
+    min-height: 88px;
+    padding: 11px;
+  }
+
+  .feature-item h3 {
+    font-size: 13px;
+  }
+
+  .feature-item p {
+    font-size: 12px;
+  }
+
+  .home-hero-description {
+    font-size: 14px;
+  }
+
+  .preview-development-notice {
+    font-size: 13px;
+  }
+
+  .presentation-copy {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 19px;
+  }
+
+  .presentation-copy h2,
+  .institutional-copy-card h2,
+  .institutional-notice h2 {
+    font-size: 21px;
+  }
+
+  .institutional-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .institutional-copy-card,
+  .institutional-notice {
+    padding: 19px;
+  }
+}
+
+@media (max-width: 520px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
 }

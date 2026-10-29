@@ -10,7 +10,6 @@ import {
   CreditCard,
   Dumbbell,
   FileText,
-  Flag,
   House,
   Landmark,
   LockKeyhole,
@@ -36,38 +35,31 @@ const dashboardSections = [
 ];
 
 const features = [
-  { title: 'Open Finance', description: 'Conecte suas contas com segurança.', icon: Landmark, tone: 'blue' },
-  { title: 'Planejamento', description: 'Planeje e projete o seu futuro.', icon: FileText, tone: 'violet' },
-  { title: 'Metas', description: 'Defina metas e acompanhe.', icon: Flag, tone: 'cyan' },
-  { title: 'Relatórios', description: 'Relatórios completos e gráficos avançados.', icon: BarChart3, tone: 'sky' },
-  { title: '100% Seguro', description: 'Seus dados sempre protegidos.', icon: ShieldCheck, tone: 'green' },
-  { title: 'Integrações', description: 'Conecte com as principais instituições.', icon: BriefcaseBusiness, tone: 'teal' },
+  { title: 'Planejamento financeiro', description: 'Organize receitas, despesas e compromissos futuros para enxergar o caminho à frente.', icon: FileText, tone: 'blue' },
+  { title: 'Objetivos com direção', description: 'Transforme seus objetivos em planos com valores, prazos e aportes.', icon: Target, tone: 'violet' },
+  { title: 'Contas e cartões', description: 'Acompanhe suas contas, cartões e compromissos em uma visão integrada.', icon: Wallet, tone: 'cyan' },
+  { title: 'Planejado e realizado', description: 'Compare o que você planejou com o que aconteceu e ajuste sua rota.', icon: ChartNoAxesColumnIncreasing, tone: 'sky' },
+  { title: 'Investimentos', description: 'Acompanhe seus investimentos e entenda como eles contribuem para seus objetivos.', icon: Landmark, tone: 'green' },
+  { title: 'Empréstimos e financiamentos', description: 'Organize parcelas e compromissos e visualize seu impacto no planejamento financeiro.', icon: CreditCard, tone: 'violet' },
+  { title: 'Conexão com instituições', description: 'Facilite o acompanhamento das suas finanças com as integrações disponíveis.', icon: BriefcaseBusiness, tone: 'teal' },
+  { title: 'Segurança e privacidade', description: 'Conheça como seus dados são tratados e quais controles protegem seu acesso.', icon: ShieldCheck, tone: 'blue' },
 ];
 
-const testimonials = [
-  {
-    name: 'Mariana S.',
-    initials: 'MS',
-    tone: 'blue',
-    quote: 'O PFVL mudou minha vida financeira. Consigo organizar minhas contas e investir com muito mais tranquilidade.',
-  },
-  {
-    name: 'Roberto T.',
-    initials: 'RT',
-    tone: 'gold',
-    quote: 'A integração com Open Finance é sensacional. Tudo automático!',
-  },
-  {
-    name: 'Juliana M.',
-    initials: 'JM',
-    tone: 'rose',
-    quote: 'Os relatórios e gráficos me ajudam a tomar decisões muito melhores.',
-  },
-];
-
-export function HomeDashboardPreview() {
+export function HomeDashboardPreview({
+  previewImageUrl,
+}: {
+  previewImageUrl?: string | null;
+}) {
   return (
-    <div className="dashboard-preview" id="demo-pfvl" aria-label="Prévia ilustrativa do painel PFVL">
+    <figure className="home-preview-figure">
+      {previewImageUrl ? (
+        <img
+          alt="Imagem principal do PFVL"
+          className="dashboard-preview-image"
+          src={previewImageUrl}
+        />
+      ) : (
+      <div className="dashboard-preview" id="demo-pfvl" aria-label="Prévia ilustrativa do painel PFVL">
       <aside className="dashboard-preview-sidebar">
         <div className="preview-brand">
           <span className="preview-brand-mark"><BarChart3 size={14} /></span>
@@ -121,7 +113,9 @@ export function HomeDashboardPreview() {
           </section>
         </div>
       </div>
-    </div>
+      </div>
+      )}
+    </figure>
   );
 }
 
@@ -205,9 +199,9 @@ function BillRow({ icon, title, value, date }: { icon: ReactNode; title: string;
 
 export function HomeFeatureColumn() {
   return (
-    <section className="home-content-column home-features-column">
+    <section className="home-content-column home-features-column" id="recursos">
       <div className="home-column-heading">
-        <h2>Tudo o que você precisa</h2>
+        <h2>Seu presente e seu futuro no mesmo plano</h2>
       </div>
       <div className="feature-grid">
         {features.map((feature) => {
@@ -227,29 +221,23 @@ export function HomeFeatureColumn() {
   );
 }
 
-export function HomeTestimonialColumn() {
-  return (
-    <section className="home-content-column home-testimonials-column">
-      <div className="home-column-heading">
-        <h2>O que nossos usuários dizem</h2>
-        <Link aria-label="Ver todos os depoimentos" href="/community">Ver depoimentos <ArrowRight size={11} /></Link>
-      </div>
-      <div className="testimonials-list">
-        {testimonials.map((testimonial) => (
-          <article className="testimonial-card" key={testimonial.name}>
-            <div className={`testimonial-avatar avatar-${testimonial.tone}`} aria-hidden="true">{testimonial.initials}</div>
-            <div className="min-w-0">
-              <div className="testimonial-author">
-                <strong>{testimonial.name}</strong>
-                <span aria-label="5 de 5 estrelas">★★★★★</span>
-              </div>
-              <p>“{testimonial.quote}”</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
+export function ProductAppLink({ className, label = 'Acessar o PFVL' }: { className: string; label?: string }) {
+  const appUrl = import.meta.env.VITE_PFVL_APP_URL?.trim();
+  const content = <>{label}<ArrowRight size={15} /></>;
+
+  if (!appUrl) {
+    return (
+      <span
+        aria-disabled="true"
+        className={`${className} product-app-link-disabled`}
+        title="Configure o endereço do sistema para este ambiente."
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return <a className={className} href={appUrl}>{content}</a>;
 }
 
 export function HomeNewsColumn({ posts, isLoading, isError, retry }: { posts: Post[]; isLoading: boolean; isError: boolean; retry: () => void }) {
@@ -300,12 +288,12 @@ export function HomeBottomCta() {
         <span className="cta-orbit cta-orbit-b" />
       </div>
       <div className="cta-copy">
-        <h2>Comece agora a transformar<br className="hidden sm:block" /> sua vida financeira.</h2>
-        <p>Explore ideias, conteúdos e caminhos possíveis para cuidar melhor do seu dinheiro.</p>
+        <h2>Seu próximo passo começa<br className="hidden sm:block" /> com um plano.</h2>
+        <p>Conheça o PFVL e descubra como conectar suas escolhas de hoje aos objetivos que você quer alcançar.</p>
       </div>
       <div className="cta-actions">
-        <Link className="cta-primary-link" href="/community">Explorar a comunidade <ArrowRight size={14} /></Link>
-        <Link className="cta-secondary-link" href="/blog"><BookOpen size={13} /> Conhecer o blog</Link>
+        <ProductAppLink className="cta-primary-link" />
+        <Link className="cta-secondary-link" href="/#recursos">Conhecer os recursos</Link>
       </div>
     </section>
   );

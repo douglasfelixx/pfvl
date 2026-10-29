@@ -4,7 +4,6 @@ import {
   BarChart3,
   BookOpen,
   CircleHelp,
-  Lightbulb,
   Menu,
   MessageCircle,
   Newspaper,
@@ -31,6 +30,12 @@ import {
   SuggestionsPage,
 } from '@/pages/portal-pages';
 import { NotificationsPage } from '@/pages/notifications-page';
+import {
+  AboutPage,
+  ContactPage,
+  LegalPage,
+  PresentationPage,
+} from '@/pages/institutional-pages';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,11 +48,10 @@ const queryClient = new QueryClient({
 
 const navigation = [
   { href: '/', label: 'Início', icon: BarChart3 },
+  { href: '/blog', label: 'Conteúdos', icon: BookOpen },
+  { href: '/indicators', label: 'Indicadores', icon: BarChart3 },
   { href: '/community', label: 'Comunidade', icon: MessageCircle },
   { href: '/news', label: 'Novidades', icon: Newspaper },
-  { href: '/blog', label: 'Blog', icon: BookOpen },
-  { href: '/indicators', label: 'Indicadores', icon: BarChart3 },
-  { href: '/suggestions', label: 'Sugestões', icon: Lightbulb },
   { href: '/help', label: 'Central de Ajuda', icon: CircleHelp },
 ];
 
@@ -56,7 +60,7 @@ const pageMetadata = [
     match: /^\/$/,
     title: 'PFVL | Planejamento financeiro para a vida real',
     description:
-      'Planeje hoje e realize amanhã. Acompanhe conteúdos, conversas e indicadores para cuidar melhor do seu dinheiro.',
+      'Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir com o PFVL.',
   },
   {
     match: /^\/community(?:\/\d+)?$/,
@@ -66,9 +70,9 @@ const pageMetadata = [
   },
   {
     match: /^\/blog(?:\/\d+)?$/,
-    title: 'Blog PFVL | Educação financeira prática',
+    title: 'Guias e artigos | PFVL',
     description:
-      'Artigos para organizar as finanças, entender investimentos e tomar decisões mais conscientes.',
+      'Conteúdos da equipe PFVL sobre planejamento, organização, objetivos, indicadores e recursos do sistema.',
   },
   {
     match: /^\/news(?:\/\d+)?$/,
@@ -95,9 +99,33 @@ const pageMetadata = [
   },
   {
     match: /^\/help(?:\/\d+)?$/,
-    title: 'Central de ajuda | PFVL',
-    description:
-      'Encontre orientações para usar o portal PFVL e organizar sua vida financeira.',
+    title: 'Central de Ajuda | PFVL',
+    description: 'Encontre tutoriais e orientações práticas para usar o sistema PFVL.',
+  },
+  {
+    match: /^\/apresentacao$/,
+    title: 'Apresentação do PFVL | Orbe',
+    description: 'Conheça o PFVL e veja como o produto conecta contas, compromissos e objetivos.',
+  },
+  {
+    match: /^\/sobre$/,
+    title: 'Sobre o PFVL e a Orbe | Orbe',
+    description: 'Conheça o produto PFVL e a Orbe Sistemas Financeiros, empresa responsável.',
+  },
+  {
+    match: /^\/contato$/,
+    title: 'Contato | Orbe Sistemas Financeiros',
+    description: 'Informações de contato oficiais da Orbe Sistemas Financeiros.',
+  },
+  {
+    match: /^\/privacidade$/,
+    title: 'Privacidade | PFVL',
+    description: 'Informações sobre privacidade no PFVL.',
+  },
+  {
+    match: /^\/termos$/,
+    title: 'Termos de uso | PFVL',
+    description: 'Condições de uso do PFVL.',
   },
 ];
 
@@ -195,10 +223,13 @@ function PortalShell({ children }: { children: ReactNode }) {
       <main className="main-area">
         <div className="page-container">{children}</div>
         <footer className="portal-footer">
-          <span>PFVL · educação financeira para a vida real</span>
+          <span>PFVL é um produto da Orbe Sistemas Financeiros.</span>
           <div className="footer-links">
-            <Link href="/suggestions">Roadmap</Link>
-            <Link href="/help">Sobre este espaço</Link>
+            <Link href="/sobre">Sobre</Link>
+            <Link href="/contato">Contato</Link>
+            <Link href="/privacidade">Privacidade</Link>
+            <Link href="/termos">Termos</Link>
+            <Link href="/suggestions">Sugestões</Link>
           </div>
         </footer>
       </main>
@@ -218,6 +249,11 @@ function RoutedContent() {
         <Route path="/blog" component={BlogPage} />
         <Route path="/news/:postId" component={PostDetailPage} />
         <Route path="/news" component={NewsPage} />
+        <Route path="/apresentacao" component={PresentationPage} />
+        <Route path="/sobre" component={AboutPage} />
+        <Route path="/contato" component={ContactPage} />
+        <Route path="/privacidade" component={() => <LegalPage kind="privacy" />} />
+        <Route path="/termos" component={() => <LegalPage kind="terms" />} />
         <Route path="/indicators" component={IndicatorsPage} />
         <Route path="/suggestions" component={SuggestionsPage} />
         <Route path="/notifications" component={NotificationsPage} />

@@ -34,14 +34,22 @@ import type {
   ImageUploadInput,
   Indicator,
   ListPostsParams,
+  ListTaxonomyParams,
   NotFoundResponse,
   Notification,
   Notifications,
   PollSummary,
   PollVoteInput,
   Post,
+  SiteMedia,
+  SiteMediaAsset,
+  SiteMediaAssetUpdate,
+  SiteMediaSlot,
   Suggestion,
   SuggestionInput,
+  TaxonomyInput,
+  TaxonomyItem,
+  TaxonomyUpdate,
   UnauthorizedResponse,
   UnavailableResponse,
   UpdatePostInput,
@@ -403,6 +411,90 @@ export const useCreatePost = <TError = ErrorType<UnauthorizedResponse | Forbidde
       > => {
       return useMutation(getCreatePostMutationOptions(options));
     }
+
+export const getListTaxonomyUrl = (params: ListTaxonomyParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/taxonomy?${stringifiedParams}` : `/api/taxonomy`
+}
+
+/**
+ * @summary Lista categorias e marcadores disponíveis para uma área
+ */
+export const listTaxonomy = async (params: ListTaxonomyParams, options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem[]> => {
+
+  return customFetch<TaxonomyItem[]>(getListTaxonomyUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTaxonomyQueryKey = (params?: ListTaxonomyParams,) => {
+    return [
+    `/api/taxonomy`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTaxonomyQueryOptions = <TData = Awaited<ReturnType<typeof listTaxonomy>>, TError = ErrorType<unknown>>(params: ListTaxonomyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTaxonomyQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTaxonomy>>> = ({ signal }) => listTaxonomy(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTaxonomyQueryResult = NonNullable<Awaited<ReturnType<typeof listTaxonomy>>>
+export type ListTaxonomyQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista categorias e marcadores disponíveis para uma área
+ */
+
+export function useListTaxonomy<TData = Awaited<ReturnType<typeof listTaxonomy>>, TError = ErrorType<unknown>>(
+ params: ListTaxonomyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTaxonomyQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetPostUrl = (postId: number,) => {
 
@@ -1213,6 +1305,654 @@ export const useCreateImageUpload = <TError = ErrorType<UnauthorizedResponse | U
         TContext
       > => {
       return useMutation(getCreateImageUploadMutationOptions(options));
+    }
+
+export const getGetSiteMediaUrl = () => {
+
+
+
+
+  return `/api/site-media`
+}
+
+/**
+ * @summary Obtém as mídias públicas configuradas para o site
+ */
+export const getSiteMedia = async ( options?: Parameters<typeof customFetch>[1]): Promise<SiteMedia> => {
+
+  return customFetch<SiteMedia>(getGetSiteMediaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSiteMediaQueryKey = () => {
+    return [
+    `/api/site-media`
+    ] as const;
+    }
+
+
+export const getGetSiteMediaQueryOptions = <TData = Awaited<ReturnType<typeof getSiteMedia>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSiteMediaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteMedia>>> = ({ signal }) => getSiteMedia({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSiteMedia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSiteMediaQueryResult = NonNullable<Awaited<ReturnType<typeof getSiteMedia>>>
+export type GetSiteMediaQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Obtém as mídias públicas configuradas para o site
+ */
+
+export function useGetSiteMedia<TData = Awaited<ReturnType<typeof getSiteMedia>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSiteMediaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSiteMediaFileUrl = (slot: SiteMediaSlot,) => {
+
+
+
+
+  return `/api/site-media/files/${slot}`
+}
+
+/**
+ * @summary Exibe um arquivo público configurado no R2
+ */
+export const getSiteMediaFile = async (slot: SiteMediaSlot, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSiteMediaFileUrl(slot),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSiteMediaFileQueryKey = (slot: SiteMediaSlot,) => {
+    return [
+    `/api/site-media/files/${slot}`
+    ] as const;
+    }
+
+
+export const getGetSiteMediaFileQueryOptions = <TData = Awaited<ReturnType<typeof getSiteMediaFile>>, TError = ErrorType<NotFoundResponse | UnavailableResponse>>(slot: SiteMediaSlot, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteMediaFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSiteMediaFileQueryKey(slot);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSiteMediaFile>>> = ({ signal }) => getSiteMediaFile(slot, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slot !== null && slot !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSiteMediaFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSiteMediaFileQueryResult = NonNullable<Awaited<ReturnType<typeof getSiteMediaFile>>>
+export type GetSiteMediaFileQueryError = ErrorType<NotFoundResponse | UnavailableResponse>
+
+
+/**
+ * @summary Exibe um arquivo público configurado no R2
+ */
+
+export function useGetSiteMediaFile<TData = Awaited<ReturnType<typeof getSiteMediaFile>>, TError = ErrorType<NotFoundResponse | UnavailableResponse>>(
+ slot: SiteMediaSlot, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSiteMediaFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSiteMediaFileQueryOptions(slot,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminSiteMediaUrl = () => {
+
+
+
+
+  return `/api/admin/site-media`
+}
+
+/**
+ * @summary Lista os nomes e extensões das mídias da página inicial
+ */
+export const listAdminSiteMedia = async ( options?: Parameters<typeof customFetch>[1]): Promise<SiteMediaAsset[]> => {
+
+  return customFetch<SiteMediaAsset[]>(getListAdminSiteMediaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSiteMediaQueryKey = () => {
+    return [
+    `/api/admin/site-media`
+    ] as const;
+    }
+
+
+export const getListAdminSiteMediaQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSiteMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSiteMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSiteMediaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSiteMedia>>> = ({ signal }) => listAdminSiteMedia({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSiteMedia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSiteMediaQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSiteMedia>>>
+export type ListAdminSiteMediaQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista os nomes e extensões das mídias da página inicial
+ */
+
+export function useListAdminSiteMedia<TData = Awaited<ReturnType<typeof listAdminSiteMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSiteMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSiteMediaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminSiteMediaUrl = (slot: SiteMediaSlot,) => {
+
+
+
+
+  return `/api/admin/site-media/${slot}`
+}
+
+/**
+ * @summary Atualiza o nome ou a extensão de uma mídia existente no R2
+ */
+export const updateAdminSiteMedia = async (slot: SiteMediaSlot,
+    siteMediaAssetUpdate: SiteMediaAssetUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SiteMediaAsset> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SiteMediaAsset>(getUpdateAdminSiteMediaUrl(slot),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(siteMediaAssetUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSiteMediaMutationKey = () => ['updateAdminSiteMedia'] as const;
+
+export const getUpdateAdminSiteMediaMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSiteMedia>>, TError,UpdateAdminSiteMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSiteMedia>>, TError,UpdateAdminSiteMediaMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSiteMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSiteMedia>>, UpdateAdminSiteMediaMutationVariables> = (props) => {
+          const {slot,data} = props ?? {};
+
+          return  updateAdminSiteMedia(slot,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSiteMediaMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSiteMedia>>>
+    export type UpdateAdminSiteMediaMutationBody = BodyType<SiteMediaAssetUpdate>
+    export type UpdateAdminSiteMediaMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type UpdateAdminSiteMediaMutationVariables = {slot: SiteMediaSlot;data: BodyType<SiteMediaAssetUpdate>}
+
+    /**
+ * @summary Atualiza o nome ou a extensão de uma mídia existente no R2
+ */
+export const useUpdateAdminSiteMedia = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSiteMedia>>, TError,UpdateAdminSiteMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSiteMedia>>,
+        TError,
+        UpdateAdminSiteMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSiteMediaMutationOptions(options));
+    }
+
+export const getListAdminTaxonomyUrl = () => {
+
+
+
+
+  return `/api/admin/taxonomy`
+}
+
+/**
+ * @summary Lista categorias e marcadores administráveis
+ */
+export const listAdminTaxonomy = async ( options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem[]> => {
+
+  return customFetch<TaxonomyItem[]>(getListAdminTaxonomyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminTaxonomyQueryKey = () => {
+    return [
+    `/api/admin/taxonomy`
+    ] as const;
+    }
+
+
+export const getListAdminTaxonomyQueryOptions = <TData = Awaited<ReturnType<typeof listAdminTaxonomy>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminTaxonomyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminTaxonomy>>> = ({ signal }) => listAdminTaxonomy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminTaxonomy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminTaxonomyQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminTaxonomy>>>
+export type ListAdminTaxonomyQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista categorias e marcadores administráveis
+ */
+
+export function useListAdminTaxonomy<TData = Awaited<ReturnType<typeof listAdminTaxonomy>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminTaxonomyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminTaxonomyUrl = () => {
+
+
+
+
+  return `/api/admin/taxonomy`
+}
+
+/**
+ * @summary Cria uma categoria ou marcador
+ */
+export const createAdminTaxonomy = async (taxonomyInput: TaxonomyInput, options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TaxonomyItem>(getCreateAdminTaxonomyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(taxonomyInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminTaxonomyMutationKey = () => ['createAdminTaxonomy'] as const;
+
+export const getCreateAdminTaxonomyMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminTaxonomy>>, TError,CreateAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminTaxonomy>>, TError,CreateAdminTaxonomyMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminTaxonomyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminTaxonomy>>, CreateAdminTaxonomyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminTaxonomy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminTaxonomyMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminTaxonomy>>>
+    export type CreateAdminTaxonomyMutationBody = BodyType<TaxonomyInput>
+    export type CreateAdminTaxonomyMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>
+    export type CreateAdminTaxonomyMutationVariables = {data: BodyType<TaxonomyInput>}
+
+    /**
+ * @summary Cria uma categoria ou marcador
+ */
+export const useCreateAdminTaxonomy = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminTaxonomy>>, TError,CreateAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminTaxonomy>>,
+        TError,
+        CreateAdminTaxonomyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminTaxonomyMutationOptions(options));
+    }
+
+export const getUpdateAdminTaxonomyUrl = (taxonomyId: number,) => {
+
+
+
+
+  return `/api/admin/taxonomy/${taxonomyId}`
+}
+
+/**
+ * @summary Renomeia uma categoria ou marcador e atualiza as publicações que o utilizam
+ */
+export const updateAdminTaxonomy = async (taxonomyId: number,
+    taxonomyUpdate: TaxonomyUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TaxonomyItem>(getUpdateAdminTaxonomyUrl(taxonomyId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(taxonomyUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminTaxonomyMutationKey = () => ['updateAdminTaxonomy'] as const;
+
+export const getUpdateAdminTaxonomyMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTaxonomy>>, TError,UpdateAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminTaxonomy>>, TError,UpdateAdminTaxonomyMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminTaxonomyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminTaxonomy>>, UpdateAdminTaxonomyMutationVariables> = (props) => {
+          const {taxonomyId,data} = props ?? {};
+
+          return  updateAdminTaxonomy(taxonomyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminTaxonomyMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminTaxonomy>>>
+    export type UpdateAdminTaxonomyMutationBody = BodyType<TaxonomyUpdate>
+    export type UpdateAdminTaxonomyMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type UpdateAdminTaxonomyMutationVariables = {taxonomyId: number;data: BodyType<TaxonomyUpdate>}
+
+    /**
+ * @summary Renomeia uma categoria ou marcador e atualiza as publicações que o utilizam
+ */
+export const useUpdateAdminTaxonomy = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTaxonomy>>, TError,UpdateAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminTaxonomy>>,
+        TError,
+        UpdateAdminTaxonomyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminTaxonomyMutationOptions(options));
+    }
+
+export const getDeleteAdminTaxonomyUrl = (taxonomyId: number,) => {
+
+
+
+
+  return `/api/admin/taxonomy/${taxonomyId}`
+}
+
+/**
+ * @summary Exclui uma categoria ou marcador não utilizado
+ */
+export const deleteAdminTaxonomy = async (taxonomyId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminTaxonomyUrl(taxonomyId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminTaxonomyMutationKey = () => ['deleteAdminTaxonomy'] as const;
+
+export const getDeleteAdminTaxonomyMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminTaxonomy>>, TError,DeleteAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminTaxonomy>>, TError,DeleteAdminTaxonomyMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminTaxonomyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminTaxonomy>>, DeleteAdminTaxonomyMutationVariables> = (props) => {
+          const {taxonomyId} = props ?? {};
+
+          return  deleteAdminTaxonomy(taxonomyId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminTaxonomyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminTaxonomy>>>
+
+    export type DeleteAdminTaxonomyMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type DeleteAdminTaxonomyMutationVariables = {taxonomyId: number}
+
+    /**
+ * @summary Exclui uma categoria ou marcador não utilizado
+ */
+export const useDeleteAdminTaxonomy = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminTaxonomy>>, TError,DeleteAdminTaxonomyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminTaxonomy>>,
+        TError,
+        DeleteAdminTaxonomyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminTaxonomyMutationOptions(options));
     }
 
 export const getListAdminPostsUrl = () => {

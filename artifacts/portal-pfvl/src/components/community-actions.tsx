@@ -6,9 +6,11 @@ import {
   getListAdminPostsQueryKey,
   getListPostsQueryKey,
   getListCommentsQueryKey,
+  getListTaxonomyQueryKey,
   useCreateComment,
   useCreateImageUpload,
   useCreatePost,
+  useListTaxonomy,
   type PostKind,
   type PostStatus,
 } from "@workspace/api-client-react";
@@ -69,17 +71,33 @@ export function ImageUploadField({ imageUrl, onImageUrlChange, required = false 
   );
 }
 
-export function CreatePostForm({ mode, onCreated }: { mode: "community" | "admin"; onCreated?: () => void }) {
+export function CreatePostForm({
+  mode,
+  onCreated,
+  initialKind,
+  fixedKind = false,
+}: {
+  mode: "community" | "admin";
+  onCreated?: () => void;
+  initialKind?: PostKind;
+  fixedKind?: boolean;
+}) {
   const client = useQueryClient();
   const mutation = useCreatePost();
-  const [kind, setKind] = useState<PostKind>(mode === "community" ? "forum" : "blog");
+  const [kind, setKind] = useState<PostKind>(initialKind ?? (mode === "community" ? "forum" : "blog"));
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState(mode === "community" ? "Planejamento financeiro" : "");
+  const [category, setCategory] = useState("");
   const [body, setBody] = useState("");
   const [image, setImage] = useState("");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState<PostStatus>("published");
   const [message, setMessage] = useState("");
+  const taxonomyParams = { kind };
+  const taxonomy = useListTaxonomy(taxonomyParams, {
+    query: { queryKey: getListTaxonomyQueryKey(taxonomyParams) },
+  });
+  const categories = (taxonomy.data ?? []).filter((item) => item.type === "category");
+  const tagOptions = (taxonomy.data ?? []).filter((item) => item.type === "tag");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -87,10 +105,10 @@ export function CreatePostForm({ mode, onCreated }: { mode: "community" | "admin
     try {
       await mutation.mutateAsync({ data: {
         title: title.trim(), excerpt: body.trim().replace(/\s+/g, " ").slice(0, 220), body: body.trim(),
-        kind, category: category.trim(), tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8),
+        kind, category, tags,
         coverImageUrl: image.trim() || null, videoUrl: null, status: mode === "admin" ? status : "published",
       } });
-      setTitle(""); setBody(""); setTags(""); setImage("");
+      setTitle(""); setBody(""); setTags([]); setImage("");
       setMessage(status === "draft" ? "Rascunho salvo." : "Publicação criada.");
       await Promise.all([
         client.invalidateQueries({ queryKey: getListPostsQueryKey() }),
@@ -104,19 +122,46 @@ export function CreatePostForm({ mode, onCreated }: { mode: "community" | "admin
     <AuthActionGate>
       <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" onSubmit={submit}>
         <div><p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p><h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{mode === "community" ? "Compartilhe com a comunidade." : "Criar conteúdo"}</h2></div>
-        {mode === "admin" && <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm font-semibold text-[#012140]">Área<select className={fieldClass} onChange={(event) => setKind(event.target.value as PostKind)} value={kind}><option value="blog">Blog</option><option value="forum">Comunidade</option><option value="news">Novidades</option><option value="help">Central de ajuda</option></select></label>
+        {mode === "admin" && <div className={`grid gap-3 ${fixedKind ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
+          {!fixedKind && <label className="block text-sm font-semibold text-[#012140]">Área<select className={fieldClass} onChange={(event) => { setKind(event.target.value as PostKind); setCategory(""); setTags([]); }} value={kind}><option value="blog">Conteúdos</option><option value="forum">Comunidade</option><option value="news">Novidades</option><option value="help">Central de Ajuda</option></select></label>}
           <label className="block text-sm font-semibold text-[#012140]">Situação<select className={fieldClass} onChange={(event) => setStatus(event.target.value as PostStatus)} value={status}><option value="published">Publicado</option><option value="draft">Rascunho</option><option value="hidden">Oculto</option></select></label>
         </div>}
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-semibold text-[#012140]">Título<input className={fieldClass} maxLength={220} minLength={4} onChange={(event) => setTitle(event.target.value)} required value={title} /></label>
-          <label className="block text-sm font-semibold text-[#012140]">Categoria<input className={fieldClass} maxLength={100} minLength={2} onChange={(event) => setCategory(event.target.value)} required value={category} /></label>
+          <label className="block text-sm font-semibold text-[#012140]">Categoria
+            <select className={fieldClass} disabled={taxonomy.isLoading || categories.length === 0} onChange={(event) => setCategory(event.target.value)} required value={category}>
+              <option value="">{taxonomy.isLoading ? "Carregando opções…" : "Selecione uma categoria"}</option>
+              {categories.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+            </select>
+          </label>
         </div>
+        {taxonomy.isError && <p className="text-sm text-red-700" role="alert">Não foi possível carregar as opções desta área. Atualize a página e tente novamente.</p>}
+        {categories.length === 0 && !taxonomy.isLoading && !taxonomy.isError && <p className="text-sm text-amber-800">Ainda não há categorias para esta área. Peça ao administrador para cadastrá-las no painel.</p>}
         <label className="block text-sm font-semibold text-[#012140]">Conteúdo<textarea className={`${fieldClass} min-h-40 resize-y`} maxLength={20000} minLength={10} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
         <ImageUploadField imageUrl={image} onImageUrlChange={setImage} required={kind === "blog" || kind === "forum"} />
-        <label className="block text-sm font-semibold text-[#012140]">Marcadores<input className={fieldClass} onChange={(event) => setTags(event.target.value)} placeholder="orçamento, planejamento" value={tags} /></label>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold text-[#012140]">Marcadores <span className="font-normal text-muted-foreground">(opcional, até 8)</span></legend>
+          {tagOptions.length ? (
+            <div className="flex flex-wrap gap-2">
+              {tagOptions.map((item) => {
+                const checked = tags.includes(item.name);
+                return (
+                  <label className="inline-flex items-center gap-2 rounded-full border border-[#233a59]/15 px-3 py-2 text-sm text-[#012140]" key={item.id}>
+                    <input
+                      checked={checked}
+                      disabled={!checked && tags.length >= 8}
+                      onChange={(event) => setTags((selected) => event.target.checked ? [...selected, item.name] : selected.filter((tag) => tag !== item.name))}
+                      type="checkbox"
+                    />
+                    {item.name}
+                  </label>
+                );
+              })}
+            </div>
+          ) : <p className="text-sm text-muted-foreground">Não há marcadores cadastrados para esta área.</p>}
+        </fieldset>
         {message && <p className="text-sm text-[#233a59]" role="status">{message}</p>}
-        <button className="auth-header-primary" disabled={mutation.isPending || ((kind === "blog" || kind === "forum") && !image.trim())} type="submit">{mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar"}</button>
+        <button className="auth-header-primary" disabled={mutation.isPending || !category || categories.length === 0 || taxonomy.isLoading || taxonomy.isError || ((kind === "blog" || kind === "forum") && !image.trim())} type="submit">{mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar"}</button>
       </form>
     </AuthActionGate>
   );

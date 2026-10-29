@@ -19,3 +19,5 @@
 
 export * from "./pfvl.js";
 export * from "./notifications.js";
+export * from "./taxonomy.js";
+export * from "./site-media.js";

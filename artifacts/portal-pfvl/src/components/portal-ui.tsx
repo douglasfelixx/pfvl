@@ -103,7 +103,7 @@ export function formatDate(date: string) {
 }
 
 const postLabels: Record<string, string> = {
-  blog: 'Artigo',
+  blog: 'Conteúdo',
   news: 'Novidade',
   forum: 'Comunidade',
   help: 'Guia',

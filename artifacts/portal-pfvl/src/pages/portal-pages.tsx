@@ -14,12 +14,13 @@ import {
 import {
   getGetDashboardQueryKey,
   getGetPostQueryKey,
+  getGetSiteMediaQueryKey,
   getListCommentsQueryKey,
   getListIndicatorsQueryKey,
   getListPostsQueryKey,
   getListSuggestionsQueryKey,
-  useGetDashboard,
   useGetPost,
+  useGetSiteMedia,
   useCreateSuggestion,
   useListComments,
   useListIndicators,
@@ -42,7 +43,7 @@ import {
   HomeDashboardPreview,
   HomeFeatureColumn,
   HomeNewsColumn,
-  HomeTestimonialColumn,
+  ProductAppLink,
 } from '@/components/homepage-composition';
 import {
   EmptyState,
@@ -52,7 +53,6 @@ import {
   PageHeading,
   PostCard,
   QueryError,
-  ReadOnlyBanner,
   SectionHeading,
   Surface,
 } from '@/components/portal-ui';
@@ -116,8 +116,11 @@ function IndicatorCard({ indicator }: { indicator: Indicator }) {
 }
 
 export function HomePage() {
-  const dashboard = useGetDashboard({ query: { queryKey: getGetDashboardQueryKey() } });
+  const siteMedia = useGetSiteMedia({
+    query: { queryKey: getGetSiteMediaQueryKey() },
+  });
   const news = useListPosts({ kind: 'news' }, { query: { queryKey: getListPostsQueryKey({ kind: 'news' }) } });
+  const heroImageUrl = siteMedia.data?.homeImageUrl;
   return (
     <div className="page-enter home-page">
       <section className="home-hero-band">
@@ -125,22 +128,18 @@ export function HomePage() {
           <div className="home-hero-copy">
             <p className="home-welcome"><span /> Seja bem-vindo ao PFVL</p>
             <h1>Planeje hoje.<br /><span>Realize</span> amanhã.</h1>
-            <p className="home-hero-description">O PFVL é o sistema de gestão financeira pessoal completo para você planejar, acompanhar e alcançar seus objetivos.</p>
+            <p className="home-hero-description">Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir. Com o PFVL, suas contas e objetivos fazem parte do mesmo plano.</p>
             <div className="home-hero-actions">
-              <Link className="home-cta-primary" href="/community">Começar agora <ArrowRight size={15} /></Link>
-              <a className="home-cta-outline" href="#demo-pfvl">Ver demonstração <Play className="demo-play-icon" size={12} fill="currentColor" /></a>
+              <ProductAppLink className="home-cta-primary" />
+              <Link className="home-cta-outline" href="/apresentacao">Assistir à apresentação <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
             </div>
-            <p className="home-content-count">
-              {dashboard.isLoading ? 'Carregando conteúdo público…' : dashboard.isError ? 'Educação financeira para a vida real' : `${dashboard.data?.publishedPosts ?? 0} conteúdos publicados para você explorar`}
-            </p>
           </div>
-          <HomeDashboardPreview />
+          <HomeDashboardPreview previewImageUrl={heroImageUrl} />
         </div>
       </section>
 
-      <section className="home-content-grid" aria-label="Recursos, depoimentos e novidades">
+      <section className="home-content-grid" aria-label="Recursos e novidades do PFVL">
         <HomeFeatureColumn />
-        <HomeTestimonialColumn />
         <HomeNewsColumn
           posts={news.data ?? []}
           isLoading={news.isLoading}
@@ -250,7 +249,7 @@ export function CommunityPage() {
             <span className="guideline-index">01</span>
             <div><strong>Prática antes de perfeita.</strong><p>Contexto real e respeito ajudam mais do que respostas prontas.</p></div>
           </div>
-          <p className="community-editorial-note">Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite o <Link href="/blog">Blog PFVL</Link>.</p>
+          <p className="community-editorial-note">Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite <Link href="/blog">Conteúdos PFVL</Link>.</p>
         </aside>
       </div>
     </div>
@@ -377,7 +376,7 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
 }
 
 export function BlogPage() {
-  return <PostsListingPage kind="blog" eyebrow="Aprender para escolher" title="Ideias que cabem na vida real." description="Conteúdos para entender melhor o dinheiro e transformar informação em decisões possíveis." />;
+  return <PostsListingPage kind="blog" eyebrow="Conteúdos PFVL" title="Guias e artigos." description="Publicações da equipe sobre planejamento, organização, objetivos, indicadores e formas de usar o PFVL no dia a dia." />;
 }
 
 export function NewsPage() {
@@ -388,39 +387,16 @@ export function HelpPage() {
   const query = useListPosts({ kind: 'help' }, { query: { queryKey: getListPostsQueryKey({ kind: 'help' }) } });
   return (
     <div className="page-enter">
-      <PageHeading eyebrow="Central de ajuda" title="Comece pelo que importa." description="Orientações diretas para navegar pelo portal e construir uma relação mais tranquila com o dinheiro." />
-      <Surface className="mb-8 grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
-        <div>
-          <p className="eyebrow-pill">Um primeiro passo</p>
-          <h2 className="mt-3 font-display text-2xl font-semibold">Organizar não precisa ser complicado.</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">Comece registrando o que entra e o que sai. Depois, escolha uma prioridade pequena e possível para esta semana. Consistência vale mais do que perfeição.</p>
-        </div>
-        <Link className="inline-flex items-center gap-2 text-sm font-bold text-primary" href="/blog">Ver conteúdos <ArrowRight size={15} /></Link>
-      </Surface>
-      <ReadOnlyBanner />
+      <PageHeading eyebrow="Central de ajuda" title="Aprenda a usar o PFVL." description="Tutoriais práticos, organizados por assunto, para configurar contas, planejamentos, objetivos e outros recursos do sistema." />
       <section className="mt-8">
-        <SectionHeading title="Guias e respostas" />
+        <SectionHeading title="Tutoriais e orientações" />
         {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
           <div className="grid gap-3 md:grid-cols-2">{query.data.map((post) => <PostCard key={post.id} post={post} />)}</div>
         ) : (
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <HelpTip number="01" title="Comece pelo orçamento" text="Entenda sua renda e despesas antes de definir metas." />
-            <HelpTip number="02" title="Crie uma reserva possível" text="Pequenos valores frequentes também constroem segurança." />
-            <HelpTip number="03" title="Busque informação" text="Compare alternativas com calma e considere seu momento." />
-          </div>
+          <EmptyState title="Tutoriais do PFVL em preparação" description="Os guias de uso serão publicados por assunto, com instruções, imagens e vídeos quando os recursos do sistema estiverem disponíveis." />
         )}
       </section>
     </div>
-  );
-}
-
-function HelpTip({ number, title, text }: { number: string; title: string; text: string }) {
-  return (
-    <Surface className="p-5">
-      <span className="font-display text-3xl font-semibold text-primary/65">{number}</span>
-      <h3 className="mt-3 font-display text-lg font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-    </Surface>
   );
 }
 

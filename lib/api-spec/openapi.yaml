@@ -92,6 +92,26 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /taxonomy:
+    get:
+      operationId: listTaxonomy
+      tags: [content]
+      summary: Lista categorias e marcadores disponíveis para uma área
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/PostKind"
+      responses:
+        "200":
+          description: Categorias e marcadores disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaxonomyItem"
   /posts/{postId}:
     get:
       operationId: getPost
@@ -291,6 +311,209 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /site-media:
+    get:
+      operationId: getSiteMedia
+      tags: [content]
+      summary: Obtém as mídias públicas configuradas para o site
+      responses:
+        "200":
+          description: Imagem principal e vídeo de apresentação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteMedia"
+  /site-media/files/{slot}:
+    get:
+      operationId: getSiteMediaFile
+      tags: [content]
+      summary: Exibe um arquivo público configurado no R2
+      parameters:
+        - name: slot
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SiteMediaSlot"
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Arquivo de mídia
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+            video/mp4:
+              schema: { type: string, format: binary }
+            video/webm:
+              schema: { type: string, format: binary }
+        "206":
+          description: Parte do vídeo solicitada pelo navegador
+          content:
+            video/mp4:
+              schema: { type: string, format: binary }
+            video/webm:
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /admin/site-media:
+    get:
+      operationId: listAdminSiteMedia
+      tags: [admin]
+      summary: Lista os nomes e extensões das mídias da página inicial
+      responses:
+        "200":
+          description: Configurações da imagem e do vídeo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SiteMediaAsset"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/site-media/{slot}:
+    patch:
+      operationId: updateAdminSiteMedia
+      tags: [admin]
+      summary: Atualiza o nome ou a extensão de uma mídia existente no R2
+      parameters:
+        - name: slot
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/SiteMediaSlot"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteMediaAssetUpdate"
+      responses:
+        "200":
+          description: Configuração atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteMediaAsset"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/taxonomy:
+    get:
+      operationId: listAdminTaxonomy
+      tags: [admin]
+      summary: Lista categorias e marcadores administráveis
+      responses:
+        "200":
+          description: Itens do catálogo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaxonomyItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminTaxonomy
+      tags: [admin]
+      summary: Cria uma categoria ou marcador
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaxonomyInput"
+      responses:
+        "201":
+          description: Item criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaxonomyItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Já existe um item com esse nome nessa área
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/taxonomy/{taxonomyId}:
+    patch:
+      operationId: updateAdminTaxonomy
+      tags: [admin]
+      summary: Renomeia uma categoria ou marcador e atualiza as publicações que o utilizam
+      parameters:
+        - $ref: "#/components/parameters/TaxonomyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaxonomyUpdate"
+      responses:
+        "200":
+          description: Item atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaxonomyItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Já existe um item com esse nome nessa área
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteAdminTaxonomy
+      tags: [admin]
+      summary: Exclui uma categoria ou marcador não utilizado
+      parameters:
+        - $ref: "#/components/parameters/TaxonomyId"
+      responses:
+        "204":
+          description: Item excluído
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Item ainda está em uso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/posts:
     get:
       operationId: listAdminPosts
@@ -543,6 +766,12 @@ components:
       required: true
       schema:
         type: integer
+    TaxonomyId:
+      name: taxonomyId
+      in: path
+      required: true
+      schema:
+        type: integer
     PollId:
       name: pollId
       in: path
@@ -600,6 +829,30 @@ components:
     PostKind:
       type: string
       enum: [blog, news, forum, help]
+    TaxonomyType:
+      type: string
+      enum: [category, tag]
+    TaxonomyItem:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { $ref: "#/components/schemas/PostKind" }
+        type: { $ref: "#/components/schemas/TaxonomyType" }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, kind, type, name, createdAt]
+    TaxonomyInput:
+      type: object
+      properties:
+        kind: { $ref: "#/components/schemas/PostKind" }
+        type: { $ref: "#/components/schemas/TaxonomyType" }
+        name: { type: string, minLength: 2, maxLength: 100 }
+      required: [kind, type, name]
+    TaxonomyUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+      required: [name]
     PostStatus:
       type: string
       enum: [draft, published, hidden]
@@ -754,6 +1007,33 @@ components:
         uploadUrl: { type: string, format: uri }
         publicUrl: { type: string, format: uri }
       required: [uploadUrl, publicUrl]
+    SiteMediaSlot:
+      type: string
+      enum: [home_image, presentation_video]
+    SiteMediaAsset:
+      type: object
+      properties:
+        slot: { $ref: "#/components/schemas/SiteMediaSlot" }
+        name: { type: ["string", "null"], maxLength: 120 }
+        extension: { type: string }
+      required: [slot, name, extension]
+    SiteMediaAssetUpdate:
+      type: object
+      properties:
+        name:
+          type: ["string", "null"]
+          maxLength: 120
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$"
+        extension:
+          type: string
+          enum: [jpg, jpeg, png, webp, mp4, webm]
+      required: [name, extension]
+    SiteMedia:
+      type: object
+      properties:
+        homeImageUrl: { type: ["string", "null"] }
+        presentationVideoUrl: { type: ["string", "null"] }
+      required: [homeImageUrl, presentationVideoUrl]
     SuggestionStatus:
       type: string
       enum: [under_review, planned, in_progress, completed]

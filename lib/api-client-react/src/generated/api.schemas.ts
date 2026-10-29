@@ -23,6 +23,40 @@ export const PostKind = {
   help: 'help',
 } as const;
 
+export type TaxonomyType = typeof TaxonomyType[keyof typeof TaxonomyType];
+
+
+export const TaxonomyType = {
+  category: 'category',
+  tag: 'tag',
+} as const;
+
+export interface TaxonomyItem {
+  id: number;
+  kind: PostKind;
+  type: TaxonomyType;
+  name: string;
+  createdAt: string;
+}
+
+export interface TaxonomyInput {
+  kind: PostKind;
+  type: TaxonomyType;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+}
+
+export interface TaxonomyUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+}
+
 export type PostStatus = typeof PostStatus[keyof typeof PostStatus];
 
 
@@ -269,6 +303,53 @@ export interface ImageUpload {
   publicUrl: string;
 }
 
+export type SiteMediaSlot = typeof SiteMediaSlot[keyof typeof SiteMediaSlot];
+
+
+export const SiteMediaSlot = {
+  home_image: 'home_image',
+  presentation_video: 'presentation_video',
+} as const;
+
+export interface SiteMediaAsset {
+  slot: SiteMediaSlot;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  name: string | null;
+  extension: string;
+}
+
+export type SiteMediaAssetUpdateExtension = typeof SiteMediaAssetUpdateExtension[keyof typeof SiteMediaAssetUpdateExtension];
+
+
+export const SiteMediaAssetUpdateExtension = {
+  jpg: 'jpg',
+  jpeg: 'jpeg',
+  png: 'png',
+  webp: 'webp',
+  mp4: 'mp4',
+  webm: 'webm',
+} as const;
+
+export interface SiteMediaAssetUpdate {
+  /**
+     * @maxLength 120
+     * @nullable
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$
+     */
+  name: string | null;
+  extension: SiteMediaAssetUpdateExtension;
+}
+
+export interface SiteMedia {
+  /** @nullable */
+  homeImageUrl: string | null;
+  /** @nullable */
+  presentationVideoUrl: string | null;
+}
+
 export interface Suggestion {
   id: number;
   title: string;
@@ -354,5 +435,9 @@ export type UnavailableResponse = Error;
 export type ListPostsParams = {
 kind?: PostKind;
 search?: string;
+};
+
+export type ListTaxonomyParams = {
+kind: PostKind;
 };
 
