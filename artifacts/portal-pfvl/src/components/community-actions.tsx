@@ -17,6 +17,25 @@ import { AuthActionGate } from "@/components/auth-ui";
 const fieldClass = "mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10";
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir a solicitação.";
 
+function commentReturnTo(parentCommentId: number | null): string {
+  const url = new URL(window.location.href);
+  if (parentCommentId === null) {
+    url.searchParams.delete("pfvlReply");
+    url.hash = "comments";
+  } else {
+    url.searchParams.set("pfvlReply", String(parentCommentId));
+    url.hash = `comment-${parentCommentId}`;
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function clearReplyIntent(commentId: number) {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("pfvlReply") !== String(commentId)) return;
+  url.searchParams.delete("pfvlReply");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 export function ImageUploadField({ imageUrl, onImageUrlChange, required = false }: { imageUrl: string; onImageUrlChange: (url: string) => void; required?: boolean }) {
   const upload = useCreateImageUpload();
   const [message, setMessage] = useState("");
@@ -109,7 +128,7 @@ export function CommunityCreatePanel() {
 }
 
 export function CommentComposer({ postId, parentCommentId = null, onCancel }: { postId: number; parentCommentId?: number | null; onCancel?: () => void }) {
-  return <AuthActionGate><SignedInCommentComposer postId={postId} parentCommentId={parentCommentId} onCancel={onCancel} /></AuthActionGate>;
+  return <AuthActionGate returnTo={commentReturnTo(parentCommentId)}><SignedInCommentComposer postId={postId} parentCommentId={parentCommentId} onCancel={onCancel} /></AuthActionGate>;
 }
 
 function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId: number; parentCommentId: number | null; onCancel?: () => void }) {
@@ -122,6 +141,7 @@ function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId
     try {
       await mutation.mutateAsync({ postId, data: { body: body.trim(), parentCommentId } });
       setBody(""); setMessage("Sua resposta foi publicada.");
+      if (parentCommentId !== null) clearReplyIntent(parentCommentId);
       await Promise.all([client.invalidateQueries({ queryKey: getListCommentsQueryKey(postId) }), client.invalidateQueries({ queryKey: getGetPostQueryKey(postId) })]);
     } catch (error) { setMessage(errorText(error)); }
   }
@@ -133,6 +153,6 @@ function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId
 }
 
 export function ReplyControl({ postId, commentId }: { postId: number; commentId: number }) {
-  const [open, setOpen] = useState(false);
-  return <div className="mt-3">{open ? <CommentComposer postId={postId} parentCommentId={commentId} onCancel={() => setOpen(false)} /> : <button className="text-xs font-semibold text-[#233a59] hover:underline" onClick={() => setOpen(true)} type="button">Responder</button>}</div>;
+  const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).get("pfvlReply") === String(commentId));
+  return <div className="mt-3">{open ? <CommentComposer postId={postId} parentCommentId={commentId} onCancel={() => { clearReplyIntent(commentId); setOpen(false); }} /> : <button className="text-xs font-semibold text-[#233a59] hover:underline" onClick={() => setOpen(true)} type="button">Responder</button>}</div>;
 }

@@ -7,6 +7,25 @@ export const AuthAvailabilityContext = createContext(false);
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 export const clerkAuthReady = Boolean(publishableKey?.startsWith("pk_"));
 
+function safeInternalRedirect(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const target = new URL(value, window.location.origin);
+    if (target.origin !== window.location.origin) return undefined;
+    if (/^\/sign-(in|up)(\/|$)/.test(target.pathname)) return undefined;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return undefined;
+  }
+}
+
+function authHref(path: "/sign-in" | "/sign-up", returnTo?: string): string {
+  const target = safeInternalRedirect(returnTo ?? `${window.location.pathname}${window.location.search}${window.location.hash}`);
+  if (!target) return path;
+  const query = new URLSearchParams({ redirect_url: target });
+  return `${path}?${query.toString()}`;
+}
+
 export function AuthContextProvider({ children }: { children: ReactNode }) {
   return clerkAuthReady && publishableKey ? (
     <ClerkProvider publishableKey={publishableKey}>
@@ -28,7 +47,7 @@ function ClerkHeader() {
   const profile = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), enabled: isSignedIn === true, retry: false } });
   if (!isLoaded) return <span className="public-access-label">Carregando conta…</span>;
   if (!isSignedIn) {
-    return <div className="flex items-center gap-2"><Link className="auth-header-link" href="/sign-in">Entrar</Link><Link className="auth-header-primary" href="/sign-up">Criar conta</Link></div>;
+    return <div className="flex items-center gap-2"><Link className="auth-header-link" href={authHref("/sign-in")}>Entrar</Link><Link className="auth-header-primary" href={authHref("/sign-up")}>Criar conta</Link></div>;
   }
   return (
     <div className="flex items-center gap-2">
@@ -45,8 +64,11 @@ export function AuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
 }
 
 function ClerkAuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
+  const redirectUrl = safeInternalRedirect(new URLSearchParams(window.location.search).get("redirect_url"));
   const common = {
     routing: "path" as const,
+    forceRedirectUrl: redirectUrl,
+    fallbackRedirectUrl: redirectUrl ?? "/",
     appearance: { variables: { colorPrimary: "#233a59", colorText: "#012140", colorBackground: "#ffffff", borderRadius: "14px" } },
   };
   return (
@@ -57,26 +79,26 @@ function ClerkAuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
         <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">Participe das conversas e responda aos artigos.</p>
         <div className="flex justify-center">
           {mode === "sign-in"
-            ? <SignIn {...common} path="/sign-in" signUpUrl="/sign-up" />
-            : <SignUp {...common} path="/sign-up" signInUrl="/sign-in" />}
+            ? <SignIn {...common} path="/sign-in" signUpUrl={authHref("/sign-up", redirectUrl)} />
+            : <SignUp {...common} path="/sign-up" signInUrl={authHref("/sign-in", redirectUrl)} />}
         </div>
       </div>
     </div>
   );
 }
 
-export function AuthActionGate({ children }: { children: ReactNode }) {
-  return useContext(AuthAvailabilityContext) ? <SignedInGate>{children}</SignedInGate> : <AuthSetupNotice />;
+export function AuthActionGate({ children, returnTo }: { children: ReactNode; returnTo?: string }) {
+  return useContext(AuthAvailabilityContext) ? <SignedInGate returnTo={returnTo}>{children}</SignedInGate> : <AuthSetupNotice />;
 }
 
-function SignedInGate({ children }: { children: ReactNode }) {
+function SignedInGate({ children, returnTo }: { children: ReactNode; returnTo?: string }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return <p className="rounded-xl border bg-white p-4 text-sm text-muted-foreground">Verificando sua conta…</p>;
   if (!isSignedIn) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#233a59]/15 bg-white p-5">
         <div><p className="font-semibold text-[#012140]">Entre para participar.</p><p className="mt-1 text-sm text-muted-foreground">Sua conta permite publicar e responder.</p></div>
-        <div className="flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href="/sign-in">Entrar</Link><Link className="auth-header-primary" href="/sign-up">Criar conta</Link></div>
+        <div className="flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href={authHref("/sign-in", returnTo)}>Entrar</Link><Link className="auth-header-primary" href={authHref("/sign-up", returnTo)}>Criar conta</Link></div>
       </div>
     );
   }

@@ -261,6 +261,13 @@ export function PostDetailPage() {
   const post = useGetPost(postId, { query: { enabled: validId, queryKey: getGetPostQueryKey(postId) } });
   const comments = useListComments(postId, { query: { enabled: validId, queryKey: getListCommentsQueryKey(postId) } });
   useEffect(() => {
+    const targetId = window.location.hash.slice(1);
+    if (!comments.data || (targetId !== "comments" && !/^comment-\d+$/.test(targetId))) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [comments.data]);
+  useEffect(() => {
     if (!post.data) return;
     const title = `${post.data.title} | PFVL`;
     const description = (post.data.excerpt || post.data.body).replace(/\s+/g, ' ').slice(0, 157);
@@ -312,30 +319,32 @@ export function PostDetailPage() {
               {post.data.tags?.map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}
             </div>
           </article>
-          <section className="mt-8">
+          <section className="mt-8 scroll-mt-6" id="comments">
             <SectionHeading title={isForum ? `Respostas (${comments.data?.length ?? post.data.commentCount})` : `Comentários (${comments.data?.length ?? post.data.commentCount})`} />
             {isForum && <p className="mb-4 text-sm leading-6 text-muted-foreground">Compartilhe uma resposta útil, uma pergunta complementar ou o que funcionou na sua realidade.</p>}
             <CommentComposer postId={postId} />
             {comments.isLoading ? <div className="mt-4"><LoadingState rows={2} /></div> : comments.isError ? <div className="mt-4"><QueryError retry={() => void comments.refetch()} /></div> : roots.length ? (
               <div className="mt-4 space-y-3">
                 {roots.map((comment) => (
-                  <Surface className="p-5" key={comment.id}>
-                    <div className="flex items-center justify-between gap-3">
-                      <strong className="text-sm">{comment.authorName}</strong>
-                      <span className="text-[11px] text-muted-foreground">{formatDate(comment.createdAt)}</span>
-                    </div>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{comment.body}</p>
-                    {children.filter((reply) => reply.parentCommentId === comment.id).map((reply) => (
-                      <div className="ml-3 mt-4 border-l-2 border-[#233a59] pl-4 sm:ml-7" key={reply.id}>
-                        <div className="flex items-center justify-between gap-3">
-                          <strong className="text-xs">{reply.authorName}</strong>
-                          <span className="text-[10px] text-muted-foreground">{formatDate(reply.createdAt)}</span>
-                        </div>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{reply.body}</p>
+                  <div className="scroll-mt-6" id={`comment-${comment.id}`} key={comment.id}>
+                    <Surface className="p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <strong className="text-sm">{comment.authorName}</strong>
+                        <span className="text-[11px] text-muted-foreground">{formatDate(comment.createdAt)}</span>
                       </div>
-                    ))}
-                    <ReplyControl postId={postId} commentId={comment.id} />
-                  </Surface>
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{comment.body}</p>
+                      {children.filter((reply) => reply.parentCommentId === comment.id).map((reply) => (
+                        <div className="ml-3 mt-4 border-l-2 border-[#233a59] pl-4 sm:ml-7" key={reply.id}>
+                          <div className="flex items-center justify-between gap-3">
+                            <strong className="text-xs">{reply.authorName}</strong>
+                            <span className="text-[10px] text-muted-foreground">{formatDate(reply.createdAt)}</span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{reply.body}</p>
+                        </div>
+                      ))}
+                      <ReplyControl postId={postId} commentId={comment.id} />
+                    </Surface>
+                  </div>
                 ))}
               </div>
             ) : <div className="mt-4"><EmptyState title="Sem comentários por enquanto" description="Quando houver respostas publicadas, elas poderão ser consultadas nesta seção." /></div>}
