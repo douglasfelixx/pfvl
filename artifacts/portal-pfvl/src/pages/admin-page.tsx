@@ -17,6 +17,7 @@ import {
   Tags,
   Trash2,
   Users,
+  UserRound,
   Vote,
   type LucideIcon,
 } from "lucide-react";
@@ -77,8 +78,9 @@ import { CreatePostForm, ImageUploadField } from "@/components/community-actions
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate, LoadingState, PageHeading, Surface } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
+import { ProfilePage } from "@/pages/profile-page";
 
-type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials";
+type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials" | "profile";
 const inputClass =
   "rounded-lg border border-[#233a59]/15 bg-white px-2.5 py-2 text-sm text-[#012140] outline-none focus:border-[#233a59]";
 
@@ -154,6 +156,10 @@ const adminNavigation: {
     title: "Site",
     items: [{ key: "media", label: "Imagem / Vídeo", icon: Image }],
   },
+  {
+    title: "Conta",
+    items: [{ key: "profile", label: "Meu perfil", icon: UserRound }],
+  },
 ];
 
 function statusLabel(status: PostStatus) {
@@ -166,7 +172,7 @@ export function AdminPage() {
       <PageHeading
         eyebrow="Administração PFVL"
         title="Painel de gestão."
-        description="Gerencie publicações, comentários, contas, sugestões e enquetes."
+        description="Gerencie o portal e acesse seu perfil de usuário."
       />
       <AuthActionGate>
         <AdminConsole />
@@ -436,6 +442,12 @@ function AdminConsole() {
           )}
 
           {tab === "media" && <SiteMediaManager />}
+
+          {tab === "profile" && (
+            <div className="p-4 sm:p-6">
+              <ProfilePage returnTo="/admin" />
+            </div>
+          )}
 
           {tab === "comments" && <AdminCommentModeration posts={posts.data ?? []} />}
 

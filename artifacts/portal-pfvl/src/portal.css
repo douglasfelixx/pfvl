@@ -2171,8 +2171,9 @@
 }
 
 .portal-footer {
-  border-color: rgba(35, 58, 89, .25);
-  color: var(--pfvl-night-blue);
+  border-color: rgba(255, 255, 255, .18);
+  background-color: #012140;
+  color: rgba(255, 255, 255, .78);
 }
 
 .language-switch {
@@ -2228,10 +2229,17 @@
   color: #fff;
 }
 
-.portal-footer a:hover,
 .home-column-heading a,
 .home-column-heading a:hover {
   color: var(--pfvl-night-blue);
+}
+
+.portal-footer a {
+  color: rgba(255, 255, 255, .88);
+}
+
+.portal-footer a:hover {
+  color: #fff;
 }
 
 .hero-panel,

@@ -75,9 +75,11 @@ function ClerkHeader() {
   return (
     <div className="header-auth-actions flex items-center gap-2">
       {profile.data?.role === "admin" && <Link className="auth-header-link" href="/admin">{translateText("Painel")}</Link>}
-      <Link aria-label={translateText("Meu perfil")} className="auth-header-link !px-2.5" href="/profile" data-testid="link-profile">
-        <UserRound aria-hidden="true" size={16} /><span className="sr-only">{translateText("Perfil")}</span>
-      </Link>
+      {profile.data?.role !== "admin" && (
+        <Link aria-label={translateText("Meu perfil")} className="auth-header-link !px-2.5" href="/profile" data-testid="link-profile">
+          <UserRound aria-hidden="true" size={16} /><span className="sr-only">{translateText("Perfil")}</span>
+        </Link>
+      )}
       <span className="hidden max-w-32 truncate text-xs font-semibold text-white/90 sm:block">{user?.firstName || profile.data?.displayName || translateText("Minha conta")}</span>
       <Link
         aria-label={`${translateText("Notificações")}${unreadCount ? `, ${unreadCount} ${translateText("não lidas")}` : ""}`}

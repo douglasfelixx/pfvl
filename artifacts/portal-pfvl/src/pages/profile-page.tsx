@@ -210,6 +210,6 @@ function ProfileContent() {
   );
 }
 
-export function ProfilePage() {
-  return <AuthActionGate returnTo="/profile"><ProfileContent /></AuthActionGate>;
+export function ProfilePage({ returnTo = "/profile" }: { returnTo?: string }) {
+  return <AuthActionGate returnTo={returnTo}><ProfileContent /></AuthActionGate>;
 }

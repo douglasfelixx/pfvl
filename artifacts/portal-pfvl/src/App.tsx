@@ -283,7 +283,7 @@ function RoutedContent() {
         <Route path="/indicators" component={IndicatorsPage} />
         <Route path="/suggestions" component={SuggestionsPage} />
         <Route path="/notifications" component={NotificationsPage} />
-        <Route path="/profile" component={ProfilePage} />
+        <Route path="/profile" component={() => <ProfilePage />} />
         <Route path="/help/:postId" component={PostDetailPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/sign-in/*?" component={() => <AuthRoute mode="sign-in" />} />
