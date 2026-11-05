@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/react';
 import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   Check,
   CircleDollarSign,
+  LifeBuoy,
   MessageCircle,
   Play,
   Search,
@@ -13,25 +15,36 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import {
-  getGetDashboardQueryKey,
+  getGetCurrentUserQueryKey,
   getGetPostQueryKey,
   getGetSiteMediaQueryKey,
   getListCommentsQueryKey,
   getListIndicatorsQueryKey,
+  getListMySuggestionsQueryKey,
+  getListMySupportRequestsQueryKey,
   getListPostsQueryKey,
-  getListSuggestionsQueryKey,
+  getListPublicRoadmapSuggestionsQueryKey,
+  getListSuggestionCategoriesQueryKey,
   getListTestimonialsQueryKey,
+  getListSupportSubjectsQueryKey,
+  useCreateMySuggestion,
+  useCreateSupportRequest,
+  useGetCurrentUser,
   useGetPost,
   useGetSiteMedia,
-  useCreateSuggestion,
   useListComments,
   useListIndicators,
   useListPosts,
-  useListSuggestions,
+  useListMySuggestions,
+  useListPublicRoadmapSuggestions,
+  useListSuggestionCategories,
   useListTestimonials,
+  useListSupportSubjects,
   type Indicator,
   type PostKind,
-  type SuggestionStatus,
+  type MySuggestion,
+  type PublicRoadmapSuggestion,
+  type SupportRequestStatus,
 } from '@workspace/api-client-react';
 import { Link, useParams } from 'wouter';
 import { AuthActionGate } from '@/components/auth-ui';
@@ -60,20 +73,6 @@ import {
   SectionHeading,
   Surface,
 } from '@/components/portal-ui';
-
-const suggestionStatus: SuggestionStatus[] = ['under_review', 'planned', 'in_progress', 'completed'];
-const suggestionStatusNames: Record<SuggestionStatus, string> = {
-  under_review: 'Em análise',
-  planned: 'Planejado',
-  in_progress: 'Em andamento',
-  completed: 'Concluído',
-};
-const suggestionStatusNotes: Record<SuggestionStatus, string> = {
-  under_review: 'Ideias recebidas e em avaliação pela equipe.',
-  planned: 'Próximas melhorias que entraram no planejamento.',
-  in_progress: 'Trabalho em andamento para chegar até você.',
-  completed: 'Melhorias que já fazem parte do portal.',
-};
 
 function MiniSparkline({ values }: { values: number[] }) {
   const series = values.length ? values : [1, 2, 1.7, 2.4, 2.1, 3.1, 3];
@@ -414,6 +413,27 @@ export function HelpPage() {
   return (
     <div className="page-enter">
       <PageHeading eyebrow="Central de ajuda" title="Aprenda a usar o PFVL." description="Tutoriais práticos, organizados por assunto, para configurar contas, planejamentos, objetivos e outros recursos do sistema." />
+      <section className="my-6 rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e8e8e8] text-[#233a59]">
+              <LifeBuoy aria-hidden="true" size={21} />
+            </span>
+            <div>
+              <h2 className="font-display text-lg font-semibold text-[#012140]">{translateText("Precisa de ajuda da equipe?")}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{translateText("Registre uma solicitação para acompanhar o atendimento pelo seu protocolo.")}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link className="auth-header-link" href="/help/requests" data-testid="link-help-track-requests">
+              {translateText("Acompanhar solicitações")}
+            </Link>
+            <Link className="auth-header-primary" href="/help/request" data-testid="link-help-request">
+              {translateText("Registrar uma solicitação")}
+            </Link>
+          </div>
+        </div>
+      </section>
       <section className="mt-8">
         <SectionHeading title="Tutoriais e orientações" />
         {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
@@ -425,6 +445,187 @@ export function HelpPage() {
     </div>
   );
 }
+
+export function HelpRequestPage() {
+  return (
+    <div className="page-enter">
+      <PageHeading
+        eyebrow="Central de Ajuda"
+        title="Fale com a equipe do PFVL."
+        description="Tem uma dúvida, encontrou alguma dificuldade ou quer conversar sobre outro assunto? Envie sua mensagem para a equipe da Orbe Sistemas Financeiros."
+      />
+      <p className="mb-6 text-sm text-muted-foreground">
+        {translateText("Sua mensagem ficará registrada para acompanhamento pela nossa equipe.")}
+      </p>
+      <AuthActionGate returnTo="/help/request">
+        <HelpRequestForm />
+      </AuthActionGate>
+    </div>
+  );
+}
+
+function HelpRequestForm() {
+  const queryClient = useQueryClient();
+  const { user: clerkUser } = useUser();
+  const profile = useGetCurrentUser({
+    query: { queryKey: getGetCurrentUserQueryKey(), retry: false },
+  });
+  const subjects = useListSupportSubjects({
+    query: { queryKey: getListSupportSubjectsQueryKey() },
+  });
+  const createRequest = useCreateSupportRequest();
+  const [subjectId, setSubjectId] = useState("");
+  const [message, setMessage] = useState("");
+  const [protocol, setProtocol] = useState("");
+  const [error, setError] = useState("");
+  const maxMessageLength = 5000;
+
+  async function submitRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    try {
+      const result = await createRequest.mutateAsync({
+        data: { subjectId: Number(subjectId), message: message.trim() },
+      });
+      setProtocol(result.protocol);
+      setMessage("");
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListMySupportRequestsQueryKey() }),
+        ]);
+    } catch (requestError) {
+      const responseData =
+        typeof requestError === "object" && requestError !== null && "data" in requestError
+          ? requestError.data
+          : null;
+      const apiMessage =
+        typeof responseData === "object" && responseData !== null && "error" in responseData
+          ? responseData.error
+          : null;
+      setError(typeof apiMessage === "string" ? apiMessage : translateText("Não foi possível registrar sua solicitação. Tente novamente."));
+    }
+  }
+
+  if (protocol) {
+    return (
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8" role="status">
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-emerald-800">{translateText("Atendimento PFVL")}</p>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-[#012140]">{translateText("Mensagem registrada com sucesso.")}</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#233a59]">
+          {translateText("Nossa equipe poderá acompanhar sua solicitação. Guarde o protocolo de atendimento:")}
+        </p>
+        <p className="mt-4 inline-flex rounded-xl bg-white px-4 py-3 font-mono text-lg font-bold tracking-[.08em] text-[#012140]" data-testid="text-support-protocol">
+          {protocol}
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link className="auth-header-primary" href="/help/requests" data-testid="link-view-support-requests">
+            {translateText("Ver andamento")}
+          </Link>
+          <button
+            className="auth-header-link !border-[#233a59]/20 !text-[#233a59]"
+            onClick={() => {
+              setProtocol("");
+              setSubjectId("");
+              setError("");
+            }}
+            type="button"
+          >
+            {translateText("Registrar outra solicitação")}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (profile.isLoading) return <LoadingState rows={2} />;
+  if (profile.isError || !profile.data) {
+    return <QueryError retry={() => void profile.refetch()} />;
+  }
+
+  const username = clerkUser?.username || profile.data?.email.split("@")[0] || "";
+  const name = profile.data?.displayName ?? "";
+  const email = profile.data?.email ?? "";
+  const canSubmit =
+    Boolean(subjectId) &&
+    Boolean(profile.data) &&
+    message.trim().length >= 20 &&
+    message.length <= maxMessageLength &&
+    !createRequest.isPending;
+
+  return (
+    <form className="space-y-5 rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-7" onSubmit={(event) => void submitRequest(event)}>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Nome", value: name },
+          { label: "Usuário", value: username },
+          { label: "E-mail", value: email },
+        ].map((field) => (
+          <label className="block text-sm font-semibold text-[#233a59]" key={field.label}>
+            {translateText(field.label)}
+            <input
+              aria-readonly="true"
+              className={`${inputFieldClass} mt-1.5 w-full bg-[#f7f8fa] text-muted-foreground`}
+              readOnly
+              value={field.value}
+            />
+          </label>
+        ))}
+      </div>
+
+      <label className="block text-sm font-semibold text-[#233a59]">
+        {translateText("Assunto")}
+        <select
+          className={`${inputFieldClass} mt-1.5 w-full`}
+          disabled={subjects.isLoading || subjects.isError || !subjects.data?.length}
+          onChange={(event) => setSubjectId(event.target.value)}
+          required
+          value={subjectId}
+        >
+          <option value="">{translateText("Selecione um assunto")}</option>
+          {(subjects.data ?? []).map((subject) => (
+            <option key={subject.id} value={subject.id}>{subject.name}</option>
+          ))}
+        </select>
+      </label>
+      {subjects.isLoading && <p className="text-sm text-muted-foreground">{translateText("Carregando assuntos…")}</p>}
+      {subjects.isError && <p className="text-sm text-red-700">{translateText("Não foi possível carregar os assuntos. Atualize a página e tente novamente.")}</p>}
+      {!subjects.isLoading && !subjects.isError && !subjects.data?.length && (
+        <p className="rounded-xl bg-[#f7f8fa] p-3 text-sm text-[#233a59]">
+          {translateText("A equipe ainda não configurou os assuntos de atendimento.")}
+        </p>
+      )}
+
+      <label className="block text-sm font-semibold text-[#233a59]">
+        {translateText("Mensagem")}
+        <textarea
+          className={`${inputFieldClass} mt-1.5 min-h-48 w-full resize-y leading-6`}
+          maxLength={maxMessageLength}
+          minLength={20}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder={translateText("Conte como podemos ajudar. Se encontrou um problema, explique o que estava tentando fazer e o que aconteceu.")}
+          required
+          value={message}
+        />
+      </label>
+      <div className="flex flex-wrap items-start justify-between gap-2 text-xs text-muted-foreground">
+        <p>{translateText("Não informe senhas, códigos de acesso ou dados financeiros sensíveis.")}</p>
+        <p aria-live="polite" className="tabular-nums">
+          {translateText("Caracteres restantes")}: {Math.max(0, maxMessageLength - message.length)}
+        </p>
+      </div>
+      {message.trim().length > 0 && message.trim().length < 20 && (
+        <p className="text-xs text-amber-700">{translateText("Escreva pelo menos 20 caracteres para explicar sua solicitação.")}</p>
+      )}
+      {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
+      <button className="auth-header-primary" disabled={!canSubmit} type="submit">
+        {translateText(createRequest.isPending ? "Registrando…" : "Registrar mensagem")}
+      </button>
+    </form>
+  );
+}
+
+const inputFieldClass =
+  "rounded-lg border border-[#233a59]/15 bg-white px-3 py-2.5 text-sm text-[#012140] outline-none focus:border-[#233a59] disabled:cursor-not-allowed disabled:bg-[#f7f8fa]";
 
 export function IndicatorsPage() {
   const query = useListIndicators({ query: { queryKey: getListIndicatorsQueryKey() } });
@@ -447,86 +648,168 @@ export function IndicatorsPage() {
 }
 
 export function SuggestionsPage() {
-  const query = useListSuggestions({ query: { queryKey: getListSuggestionsQueryKey() } });
   return (
     <div className="page-enter">
-      <PageHeading eyebrow="Construído em conjunto" title="Ideias no horizonte." description="Veja o que está sendo avaliado, planejado e desenvolvido para o portal." />
+      <PageHeading
+        eyebrow="Sugestões"
+        title="Envie e acompanhe suas ideias."
+        description="Registre uma sugestão para a equipe PFVL e acompanhe em privado o status e os comentários da equipe."
+      />
       <div className="mt-6">
-        <SuggestionSubmissionForm />
+        <AuthActionGate
+          returnTo="/suggestions"
+          signedOutTitle="Entre para enviar e acompanhar sugestões."
+          signedOutDescription="Suas mensagens e respostas ficam disponíveis somente na sua conta."
+        >
+          <SuggestionWorkspace />
+        </AuthActionGate>
       </div>
-      {query.isLoading ? <div className="mt-6"><LoadingState rows={3} /></div> : query.isError ? <div className="mt-6"><QueryError retry={() => void query.refetch()} /></div> : query.data?.length ? (
-        <div className="mt-7 grid gap-4 xl:grid-cols-2">
-          {suggestionStatus.map((status) => {
-            const suggestions = query.data?.filter((suggestion) => suggestion.status === status) ?? [];
-            return (
-              <section className="status-column" key={status}>
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <span className={`status-dot status-${status}`} />
-                    <h2 className="font-display text-lg font-semibold">{translateText(suggestionStatusNames[status])}</h2>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{translateText(suggestionStatusNotes[status])}</p>
-                  </div>
-                  <span className="count-pill">{suggestions.length}</span>
-                </div>
-                <div className="space-y-3">
-                  {suggestions.length ? suggestions.map((suggestion) => (
-                    <article className="suggestion-card" key={suggestion.id}>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="eyebrow-pill">{suggestion.category}</span>
-                        <span className="text-[10px] text-muted-foreground">{formatDate(suggestion.createdAt)}</span>
-                      </div>
-                      <h3 className="mt-3 font-display text-lg font-semibold leading-snug">{suggestion.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{suggestion.details}</p>
-                      <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-3 text-[11px] text-muted-foreground">
-                        <span>{translateText('Sugerido por')} {suggestion.authorName}</span>
-                        <span className="inline-flex items-center gap-1"><Check size={12} /> {suggestion.voteCount} {translateText('apoios')}</span>
-                      </div>
-                    </article>
-                  )) : <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">{translateText("Nenhuma sugestão nesta etapa.")}</p>}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      ) : <div className="mt-6"><EmptyState title="O roadmap está começando" description="As ideias publicadas e seu andamento aparecerão por aqui." /></div>}
+      <div className="mt-8">
+        <PublicSuggestionRoadmap />
+      </div>
     </div>
   );
 }
 
-function SuggestionSubmissionForm() {
+const roadmapStatusLabel: Record<SupportRequestStatus, string> = {
+  new: "Aprovada",
+  in_progress: "Em andamento",
+  completed: "Concluída",
+};
+
+function PublicSuggestionRoadmap() {
+  const suggestions = useListPublicRoadmapSuggestions({
+    query: {
+      queryKey: getListPublicRoadmapSuggestionsQueryKey(),
+      refetchInterval: 60_000,
+    },
+  });
+
+  return (
+    <section aria-labelledby="public-roadmap-heading" className="rounded-2xl border border-dashed border-[#233a59]/20 bg-white/50 p-5 sm:p-6">
+      <div className="mb-5">
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Roadmap público")}</p>
+        <h2 className="mt-1 font-display text-2xl font-semibold text-[#012140]" id="public-roadmap-heading">{translateText("Ideias no horizonte.")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as sugestões aprovadas pela equipe PFVL.")}</p>
+      </div>
+      {suggestions.isLoading ? (
+        <LoadingState rows={2} />
+      ) : suggestions.isError ? (
+        <QueryError retry={() => void suggestions.refetch()} />
+      ) : suggestions.data?.length ? (
+        <div className="space-y-3">
+          {suggestions.data.map((suggestion) => (
+            <PublicRoadmapCard key={suggestion.id} suggestion={suggestion} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="O roadmap está começando"
+          description="As sugestões aprovadas pela equipe aparecerão aqui, em ordem de aprovação."
+        />
+      )}
+    </section>
+  );
+}
+
+function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion }) {
+  const statusTone =
+    suggestion.status === "completed"
+      ? "bg-emerald-50 text-emerald-800"
+      : suggestion.status === "in_progress"
+        ? "bg-blue-50 text-blue-800"
+        : "bg-amber-50 text-amber-800";
+
+  return (
+    <article className="rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-[#eaf1f9] px-2.5 py-1 font-bold uppercase tracking-wide text-[#42658b]">
+              {suggestion.categoryName ?? translateText("Sugestão")}
+            </span>
+            <span>{translateText("Aprovada em")} <time dateTime={suggestion.approvedAt}>{formatDate(suggestion.approvedAt)}</time></span>
+          </div>
+          <h3 className="mt-3 font-display text-lg font-semibold text-[#012140]">{suggestion.title}</h3>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
+          {translateText(roadmapStatusLabel[suggestion.status])}
+        </span>
+      </div>
+      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.message}</p>
+    </article>
+  );
+}
+
+const suggestionRequestStatusLabel: Record<SupportRequestStatus, string> = {
+  new: "Recebida",
+  in_progress: "Em andamento",
+  completed: "Concluída",
+};
+
+function SuggestionWorkspace() {
   const queryClient = useQueryClient();
-  const mutation = useCreateSuggestion();
+  const categories = useListSuggestionCategories({
+    query: { queryKey: getListSuggestionCategoriesQueryKey() },
+  });
+  const suggestions = useListMySuggestions({
+    query: {
+      queryKey: getListMySuggestionsQueryKey(),
+      refetchInterval: 30_000,
+    },
+  });
+  const mutation = useCreateMySuggestion();
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
-  const [category, setCategory] = useState('Nova funcionalidade');
-  const [message, setMessage] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [protocol, setProtocol] = useState('');
+  const [error, setError] = useState('');
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
+    setError('');
     try {
-      await mutation.mutateAsync({ data: { title: title.trim(), details: details.trim(), category } });
+      const result = await mutation.mutateAsync({
+        data: {
+          title: title.trim(),
+          categoryId: Number(categoryId),
+          message: details.trim(),
+        },
+      });
       setTitle('');
       setDetails('');
-      setCategory('Nova funcionalidade');
-      setMessage('Sugestão enviada. Obrigado por ajudar a melhorar o PFVL!');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListSuggestionsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() }),
-      ]);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Não foi possível enviar sua sugestão agora.');
+      setProtocol(result.protocol);
+      await queryClient.invalidateQueries({ queryKey: getListMySuggestionsQueryKey() });
+    } catch (requestError) {
+      const responseData =
+        typeof requestError === "object" && requestError !== null && "data" in requestError
+          ? requestError.data
+          : null;
+      const apiMessage =
+        typeof responseData === "object" && responseData !== null && "error" in responseData
+          ? responseData.error
+          : null;
+      setError(typeof apiMessage === "string" ? apiMessage : translateText("Não foi possível enviar sua sugestão agora. Tente novamente."));
     }
   }
 
   return (
-    <AuthActionGate returnTo="/suggestions">
-      <form className="rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6" onSubmit={submit}>
-        <div className="mb-4">
-          <p className="eyebrow-pill">{translateText("Participe do roadmap")}</p>
+    <div className="space-y-6">
+      <form
+        className="rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6"
+        onSubmit={(event) => void submit(event)}
+      >
+        <div className="mb-5">
+          <p className="eyebrow-pill">{translateText("Registro de mensagem")}</p>
           <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{translateText("O que você gostaria de ver no PFVL?")}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Envie uma ideia. A equipe vai analisá-la e atualizar o andamento por aqui.")}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("A sugestão será enviada em privado à equipe. Você poderá acompanhar as atualizações nesta página.")}</p>
         </div>
+        {protocol && (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
+            <strong className="block">{translateText("Sugestão registrada com sucesso.")}</strong>
+            <span>{translateText("Protocolo de acompanhamento")}: <span className="font-mono font-bold">{protocol}</span></span>
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
           <label className="block text-sm font-semibold text-[#012140]">
             {translateText("Título da sugestão")}
@@ -540,40 +823,131 @@ function SuggestionSubmissionForm() {
               value={title}
             />
           </label>
-          <label className="block text-sm font-semibold text-[#012140]">
-            {translateText("Categoria")}
-            <select
-              className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
-              onChange={(event) => setCategory(event.target.value)}
-              value={category}
-            >
-              <option>{translateText("Nova funcionalidade")}</option>
-              <option>{translateText("Conteúdo e educação")}</option>
-              <option>{translateText("Comunidade")}</option>
-              <option>{translateText("Outro")}</option>
-            </select>
-          </label>
+          <div className="grid gap-3 sm:grid-cols-1">
+            <label className="block text-sm font-semibold text-[#012140]">
+              {translateText("Assunto")}
+              <input
+                aria-readonly="true"
+                className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-[#f7f8fa] px-3.5 py-3 text-sm text-[#1d1d1b]"
+                readOnly
+                value={translateText("Sugestão")}
+              />
+            </label>
+            <label className="block text-sm font-semibold text-[#012140]">
+              {translateText("Categoria")}
+              <select
+                className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+                disabled={categories.isLoading || categories.isError || !categories.data?.length}
+                onChange={(event) => setCategoryId(event.target.value)}
+                required
+                value={categoryId}
+              >
+                <option value="">{translateText("Selecione uma categoria")}</option>
+                {(categories.data ?? []).map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
+        {categories.isLoading && <p className="mt-2 text-sm text-muted-foreground">{translateText("Carregando categorias…")}</p>}
+        {categories.isError && <p className="mt-2 text-sm text-red-700">{translateText("Não foi possível carregar as categorias. Atualize a página e tente novamente.")}</p>}
+        {!categories.isLoading && !categories.isError && !categories.data?.length && (
+          <p className="mt-3 rounded-xl bg-[#f7f8fa] p-3 text-sm text-[#233a59]">{translateText("O assunto Sugestão está temporariamente indisponível.")}</p>
+        )}
         <label className="mt-3 block text-sm font-semibold text-[#012140]">
           {translateText("Como essa ideia ajudaria?")}
           <textarea
-            className="mt-1.5 min-h-28 w-full resize-y rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+            className="mt-1.5 min-h-32 w-full resize-y rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
             maxLength={5000}
-            minLength={10}
+            minLength={20}
             onChange={(event) => setDetails(event.target.value)}
             placeholder={translateText("Descreva sua sugestão com alguns detalhes.")}
             required
             value={details}
           />
         </label>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button className="auth-header-primary" disabled={mutation.isPending} type="submit">
-            {translateText(mutation.isPending ? 'Enviando…' : 'Enviar sugestão')}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <p>{translateText("Não informe senhas ou dados financeiros sensíveis.")}</p>
+          <span>{details.length}/5000</span>
+        </div>
+        {details.trim().length > 0 && details.trim().length < 20 && (
+          <p className="mt-2 text-xs text-amber-700">{translateText("Escreva pelo menos 20 caracteres para explicar sua sugestão.")}</p>
+        )}
+        {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
+        <div className="mt-4">
+          <button
+            className="auth-header-primary"
+            disabled={mutation.isPending || !categories.data?.length}
+            type="submit"
+          >
+            {translateText(mutation.isPending ? "Enviando…" : "Enviar sugestão")}
           </button>
-          {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
         </div>
       </form>
-    </AuthActionGate>
+      <section aria-labelledby="my-suggestions-heading">
+        <div className="mb-3">
+          <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Área privada")}</p>
+          <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]" id="my-suggestions-heading">{translateText("Minhas sugestões")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{translateText("Somente você e a equipe PFVL podem ver estas mensagens.")}</p>
+        </div>
+        {suggestions.isLoading ? <LoadingState rows={2} /> : suggestions.isError ? (
+          <QueryError retry={() => void suggestions.refetch()} />
+        ) : suggestions.data?.length ? (
+          <div className="space-y-3">
+            {suggestions.data.map((suggestion) => (
+              <SuggestionRequestCard key={suggestion.id} suggestion={suggestion} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="Você ainda não enviou sugestões" description="Depois de enviar uma ideia, o status e as respostas da equipe aparecerão aqui." />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function SuggestionRequestCard({ suggestion }: { suggestion: MySuggestion }) {
+  const statusTone =
+    suggestion.status === "completed"
+      ? "bg-emerald-50 text-emerald-800"
+      : suggestion.status === "in_progress"
+        ? "bg-blue-50 text-blue-800"
+        : "bg-amber-50 text-amber-800";
+  return (
+    <article className="rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[11px] font-bold tracking-[.08em] text-[#233a59]">{translateText("Protocolo")}: {suggestion.protocol}</p>
+          <h3 className="mt-2 font-display text-lg font-semibold text-[#012140]">{suggestion.title}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {suggestion.categoryName ?? translateText("Sem categoria")} · {formatDate(suggestion.createdAt)}
+          </p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
+          {translateText(suggestionRequestStatusLabel[suggestion.status])}
+        </span>
+      </div>
+      <p className="mt-4 whitespace-pre-wrap break-words rounded-xl bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{suggestion.message}</p>
+      <div className="mt-4 border-t border-[#233a59]/10 pt-3">
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-[#233a59]/70">{translateText("Atualizações da equipe")}</p>
+        {suggestion.comments.length ? (
+          <div className="mt-2 space-y-2">
+            {suggestion.comments.map((comment) => (
+              <div className="rounded-xl border border-[#233a59]/10 bg-white p-3" key={comment.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <strong className="text-[#233a59]">{comment.authorName}</strong>
+                  <time dateTime={comment.createdAt}>{formatDate(comment.createdAt)}</time>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#233a59]">{comment.message}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">{translateText("Ainda não há comentários da equipe.")}</p>
+        )}
+      </div>
+    </article>
   );
 }
 

@@ -456,6 +456,388 @@ export const UpsertMyTestimonialResponse = zod.object({
 
 
 /**
+ * @summary Lista assuntos ativos disponíveis para abrir uma solicitação
+ */
+export const ListSupportSubjectsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "systemKey": zod.string().nullable(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSupportSubjectsResponse = zod.array(ListSupportSubjectsResponseItem)
+
+
+/**
+ * A identidade do solicitante é obtida exclusivamente da sessão autenticada.
+ * @summary Registra uma solicitação para a equipe PFVL
+ */
+export const createSupportRequestBodyMessageMin = 20;
+export const createSupportRequestBodyMessageMax = 5000;
+
+
+
+export const CreateSupportRequestBody = zod.object({
+  "subjectId": zod.number().int(),
+  "message": zod.string().min(createSupportRequestBodyMessageMin).max(createSupportRequestBodyMessageMax)
+})
+
+export const createSupportRequestResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const CreateSupportRequestResponse = zod.object({
+  "protocol": zod.string().regex(createSupportRequestResponseProtocolRegExp),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista categorias ativas do assunto Sugestão
+ */
+export const ListSuggestionCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListSuggestionCategoriesResponse = zod.array(ListSuggestionCategoriesResponseItem)
+
+
+/**
+ * Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+ * @summary Lista sugestões aprovadas para o roadmap público
+ */
+export const ListPublicRoadmapSuggestionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "categoryName": zod.string().nullable(),
+  "message": zod.string(),
+  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "approvedAt": zod.coerce.date()
+})
+export const ListPublicRoadmapSuggestionsResponse = zod.array(ListPublicRoadmapSuggestionsResponseItem)
+
+
+/**
+ * Retorna somente as solicitações de atendimento e respostas da equipe vinculadas à conta autenticada.
+ * @summary Lista solicitações de atendimento da conta autenticada
+ */
+export const listMySupportRequestsResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const ListMySupportRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "protocol": zod.string().regex(listMySupportRequestsResponseProtocolRegExp),
+  "subjectName": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "comments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMySupportRequestsResponse = zod.array(ListMySupportRequestsResponseItem)
+
+
+/**
+ * @summary Lista as sugestões privadas enviadas pela conta autenticada
+ */
+export const listMySuggestionsResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const ListMySuggestionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "protocol": zod.string().regex(listMySuggestionsResponseProtocolRegExp),
+  "subjectName": zod.string(),
+  "title": zod.string().nullable(),
+  "categoryName": zod.string().nullable(),
+  "message": zod.string(),
+  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "comments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMySuggestionsResponse = zod.array(ListMySuggestionsResponseItem)
+
+
+/**
+ * @summary Registra uma sugestão privada com o assunto fixo Sugestão
+ */
+export const createMySuggestionBodyTitleMin = 4;
+export const createMySuggestionBodyTitleMax = 220;
+
+export const createMySuggestionBodyMessageMin = 20;
+export const createMySuggestionBodyMessageMax = 5000;
+
+
+
+export const CreateMySuggestionBody = zod.object({
+  "title": zod.string().min(createMySuggestionBodyTitleMin).max(createMySuggestionBodyTitleMax),
+  "categoryId": zod.number().int(),
+  "message": zod.string().min(createMySuggestionBodyMessageMin).max(createMySuggestionBodyMessageMax)
+})
+
+export const createMySuggestionResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const CreateMySuggestionResponse = zod.object({
+  "protocol": zod.string().regex(createMySuggestionResponseProtocolRegExp),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista categorias de sugestão, inclusive inativas
+ */
+export const ListAdminSuggestionCategoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminSuggestionCategoriesResponse = zod.array(ListAdminSuggestionCategoriesResponseItem)
+
+
+/**
+ * @summary Cria uma categoria para o assunto Sugestão
+ */
+export const createAdminSuggestionCategoryBodyNameMin = 2;
+export const createAdminSuggestionCategoryBodyNameMax = 120;
+
+
+
+export const CreateAdminSuggestionCategoryBody = zod.object({
+  "name": zod.string().min(createAdminSuggestionCategoryBodyNameMin).max(createAdminSuggestionCategoryBodyNameMax)
+})
+
+export const CreateAdminSuggestionCategoryResponse = zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Edita ou ativa e desativa uma categoria de sugestão
+ */
+export const UpdateAdminSuggestionCategoryParams = zod.object({
+  "categoryId": zod.coerce.number().int()
+})
+
+export const updateAdminSuggestionCategoryBodyNameMin = 2;
+export const updateAdminSuggestionCategoryBodyNameMax = 120;
+
+
+
+export const UpdateAdminSuggestionCategoryBody = zod.object({
+  "name": zod.string().min(updateAdminSuggestionCategoryBodyNameMin).max(updateAdminSuggestionCategoryBodyNameMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateAdminSuggestionCategoryResponse = zod.object({
+  "id": zod.number().int(),
+  "subjectId": zod.number().int(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista assuntos de atendimento, inclusive inativos
+ */
+export const ListAdminSupportSubjectsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "systemKey": zod.string().nullable(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminSupportSubjectsResponse = zod.array(ListAdminSupportSubjectsResponseItem)
+
+
+/**
+ * @summary Cria um assunto de atendimento
+ */
+export const createAdminSupportSubjectBodyNameMin = 2;
+export const createAdminSupportSubjectBodyNameMax = 120;
+
+
+
+export const CreateAdminSupportSubjectBody = zod.object({
+  "name": zod.string().min(createAdminSupportSubjectBodyNameMin).max(createAdminSupportSubjectBodyNameMax)
+})
+
+export const CreateAdminSupportSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "systemKey": zod.string().nullable(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Edita ou ativa e desativa um assunto de atendimento
+ */
+export const UpdateAdminSupportSubjectParams = zod.object({
+  "subjectId": zod.coerce.number().int()
+})
+
+export const updateAdminSupportSubjectBodyNameMin = 2;
+export const updateAdminSupportSubjectBodyNameMax = 120;
+
+
+
+export const UpdateAdminSupportSubjectBody = zod.object({
+  "name": zod.string().min(updateAdminSupportSubjectBodyNameMin).max(updateAdminSupportSubjectBodyNameMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateAdminSupportSubjectResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "systemKey": zod.string().nullable(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Lista solicitações e totais por status para o painel
+ */
+export const listAdminSupportRequestsResponseRequestsItemProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const ListAdminSupportRequestsResponse = zod.object({
+  "requests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "protocol": zod.string().regex(listAdminSupportRequestsResponseRequestsItemProtocolRegExp),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "subjectName": zod.string(),
+  "title": zod.string().nullable(),
+  "categoryName": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "requesterName": zod.string(),
+  "requesterEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "comments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "counts": zod.object({
+  "new": zod.number().int(),
+  "inProgress": zod.number().int(),
+  "completed": zod.number().int()
+})
+})
+
+
+/**
+ * @summary Atualiza o status de uma solicitação
+ */
+export const UpdateAdminSupportRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const UpdateAdminSupportRequestBody = zod.object({
+  "status": zod.enum(['new', 'in_progress', 'completed'])
+})
+
+export const updateAdminSupportRequestResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const UpdateAdminSupportRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "protocol": zod.string().regex(updateAdminSupportRequestResponseProtocolRegExp),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "subjectName": zod.string(),
+  "title": zod.string().nullable(),
+  "categoryName": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "requesterName": zod.string(),
+  "requesterEmail": zod.string().email(),
+  "message": zod.string(),
+  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "comments": zod.array(zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Publica ou remove uma sugestão do roadmap público
+ */
+export const UpdateAdminSupportRequestRoadmapParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const UpdateAdminSupportRequestRoadmapBody = zod.object({
+  "approved": zod.boolean()
+})
+
+export const UpdateAdminSupportRequestRoadmapResponse = zod.object({
+  "id": zod.number().int(),
+  "approvedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Adiciona um comentário administrativo visível ao solicitante
+ */
+export const CreateAdminSupportRequestCommentParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const createAdminSupportRequestCommentBodyMessageMax = 5000;
+
+
+
+export const CreateAdminSupportRequestCommentBody = zod.object({
+  "message": zod.string().min(1).max(createAdminSupportRequestCommentBodyMessageMax)
+})
+
+export const CreateAdminSupportRequestCommentResponse = zod.object({
+  "id": zod.number().int(),
+  "authorName": zod.string(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Lista depoimentos para aprovação administrativa
  */
 export const listAdminTestimonialsResponseRatingMax = 5;
@@ -808,7 +1190,7 @@ export const UpdateAdminSuggestionResponse = zod.object({
 
 
 /**
- * @summary Lista sugestões agrupáveis por status
+ * @summary Lista registros preservados do antigo mural de sugestões
  */
 export const ListSuggestionsResponseItem = zod.object({
   "id": zod.number().int(),
@@ -821,38 +1203,6 @@ export const ListSuggestionsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListSuggestionsResponse = zod.array(ListSuggestionsResponseItem)
-
-
-/**
- * @summary Envia uma sugestão da comunidade
- */
-export const createSuggestionBodyTitleMin = 4;
-export const createSuggestionBodyTitleMax = 220;
-
-export const createSuggestionBodyDetailsMin = 10;
-export const createSuggestionBodyDetailsMax = 5000;
-
-export const createSuggestionBodyCategoryMin = 2;
-export const createSuggestionBodyCategoryMax = 100;
-
-
-
-export const CreateSuggestionBody = zod.object({
-  "title": zod.string().min(createSuggestionBodyTitleMin).max(createSuggestionBodyTitleMax),
-  "details": zod.string().min(createSuggestionBodyDetailsMin).max(createSuggestionBodyDetailsMax),
-  "category": zod.string().min(createSuggestionBodyCategoryMin).max(createSuggestionBodyCategoryMax)
-})
-
-export const CreateSuggestionResponse = zod.object({
-  "id": zod.number().int(),
-  "title": zod.string(),
-  "details": zod.string(),
-  "category": zod.string(),
-  "status": zod.enum(['under_review', 'planned', 'in_progress', 'completed']),
-  "authorName": zod.string(),
-  "voteCount": zod.number().int(),
-  "createdAt": zod.coerce.date()
-})
 
 
 /**

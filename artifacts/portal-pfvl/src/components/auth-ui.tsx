@@ -127,18 +127,46 @@ function ClerkAuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
   );
 }
 
-export function AuthActionGate({ children, returnTo }: { children: ReactNode; returnTo?: string }) {
-  return useContext(AuthAvailabilityContext) ? <SignedInGate returnTo={returnTo}>{children}</SignedInGate> : <AuthSetupNotice />;
+export function AuthActionGate({
+  children,
+  returnTo,
+  signedOutTitle,
+  signedOutDescription,
+}: {
+  children: ReactNode;
+  returnTo?: string;
+  signedOutTitle?: string;
+  signedOutDescription?: string;
+}) {
+  return useContext(AuthAvailabilityContext) ? (
+    <SignedInGate
+      returnTo={returnTo}
+      signedOutTitle={signedOutTitle}
+      signedOutDescription={signedOutDescription}
+    >
+      {children}
+    </SignedInGate>
+  ) : <AuthSetupNotice />;
 }
 
-function SignedInGate({ children, returnTo }: { children: ReactNode; returnTo?: string }) {
+function SignedInGate({
+  children,
+  returnTo,
+  signedOutTitle,
+  signedOutDescription,
+}: {
+  children: ReactNode;
+  returnTo?: string;
+  signedOutTitle?: string;
+  signedOutDescription?: string;
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return <p className="rounded-xl border bg-white p-4 text-sm text-muted-foreground">{translateText("Verificando sua conta…")}</p>;
   if (!isSignedIn) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#233a59]/15 bg-white p-5">
-        <div><p className="font-semibold text-[#012140]">{translateText("Entre para participar.")}</p><p className="mt-1 text-sm text-muted-foreground">{translateText("Sua conta permite publicar e responder.")}</p></div>
-        <div className="flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href={authHref("/sign-in", returnTo)}>{translateText("Entrar")}</Link><Link className="auth-header-primary" href={authHref("/sign-up", returnTo)}>{translateText("Criar conta")}</Link></div>
+        <div><p className="font-semibold text-[#012140]">{translateText(signedOutTitle ?? "Entre para participar.")}</p><p className="mt-1 text-sm text-muted-foreground">{translateText(signedOutDescription ?? "Sua conta permite publicar e responder.")}</p></div>
+        <div className="signed-out-actions flex gap-2"><Link className="auth-header-link !border-[#233a59]/25 !text-[#233a59]" href={authHref("/sign-in", returnTo)}>{translateText("Entrar")}</Link><Link className="auth-header-primary" href={authHref("/sign-up", returnTo)}>{translateText("Criar conta")}</Link></div>
       </div>
     );
   }

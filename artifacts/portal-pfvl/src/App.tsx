@@ -4,6 +4,7 @@ import {
   BarChart3,
   BookOpen,
   CircleHelp,
+  Lightbulb,
   Menu,
   MessageCircle,
   Newspaper,
@@ -15,6 +16,7 @@ import {
   AuthHeaderActions,
   AuthRoute,
 } from '@/components/auth-ui';
+import { CookieConsentManager, CookiePreferencesButton } from '@/components/cookie-consent';
 import { CountryFlag } from '@/components/country-flag';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -24,6 +26,7 @@ import {
   BlogPage,
   CommunityPage,
   HelpPage,
+  HelpRequestPage,
   HomePage,
   IndicatorsPage,
   NewsPage,
@@ -31,6 +34,7 @@ import {
   SuggestionsPage,
 } from '@/pages/portal-pages';
 import { NotificationsPage } from '@/pages/notifications-page';
+import { MySupportRequestsPage } from '@/pages/my-support-requests-page';
 import { ProfilePage } from '@/pages/profile-page';
 import { I18nProvider, translateText, useI18n, type Locale } from '@/lib/i18n';
 import {
@@ -52,10 +56,10 @@ const queryClient = new QueryClient({
 const navigation = [
   { href: '/', label: 'Início', icon: BarChart3 },
   { href: '/blog', label: 'Conteúdos', icon: BookOpen },
-  { href: '/indicators', label: 'Indicadores', icon: BarChart3 },
   { href: '/community', label: 'Comunidade', icon: MessageCircle },
   { href: '/news', label: 'Novidades', icon: Newspaper },
   { href: '/help', label: 'Central de Ajuda', icon: CircleHelp },
+  { href: '/suggestions', label: 'Sugestões', icon: Lightbulb },
 ];
 
 const pageMetadata = [
@@ -91,9 +95,9 @@ const pageMetadata = [
   },
   {
     match: /^\/suggestions$/,
-    title: 'Roadmap de sugestões | PFVL',
+    title: 'Sugestões | PFVL',
     description:
-      'Consulte as sugestões da comunidade e acompanhe cada ideia por status.',
+      'Envie sugestões privadas à equipe PFVL e acompanhe o andamento pela sua conta.',
   },
   {
     match: /^\/notifications$/,
@@ -101,7 +105,12 @@ const pageMetadata = [
     description: 'Acompanhe novidades, publicações, respostas e mudanças nas sugestões do PFVL.',
   },
   {
-    match: /^\/help(?:\/\d+)?$/,
+    match: /^\/help\/requests$/,
+    title: 'Minhas solicitações | PFVL',
+    description: 'Acompanhe os protocolos, status e atualizações da equipe sobre suas solicitações de suporte.',
+  },
+  {
+    match: /^\/help(?:\/request|\/\d+)?$/,
     title: 'Central de Ajuda | PFVL',
     description: 'Encontre tutoriais e orientações práticas para usar o sistema PFVL.',
   },
@@ -112,8 +121,8 @@ const pageMetadata = [
   },
   {
     match: /^\/sobre$/,
-    title: 'Sobre o PFVL e a Orbe | Orbe',
-    description: 'Conheça o produto PFVL e a Orbe Sistemas Financeiros, empresa responsável.',
+    title: 'Conheça o PFVL | Orbe',
+    description: 'Organização para o presente, planejamento para o futuro. Conheça o PFVL e a Orbe Sistemas Financeiros, empresa responsável pelo produto.',
   },
   {
     match: /^\/contato$/,
@@ -187,6 +196,7 @@ function PortalShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { locale, setLocale } = useI18n();
   return (
+    <CookieConsentManager>
     <div className="app-shell">
       <header className="site-header">
         <div className="site-header-inner">
@@ -255,11 +265,12 @@ function PortalShell({ children }: { children: ReactNode }) {
             <Link href="/contato">{translateText('Contato')}</Link>
             <Link href="/privacidade">{translateText('Privacidade')}</Link>
             <Link href="/termos">{translateText('Termos')}</Link>
-            <Link href="/suggestions">{translateText('Sugestões')}</Link>
+              <CookiePreferencesButton />
           </div>
         </footer>
       </main>
     </div>
+    </CookieConsentManager>
   );
 }
 
@@ -284,6 +295,8 @@ function RoutedContent() {
         <Route path="/suggestions" component={SuggestionsPage} />
         <Route path="/notifications" component={NotificationsPage} />
         <Route path="/profile" component={() => <ProfilePage />} />
+        <Route path="/help/requests" component={MySupportRequestsPage} />
+        <Route path="/help/request" component={HelpRequestPage} />
         <Route path="/help/:postId" component={PostDetailPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/sign-in/*?" component={() => <AuthRoute mode="sign-in" />} />

@@ -225,20 +225,7 @@ export function HomeFeatureColumn() {
 export function ProductAppLink({ className, label = 'Acessar o PFVL' }: { className: string; label?: string }) {
   const appUrl = import.meta.env.VITE_PFVL_APP_URL?.trim();
   const content = <>{translateText(label)}<ArrowRight size={15} /></>;
-
-  if (!appUrl) {
-    return (
-      <span
-        aria-disabled="true"
-        className={`${className} product-app-link-disabled`}
-        title={translateText('Configure o endereço do sistema para este ambiente.')}
-      >
-        {content}
-      </span>
-    );
-  }
-
-  return <a className={className} href={appUrl}>{content}</a>;
+  return <a className={className} href={appUrl || '#'}>{content}</a>;
 }
 
 export function HomeNewsColumn({ posts, isLoading, isError, retry }: { posts: Post[]; isLoading: boolean; isError: boolean; retry: () => void }) {

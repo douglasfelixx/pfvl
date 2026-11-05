@@ -1,0 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --background: 0 0% 91%;
+  --foreground: 60 4% 11%;
+  --border: 214 20% 82%;
+  --card: 0 0% 100%;
+  --card-foreground: 60 4% 11%;
+  --sidebar: 210 97% 13%;
+  --sidebar-foreground: 0 0% 91%;
+  --primary: 214 44% 24%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 0 0% 91%;
+  --muted-foreground: 214 44% 24%;
+  --app-font-sans: "DM Sans", sans-serif;
+  --app-font-serif: "Outfit", sans-serif;
+}
+
+.dark {
+  --background: 210 97% 13%;
+  --foreground: 0 0% 91%;
+  --border: 214 44% 24%;
+  --card: 214 44% 24%;
+  --card-foreground: 0 0% 91%;
+  --sidebar: 210 97% 13%;
+  --sidebar-foreground: 0 0% 91%;
+  --primary: 0 0% 91%;
+  --primary-foreground: 210 97% 13%;
+  --muted: 60 4% 11%;
+  --muted-foreground: 0 0% 91%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--app-font-sans);
+  background: #e8e8e8;
+}

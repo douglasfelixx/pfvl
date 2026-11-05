@@ -6,6 +6,7 @@ import {
   BookOpen,
   CircleHelp,
   FileText,
+  Headset,
   Image,
   Lightbulb,
   MessageCircle,
@@ -30,14 +31,22 @@ import {
   getGetActivePollQueryKey,
   getGetSiteMediaQueryKey,
   getListAdminPollsQueryKey,
+  getListAdminSuggestionCategoriesQueryKey,
   getListAdminSiteMediaQueryKey,
   getListAdminTaxonomyQueryKey,
   getListTaxonomyQueryKey,
   getListSuggestionsQueryKey,
   getListAdminTestimonialsQueryKey,
   getListTestimonialsQueryKey,
+  getListAdminSupportRequestsQueryKey,
+  getListAdminSupportSubjectsQueryKey,
+  getListPublicRoadmapSuggestionsQueryKey,
+  getListSupportSubjectsQueryKey,
+  getListSuggestionCategoriesQueryKey,
   useCloseAdminPoll,
   useCreateAdminPoll,
+  useCreateAdminSuggestionCategory,
+  useCreateAdminSupportRequestComment,
   useCreateAdminTaxonomy,
   useDeleteComment,
   useDeleteAdminTaxonomy,
@@ -46,6 +55,7 @@ import {
   useListAdminPosts,
   useListAdminUsers,
   useListAdminPolls,
+  useListAdminSuggestionCategories,
   useListAdminSiteMedia,
   useListAdminTaxonomy,
   useListTaxonomy,
@@ -53,11 +63,18 @@ import {
   useListComments,
   useListSuggestions,
   useListAdminTestimonials,
+  useCreateAdminSupportSubject,
+  useListAdminSupportRequests,
+  useListAdminSupportSubjects,
   useUpdateAdminTestimonial,
   useUpdateAdminSuggestion,
   useUpdateAdminTaxonomy,
   useUpdateAdminSiteMedia,
   useUpdateAdminUser,
+  useUpdateAdminSupportRequest,
+  useUpdateAdminSupportRequestRoadmap,
+  useUpdateAdminSuggestionCategory,
+  useUpdateAdminSupportSubject,
   useUpdatePost,
   type Post,
   type PostKind,
@@ -72,6 +89,10 @@ import {
   type SiteMediaSlot,
   type SiteMediaAssetUpdateExtension,
   type Testimonial,
+  type AdminSupportRequest,
+  type SupportRequestStatus,
+  type SupportRequestSubject,
+  type SupportRequestCategory,
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { CreatePostForm, ImageUploadField } from "@/components/community-actions";
@@ -80,7 +101,7 @@ import { formatDate, LoadingState, PageHeading, Surface } from "@/components/por
 import { translateText } from "@/lib/i18n";
 import { ProfilePage } from "@/pages/profile-page";
 
-type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials" | "profile";
+type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials" | "profile" | "requests";
 const inputClass =
   "rounded-lg border border-[#233a59]/15 bg-white px-2.5 py-2 text-sm text-[#012140] outline-none focus:border-[#233a59]";
 
@@ -111,7 +132,7 @@ function getSiteMediaSaveError(error: unknown): string {
 
 const postSectionDetails: Record<PostKind, { title: string; description: string }> = {
   blog: {
-    title: "Conteúdos do blog",
+    title: "Conteúdos",
     description: "Crie e organize artigos e materiais para os leitores do portal.",
   },
   forum: {
@@ -135,7 +156,7 @@ const adminNavigation: {
   {
     title: "Conteúdo",
     items: [
-      { key: "blog", label: "Blog", icon: BookOpen },
+      { key: "blog", label: "Conteúdos", icon: BookOpen },
       { key: "forum", label: "Comunidade", icon: MessageCircle },
       { key: "news", label: "Novidades", icon: Newspaper },
       { key: "help", label: "Central de Ajuda", icon: CircleHelp },
@@ -145,6 +166,7 @@ const adminNavigation: {
     title: "Gestão",
     items: [
       { key: "comments", label: "Comentários", icon: MessageSquare },
+      { key: "requests", label: "Solicitações", icon: Headset },
       { key: "users", label: "Contas", icon: Users },
       { key: "suggestions", label: "Sugestões", icon: Lightbulb },
       { key: "polls", label: "Enquetes", icon: Vote },
@@ -186,6 +208,9 @@ function AdminConsole() {
   const [tab, setTab] = useState<AdminSection>("blog");
   const [createOpen, setCreateOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<number | null>(null);
+  const [adminDrafts, setAdminDrafts] = useState<Record<string, string>>({});
+  const [changeFeedback, setChangeFeedback] = useState<Record<string, string>>({});
+  const dirtyKeys = Object.keys(adminDrafts);
   const profile = useGetCurrentUser({
     query: { queryKey: getGetCurrentUserQueryKey(), retry: false },
   });
@@ -204,8 +229,105 @@ function AdminConsole() {
   const testimonials = useListAdminTestimonials({
     query: { queryKey: getListAdminTestimonialsQueryKey(), enabled: profile.data?.role === "admin" },
   });
+  const supportRequests = useListAdminSupportRequests({
+    query: {
+      queryKey: getListAdminSupportRequestsQueryKey(),
+      enabled: profile.data?.role === "admin",
+      refetchInterval: 30_000,
+    },
+  });
+  const supportSubjects = useListAdminSupportSubjects({
+    query: {
+      queryKey: getListAdminSupportSubjectsQueryKey(),
+      enabled: profile.data?.role === "admin",
+    },
+  });
+  const suggestionCategories = useListAdminSuggestionCategories({
+    query: {
+      queryKey: getListAdminSuggestionCategoriesQueryKey(),
+      enabled: profile.data?.role === "admin",
+    },
+  });
   const updatePost = useUpdatePost();
   const deletePost = useDeletePost();
+
+  useEffect(() => {
+    if (!dirtyKeys.length) return;
+    const currentUrl = window.location.href;
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const confirmHistoryNavigation = (event: PopStateEvent) => {
+      if (window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))) {
+        setAdminDrafts({});
+        return;
+      }
+      event.stopImmediatePropagation();
+      window.history.replaceState(window.history.state, "", currentUrl);
+    };
+    const confirmInternalNavigation = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank") return;
+
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.href === window.location.href) return;
+      if (!window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      setAdminDrafts({});
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    window.addEventListener("popstate", confirmHistoryNavigation, true);
+    document.addEventListener("click", confirmInternalNavigation, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      window.removeEventListener("popstate", confirmHistoryNavigation, true);
+      document.removeEventListener("click", confirmInternalNavigation, true);
+    };
+  }, [dirtyKeys.length]);
+
+  function stageAdminDraft(key: string, value: string, originalValue: string) {
+    setAdminDrafts((current) => {
+      if (value === originalValue) {
+        if (!(key in current)) return current;
+        const { [key]: _discarded, ...remaining } = current;
+        return remaining;
+      }
+      if (current[key] === value) return current;
+      return { ...current, [key]: value };
+    });
+    setChangeFeedback((current) => {
+      if (!(key in current)) return current;
+      const { [key]: _discarded, ...remaining } = current;
+      return remaining;
+    });
+  }
+
+  function clearAdminDraft(key: string) {
+    setAdminDrafts((current) => {
+      if (!(key in current)) return current;
+      const { [key]: _discarded, ...remaining } = current;
+      return remaining;
+    });
+  }
+
+  function reportChange(key: string, message: string) {
+    setChangeFeedback((current) => ({ ...current, [key]: message }));
+  }
+
+  function confirmDiscardChanges() {
+    if (!dirtyKeys.length) return true;
+    const confirmed = window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"));
+    if (confirmed) setAdminDrafts({});
+    return confirmed;
+  }
 
   if (profile.isLoading) return <LoadingState rows={3} />;
   if (profile.isError || profile.data?.role !== "admin") {
@@ -220,11 +342,18 @@ function AdminConsole() {
   }
 
   async function changePostStatus(post: Post, status: PostStatus) {
-    await updatePost.mutateAsync({ postId: post.id, data: { status } });
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-    ]);
+    const key = `post:${post.id}:status`;
+    try {
+      await updatePost.mutateAsync({ postId: post.id, data: { status } });
+      clearAdminDraft(key);
+      setChangeFeedback((current) => ({ ...current, [key]: "Alterações salvas." }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
+      ]);
+    } catch {
+      setChangeFeedback((current) => ({ ...current, [key]: "Não foi possível salvar." }));
+    }
   }
 
   async function removePost(post: Post) {
@@ -254,33 +383,17 @@ function AdminConsole() {
             .reduce((total, post) => total + post.commentCount, 0);
     }
     if (section === "users") return users.data?.length ?? "—";
-    if (section === "suggestions") return suggestions.data?.length ?? "—";
+    if (section === "suggestions") {
+      return supportRequests.data?.requests.filter((request) => request.requestType === "suggestion").length ?? "—";
+    }
     if (section === "taxonomy") return taxonomy.data?.length ?? "—";
     if (section === "testimonials") return testimonials.data?.filter((item) => item.status === "pending").length ?? "—";
+    if (section === "requests") return supportRequests.data?.counts.new ?? "—";
     return undefined;
   };
 
   return (
     <div className="mt-6 space-y-5">
-      <div
-        aria-label={translateText("Resumo do portal")}
-        className="grid grid-cols-3 divide-x divide-[#233a59]/10 rounded-xl border border-[#233a59]/10 bg-white/70"
-      >
-        {[
-          { label: translateText("Publicações"), value: posts.data?.length ?? "—" },
-          { label: translateText("Contas cadastradas"), value: users.data?.length ?? "—" },
-          { label: translateText("Sugestões recebidas"), value: suggestions.data?.length ?? "—" },
-        ].map((item) => (
-          <div
-            className="flex min-w-0 items-center justify-between gap-2 px-3 py-2.5 sm:px-4"
-            key={item.label}
-          >
-            <p className="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{item.label}</p>
-            <p className="font-display text-base font-semibold tabular-nums text-[#012140] sm:text-lg">{item.value}</p>
-          </div>
-        ))}
-      </div>
-
       <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside className="min-w-0 rounded-2xl bg-[#012140] p-3 text-white shadow-sm lg:sticky lg:top-24 lg:h-fit lg:p-4">
           <div className="mb-3 border-b border-white/15 px-3 pb-3">
@@ -303,6 +416,7 @@ function AdminConsole() {
                         data-testid={`admin-nav-${item.key}`}
                         key={item.key}
                         onClick={() => {
+                          if (!confirmDiscardChanges()) return;
                           setTab(item.key);
                           setCreateOpen(false);
                           setEditingPost(null);
@@ -331,7 +445,7 @@ function AdminConsole() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">
-                    {translateText(tab === "forum" ? "Comunidade" : tab === "blog" ? "Blog" : tab === "news" ? "Atualizações" : "Suporte")}
+                    {translateText(tab === "forum" ? "Comunidade" : tab === "blog" ? "Conteúdos" : tab === "news" ? "Atualizações" : "Suporte")}
                   </p>
                   <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">
                     {translateText(postSectionDetails[tab as PostKind].title)}
@@ -350,6 +464,9 @@ function AdminConsole() {
                   fixedKind
                   initialKind={tab as PostKind}
                   mode="admin"
+                  onDirtyChange={(dirty) => dirty
+                    ? stageAdminDraft("create-post", "dirty", "")
+                    : clearAdminDraft("create-post")}
                   onCreated={() => setCreateOpen(false)}
                 />
               )}
@@ -389,14 +506,33 @@ function AdminConsole() {
                           data-testid={`admin-post-status-${post.id}`}
                           disabled={updatePost.isPending}
                           id={`status-${post.id}`}
-                          onChange={(event) => void changePostStatus(post, event.target.value as PostStatus)}
-                          value={post.status}
+                          onChange={(event) => stageAdminDraft(`post:${post.id}:status`, event.target.value, post.status)}
+                          value={adminDrafts[`post:${post.id}:status`] ?? post.status}
                         >
                           <option value="published">{translateText("Publicado")}</option>
                           <option value="draft">{translateText("Rascunho")}</option>
                           <option value="hidden">{translateText("Oculto")}</option>
                         </select>
-                        <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" data-testid={`admin-post-edit-${post.id}`} onClick={() => setEditingPost(editingPost === post.id ? null : post.id)} type="button">
+                        {adminDrafts[`post:${post.id}:status`] !== undefined && (
+                          <button
+                            className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+                            disabled={updatePost.isPending}
+                            onClick={() => void changePostStatus(post, adminDrafts[`post:${post.id}:status`] as PostStatus)}
+                            type="button"
+                          >
+                            {translateText(updatePost.isPending ? "Salvando…" : "Salvar")}
+                          </button>
+                        )}
+                        <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" data-testid={`admin-post-edit-${post.id}`} onClick={() => {
+                          if (editingPost === post.id) {
+                            if (!confirmDiscardChanges()) return;
+                            clearAdminDraft(`edit-post:${post.id}`);
+                            setEditingPost(null);
+                          } else {
+                            if (!confirmDiscardChanges()) return;
+                            setEditingPost(post.id);
+                          }
+                        }} type="button">
                           {translateText(editingPost === post.id ? "Fechar edição" : "Editar")}
                         </button>
                         <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" data-testid={`admin-post-delete-${post.id}`} disabled={deletePost.isPending} onClick={() => void removePost(post)} type="button">
@@ -406,11 +542,20 @@ function AdminConsole() {
                           Abrir <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
                         </a>
                       </div>
+                      {changeFeedback[`post:${post.id}:status`] && (
+                        <p className={`mt-2 text-sm ${changeFeedback[`post:${post.id}:status`] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">
+                          {translateText(changeFeedback[`post:${post.id}:status`])}
+                        </p>
+                      )}
                       {editingPost === post.id && (
                         <EditPostForm
                           key={post.id}
                           post={post}
+                          onDirtyChange={(dirty) => dirty
+                            ? stageAdminDraft(`edit-post:${post.id}`, "dirty", "")
+                            : clearAdminDraft(`edit-post:${post.id}`)}
                           onSaved={async () => {
+                            clearAdminDraft(`edit-post:${post.id}`);
                             setEditingPost(null);
                             await Promise.all([
                               queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
@@ -438,10 +583,19 @@ function AdminConsole() {
               items={taxonomy.data ?? []}
               isLoading={taxonomy.isLoading}
               isError={taxonomy.isError}
+              onDirtyChange={(dirty) => dirty
+                ? stageAdminDraft("taxonomy-form", "dirty", "")
+                : clearAdminDraft("taxonomy-form")}
             />
           )}
 
-          {tab === "media" && <SiteMediaManager />}
+          {tab === "media" && (
+            <SiteMediaManager
+              onDirtyChange={(slot, dirty) => dirty
+                ? stageAdminDraft(`media:${slot}`, "dirty", "")
+                : clearAdminDraft(`media:${slot}`)}
+            />
+          )}
 
           {tab === "profile" && (
             <div className="p-4 sm:p-6">
@@ -451,6 +605,20 @@ function AdminConsole() {
 
           {tab === "comments" && <AdminCommentModeration posts={posts.data ?? []} />}
 
+          {tab === "requests" && (
+            <SupportRequestsManager
+              requests={supportRequests.data?.requests ?? []}
+              counts={supportRequests.data?.counts ?? { new: 0, inProgress: 0, completed: 0 }}
+              subjects={supportSubjects.data ?? []}
+              isLoading={supportRequests.isLoading || supportSubjects.isLoading}
+              isError={supportRequests.isError || supportSubjects.isError}
+              retry={() => {
+                void supportRequests.refetch();
+                void supportSubjects.refetch();
+              }}
+            />
+          )}
+
           {tab === "users" && (
             <div className="space-y-4 p-4 sm:p-6">
               <div>
@@ -458,27 +626,54 @@ function AdminConsole() {
                 <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Contas e permissões")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{translateText("Altere papéis de acesso e suspenda ou reative contas.")}</p>
               </div>
+              {!users.isLoading && !users.isError && (
+                <div aria-label={translateText("Resumo de status das contas")} className="grid max-w-md grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3">
+                    <span className="text-sm text-muted-foreground">{translateText("Ativas")}</span>
+                    <strong className="font-display text-lg tabular-nums text-[#012140]">{users.data?.filter((user) => user.status === "active").length ?? 0}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3">
+                    <span className="text-sm text-muted-foreground">{translateText("Suspensas")}</span>
+                    <strong className="font-display text-lg tabular-nums text-[#012140]">{users.data?.filter((user) => user.status === "suspended").length ?? 0}</strong>
+                  </div>
+                </div>
+              )}
               {users.isLoading ? <LoadingState rows={3} /> : users.isError ? (
                 <p className="text-sm text-muted-foreground">{translateText("Não foi possível carregar as contas.")}</p>
               ) : (
-                <UsersTable users={users.data ?? []} />
+                <UsersTable
+                  users={users.data ?? []}
+                  drafts={adminDrafts}
+                  stageDraft={stageAdminDraft}
+                  clearDraft={clearAdminDraft}
+                  feedback={changeFeedback}
+                  reportChange={reportChange}
+                />
               )}
             </div>
           )}
 
           {tab === "suggestions" && (
-            <div className="space-y-4 p-4 sm:p-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Voz da comunidade")}</p>
-                <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Sugestões da comunidade")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{translateText("Atualize o andamento das ideias recebidas.")}</p>
-              </div>
-              {suggestions.isLoading ? <LoadingState rows={3} /> : suggestions.isError ? (
-                <p className="text-sm text-muted-foreground">{translateText("Não foi possível carregar as sugestões.")}</p>
-              ) : (
-                <SuggestionsTable suggestions={suggestions.data ?? []} />
-              )}
-            </div>
+            <AdminSuggestionsManager
+              requests={supportRequests.data?.requests.filter((request) => request.requestType === "suggestion") ?? []}
+              counts={supportRequests.data?.counts ?? { new: 0, inProgress: 0, completed: 0 }}
+              requestsLoading={supportRequests.isLoading}
+              requestsError={supportRequests.isError}
+              retryRequests={() => void supportRequests.refetch()}
+              categories={suggestionCategories.data ?? []}
+              categoriesLoading={suggestionCategories.isLoading}
+              categoriesError={suggestionCategories.isError}
+              retryCategories={() => void suggestionCategories.refetch()}
+              legacySuggestions={suggestions.data ?? []}
+              legacyLoading={suggestions.isLoading}
+              legacyError={suggestions.isError}
+              retryLegacy={() => void suggestions.refetch()}
+              drafts={adminDrafts}
+              stageDraft={stageAdminDraft}
+              clearDraft={clearAdminDraft}
+              feedback={changeFeedback}
+              reportChange={reportChange}
+            />
           )}
 
           {tab === "polls" && <AdminPollManagement />}
@@ -491,6 +686,768 @@ function AdminConsole() {
             />
           )}
         </section>
+      </div>
+    </div>
+  );
+}
+
+const supportStatusLabel: Record<SupportRequestStatus, string> = {
+  new: "Nova",
+  in_progress: "Em andamento",
+  completed: "Concluída",
+};
+
+function SupportRequestsManager({
+  requests,
+  counts,
+  subjects,
+  isLoading,
+  isError,
+  retry,
+}: {
+  requests: AdminSupportRequest[];
+  counts: { new: number; inProgress: number; completed: number };
+  subjects: SupportRequestSubject[];
+  isLoading: boolean;
+  isError: boolean;
+  retry: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"requests" | "subjects">("requests");
+  return (
+    <div className="space-y-5 p-4 sm:p-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Atendimento")}</p>
+        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Solicitações de suporte")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as mensagens enviadas à equipe e mantenha os assuntos do formulário organizados.")}</p>
+      </div>
+      <div aria-label={translateText("Seções de atendimento")} className="flex flex-wrap gap-2 border-b border-[#233a59]/10 pb-3" role="tablist">
+        <button
+          aria-selected={activeTab === "requests"}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === "requests" ? "bg-[#012140] text-white" : "text-[#233a59] hover:bg-[#f2f4f7]"}`}
+          onClick={() => setActiveTab("requests")}
+          role="tab"
+          type="button"
+        >
+          {translateText("Solicitações")}
+        </button>
+        <button
+          aria-selected={activeTab === "subjects"}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === "subjects" ? "bg-[#012140] text-white" : "text-[#233a59] hover:bg-[#f2f4f7]"}`}
+          onClick={() => setActiveTab("subjects")}
+          role="tab"
+          type="button"
+        >
+          {translateText("Assuntos do formulário")}
+        </button>
+      </div>
+      {activeTab === "requests" ? (
+        <SupportInbox
+          requests={requests}
+          counts={counts}
+          isLoading={isLoading}
+          isError={isError}
+          retry={retry}
+        />
+      ) : (
+        <SupportSubjectsManager subjects={subjects} />
+      )}
+    </div>
+  );
+}
+
+function AdminSuggestionsManager({
+  requests,
+  counts,
+  requestsLoading,
+  requestsError,
+  retryRequests,
+  categories,
+  categoriesLoading,
+  categoriesError,
+  retryCategories,
+  legacySuggestions,
+  legacyLoading,
+  legacyError,
+  retryLegacy,
+  drafts,
+  stageDraft,
+  clearDraft,
+  feedback,
+  reportChange,
+}: {
+  requests: AdminSupportRequest[];
+  counts: { new: number; inProgress: number; completed: number };
+  requestsLoading: boolean;
+  requestsError: boolean;
+  retryRequests: () => void;
+  categories: SupportRequestCategory[];
+  categoriesLoading: boolean;
+  categoriesError: boolean;
+  retryCategories: () => void;
+  legacySuggestions: Suggestion[];
+  legacyLoading: boolean;
+  legacyError: boolean;
+  retryLegacy: () => void;
+  drafts: Record<string, string>;
+  stageDraft: (key: string, value: string, original: string) => void;
+  clearDraft: (key: string) => void;
+  feedback: Record<string, string>;
+  reportChange: (key: string, message: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"inbox" | "categories" | "legacy">("inbox");
+  const suggestionCounts = requests.reduce(
+    (total, request) => {
+      if (request.status === "new") total.new += 1;
+      if (request.status === "in_progress") total.inProgress += 1;
+      if (request.status === "completed") total.completed += 1;
+      return total;
+    },
+    { new: 0, inProgress: 0, completed: 0 },
+  );
+
+  return (
+    <div className="space-y-5 p-4 sm:p-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Caixa de entrada privada")}</p>
+        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Sugestões")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("As novas sugestões são privadas: somente a pessoa que enviou e a equipe administrativa podem acessá-las.")}</p>
+        <p className="mt-2 rounded-lg bg-[#f7f8fa] p-3 text-xs leading-5 text-[#233a59]">{translateText("Aprovar no roadmap publica o título, a categoria e a descrição para todos. Nome e dados da conta não são exibidos.")}</p>
+      </div>
+      <div aria-label={translateText("Seções de sugestões")} className="flex flex-wrap gap-2 border-b border-[#233a59]/10 pb-3" role="tablist">
+        {([
+          ["inbox", "Mensagens recebidas"],
+          ["categories", "Categorias"],
+          ["legacy", "Ideias anteriores"],
+        ] as const).map(([key, label]) => (
+          <button
+            aria-selected={activeTab === key}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === key ? "bg-[#012140] text-white" : "text-[#233a59] hover:bg-[#f2f4f7]"}`}
+            key={key}
+            onClick={() => setActiveTab(key)}
+            role="tab"
+            type="button"
+          >
+            {translateText(label)}
+          </button>
+        ))}
+      </div>
+      {activeTab === "inbox" ? (
+        <SupportInbox
+          requests={requests}
+          counts={suggestionCounts}
+          isLoading={requestsLoading}
+          isError={requestsError}
+          retry={retryRequests}
+          emptyMessage="Ainda não há sugestões recebidas."
+        />
+      ) : activeTab === "categories" ? (
+        <SuggestionCategoriesManager
+          categories={categories}
+          isLoading={categoriesLoading}
+          isError={categoriesError}
+          retry={retryCategories}
+        />
+      ) : legacyLoading ? (
+        <LoadingState rows={3} />
+      ) : legacyError ? (
+        <p className="text-sm text-muted-foreground">
+          {translateText("Não foi possível carregar as ideias anteriores.")}
+          <button className="ml-2 font-semibold underline" onClick={retryLegacy} type="button">{translateText("Tentar novamente")}</button>
+        </p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{translateText("Registros do antigo mural público foram preservados. Novos envios entram somente pela caixa privada.")}</p>
+          <SuggestionsTable
+            suggestions={legacySuggestions}
+            drafts={drafts}
+            stageDraft={stageDraft}
+            clearDraft={clearDraft}
+            feedback={feedback}
+            reportChange={reportChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupportInbox({
+  requests,
+  counts,
+  isLoading,
+  isError,
+  retry,
+  emptyMessage = "Ainda não há solicitações registradas.",
+}: {
+  requests: AdminSupportRequest[];
+  counts: { new: number; inProgress: number; completed: number };
+  isLoading: boolean;
+  isError: boolean;
+  retry: () => void;
+  emptyMessage?: string;
+}) {
+  const queryClient = useQueryClient();
+  const updateRequest = useUpdateAdminSupportRequest();
+  const updateRoadmap = useUpdateAdminSupportRequestRoadmap();
+  const createComment = useCreateAdminSupportRequestComment();
+  const [statusFilter, setStatusFilter] = useState<"all" | SupportRequestStatus>("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [drafts, setDrafts] = useState<Record<number, SupportRequestStatus>>({});
+  const [feedback, setFeedback] = useState<Record<number, string>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
+  const [commentFeedback, setCommentFeedback] = useState<Record<number, string>>({});
+  const [roadmapFeedback, setRoadmapFeedback] = useState<Record<number, string>>({});
+
+  const visibleRequests = requests
+    .filter((request) => statusFilter === "all" || request.status === statusFilter)
+    .sort((left, right) => {
+      const difference =
+        new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      return sortOrder === "oldest"
+        ? difference || left.id - right.id
+        : -difference || right.id - left.id;
+    });
+
+  async function saveStatus(request: AdminSupportRequest) {
+    const status = drafts[request.id];
+    if (!status || status === request.status) return;
+    setFeedback((current) => ({ ...current, [request.id]: "" }));
+    try {
+      await updateRequest.mutateAsync({
+        requestId: request.id,
+        data: { status },
+      });
+      setDrafts((current) => {
+        const { [request.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setFeedback((current) => ({ ...current, [request.id]: "Alterações salvas." }));
+      await queryClient.invalidateQueries({
+        queryKey: getListAdminSupportRequestsQueryKey(),
+      });
+    } catch {
+      setFeedback((current) => ({ ...current, [request.id]: "Não foi possível salvar." }));
+    }
+  }
+
+  async function saveComment(request: AdminSupportRequest) {
+    const message = commentDrafts[request.id]?.trim();
+    if (!message) return;
+    setCommentFeedback((current) => ({ ...current, [request.id]: "" }));
+    try {
+      await createComment.mutateAsync({
+        requestId: request.id,
+        data: { message },
+      });
+      setCommentDrafts((current) => ({ ...current, [request.id]: "" }));
+      setCommentFeedback((current) => ({ ...current, [request.id]: "Atualização enviada." }));
+      await queryClient.invalidateQueries({
+        queryKey: getListAdminSupportRequestsQueryKey(),
+      });
+    } catch {
+      setCommentFeedback((current) => ({ ...current, [request.id]: "Não foi possível enviar a atualização." }));
+    }
+  }
+
+  async function updateRoadmapApproval(request: AdminSupportRequest) {
+    const approved = request.approvedAt === null;
+    if (
+      approved &&
+      !window.confirm(
+        translateText("Ao aprovar, o título, a categoria e a descrição ficarão visíveis para todos. Deseja publicar?"),
+      )
+    ) {
+      return;
+    }
+    setRoadmapFeedback((current) => ({ ...current, [request.id]: "" }));
+    try {
+      await updateRoadmap.mutateAsync({
+        requestId: request.id,
+        data: { approved },
+      });
+      setRoadmapFeedback((current) => ({ ...current, [request.id]: "A publicação do roadmap foi atualizada." }));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListPublicRoadmapSuggestionsQueryKey() }),
+      ]);
+    } catch {
+      setRoadmapFeedback((current) => ({ ...current, [request.id]: "Não foi possível atualizar a publicação do roadmap." }));
+    }
+  }
+
+  if (isLoading) return <LoadingState rows={3} />;
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p>{translateText("Não foi possível carregar as solicitações.")}</p>
+        <button className="mt-2 font-semibold underline" onClick={retry} type="button">
+          {translateText("Tentar novamente")}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div aria-label={translateText("Resumo de solicitações")} className="grid gap-2 sm:grid-cols-3">
+        {[
+          { label: "Novas", value: counts.new },
+          { label: "Em andamento", value: counts.inProgress },
+          { label: "Concluídas", value: counts.completed },
+        ].map((count) => (
+          <div className="flex items-center justify-between rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3" key={count.label}>
+            <span className="text-sm text-muted-foreground">{translateText(count.label)}</span>
+            <strong className="font-display text-lg tabular-nums text-[#012140]">{count.value}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f7f8fa] p-3">
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Filtrar por status")}
+          <select
+            className={`${inputClass} ml-2`}
+            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            value={statusFilter}
+          >
+            <option value="all">{translateText("Todos")}</option>
+            <option value="new">{translateText("Nova")}</option>
+            <option value="in_progress">{translateText("Em andamento")}</option>
+            <option value="completed">{translateText("Concluída")}</option>
+          </select>
+        </label>
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Ordenar por data")}
+          <select
+            className={`${inputClass} ml-2`}
+            onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}
+            value={sortOrder}
+          >
+            <option value="newest">{translateText("Mais recentes primeiro")}</option>
+            <option value="oldest">{translateText("Mais antigas primeiro")}</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="space-y-3">
+        {visibleRequests.map((request) => {
+          const selectedStatus = drafts[request.id] ?? request.status;
+          const statusKey = `request:${request.id}`;
+          return (
+            <article className="rounded-xl border border-[#233a59]/15 p-4 sm:p-5" key={request.id}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs font-bold tracking-[.08em] text-[#233a59]">{request.protocol}</p>
+                  <h3 className="mt-1 font-semibold text-[#012140]">{request.title || request.subjectName}</h3>
+                  {request.title && <p className="mt-1 text-xs text-muted-foreground">{request.subjectName}{request.categoryName ? ` · ${request.categoryName}` : ""}</p>}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
+                  {translateText(supportStatusLabel[request.status])}
+                </span>
+              </div>
+              <p className="mt-4 whitespace-pre-wrap break-words rounded-lg bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{request.message}</p>
+              {request.requestType === "suggestion" && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#233a59]/10 p-3">
+                  <div className="min-w-52 flex-1 text-xs text-muted-foreground">
+                    <p className="font-bold text-[#233a59]">{translateText("Roadmap público")}</p>
+                    {request.approvedAt ? (
+                      <p className="mt-1">{translateText("Aprovada em")} {formatDate(request.approvedAt)}</p>
+                    ) : (
+                      <p className="mt-1">{translateText("Ainda não aprovada para exibição pública.")}</p>
+                    )}
+                  </div>
+                  <button
+                    className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
+                    disabled={updateRoadmap.isPending}
+                    onClick={() => void updateRoadmapApproval(request)}
+                    type="button"
+                  >
+                    {translateText(request.approvedAt ? "Retirar do roadmap" : "Aprovar e publicar")}
+                  </button>
+                  {roadmapFeedback[request.id] && (
+                    <span className={roadmapFeedback[request.id] === "A publicação do roadmap foi atualizada." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                      {translateText(roadmapFeedback[request.id])}
+                    </span>
+                  )}
+                </div>
+              )}
+              <section className="mt-4 rounded-xl border border-[#233a59]/10 p-3" data-testid={`support-request-updates-${request.id}`}>
+                <h4 className="text-xs font-bold uppercase tracking-[.12em] text-[#233a59]/75">{translateText("Atualizações enviadas à pessoa solicitante")}</h4>
+                {request.comments.length ? (
+                  <div className="mt-2 space-y-2">
+                    {request.comments.map((comment) => (
+                      <div className="rounded-lg bg-[#f7f8fa] p-3" key={comment.id}>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <strong className="text-[#233a59]">{comment.authorName}</strong>
+                          <time dateTime={comment.createdAt}>{formatDate(comment.createdAt)}</time>
+                        </div>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#233a59]">{comment.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">{translateText("Nenhuma atualização enviada à pessoa solicitante.")}</p>
+                )}
+                <form className="mt-3 space-y-2" onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveComment(request);
+                }}>
+                  <label className="block text-xs font-semibold text-[#233a59]">
+                    {translateText("Adicionar atualização")}
+                    <textarea
+                      className={`${inputClass} mt-1 block min-h-20 w-full resize-y`}
+                      maxLength={5000}
+                      onChange={(event) => setCommentDrafts((current) => ({ ...current, [request.id]: event.target.value }))}
+                      placeholder={translateText("Escreva uma atualização visível à pessoa solicitante.")}
+                      value={commentDrafts[request.id] ?? ""}
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+                      disabled={!commentDrafts[request.id]?.trim() || createComment.isPending}
+                      type="submit"
+                    >
+                      {translateText(createComment.isPending ? "Enviando…" : "Enviar atualização")}
+                    </button>
+                    {commentFeedback[request.id] && (
+                      <span className={commentFeedback[request.id] === "Atualização enviada." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                        {translateText(commentFeedback[request.id])}
+                      </span>
+                    )}
+                  </div>
+                </form>
+              </section>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label className="text-xs font-semibold text-[#233a59]" htmlFor={`support-status-${request.id}`}>
+                  {translateText("Atualizar status")}
+                </label>
+                <select
+                  className={inputClass}
+                  id={`support-status-${request.id}`}
+                  onChange={(event) => {
+                    const next = event.target.value as SupportRequestStatus;
+                    setDrafts((current) => ({ ...current, [request.id]: next }));
+                    setFeedback((current) => ({ ...current, [request.id]: "" }));
+                  }}
+                  value={selectedStatus}
+                >
+                  <option value="new">{translateText("Nova")}</option>
+                  <option value="in_progress">{translateText("Em andamento")}</option>
+                  <option value="completed">{translateText("Concluída")}</option>
+                </select>
+                {selectedStatus !== request.status && (
+                  <button
+                    className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+                    disabled={updateRequest.isPending}
+                    onClick={() => void saveStatus(request)}
+                    type="button"
+                  >
+                    {translateText(updateRequest.isPending ? "Salvando…" : "Salvar")}
+                  </button>
+                )}
+                {feedback[request.id] && (
+                  <span className={feedback[request.id] === "Alterações salvas." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                    {translateText(feedback[request.id])}
+                  </span>
+                )}
+              </div>
+              <span className="sr-only" data-testid={`${statusKey}-status`}>{request.status}</span>
+            </article>
+          );
+        })}
+        {!visibleRequests.length && (
+          <div className="rounded-xl border border-dashed border-[#233a59]/20 p-8 text-center text-sm text-muted-foreground">
+            {translateText(statusFilter === "all" ? emptyMessage : "Não há solicitações com este status.")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SuggestionCategoriesManager({
+  categories,
+  isLoading,
+  isError,
+  retry,
+}: {
+  categories: SupportRequestCategory[];
+  isLoading: boolean;
+  isError: boolean;
+  retry: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const createCategory = useCreateAdminSuggestionCategory();
+  const updateCategory = useUpdateAdminSuggestionCategory();
+  const [newName, setNewName] = useState("");
+  const [drafts, setDrafts] = useState<Record<number, { name: string; active: boolean }>>({});
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListAdminSuggestionCategoriesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListSuggestionCategoriesQueryKey() }),
+    ]);
+  }
+
+  async function addCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setFeedback("");
+    try {
+      await createCategory.mutateAsync({ data: { name: newName.trim() } });
+      setNewName("");
+      setFeedback(translateText("Categoria criada."));
+      await refresh();
+    } catch (mutationError) {
+      setError(getApiResponseError(mutationError) ?? translateText("Não foi possível criar a categoria."));
+    }
+  }
+
+  async function saveCategory(category: SupportRequestCategory) {
+    const draft = drafts[category.id];
+    if (!draft) return;
+    setError("");
+    setFeedback("");
+    try {
+      await updateCategory.mutateAsync({
+        categoryId: category.id,
+        data: { name: draft.name.trim(), active: draft.active },
+      });
+      setDrafts((current) => {
+        const { [category.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setFeedback(translateText("Categoria atualizada."));
+      await refresh();
+    } catch (mutationError) {
+      setError(getApiResponseError(mutationError) ?? translateText("Não foi possível atualizar a categoria."));
+    }
+  }
+
+  if (isLoading) return <LoadingState rows={3} />;
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p>{translateText("Não foi possível carregar as categorias de sugestão.")}</p>
+        <button className="mt-2 font-semibold underline" onClick={retry} type="button">{translateText("Tentar novamente")}</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-[#012140]">{translateText("Categorias do assunto Sugestão")}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Crie, edite ou inative categorias. Não é possível excluir opções, para preservar as mensagens já associadas.")}</p>
+      </div>
+      <form className="flex flex-wrap gap-2 rounded-xl bg-[#f7f8fa] p-3" onSubmit={(event) => void addCategory(event)}>
+        <label className="min-w-[220px] flex-1 text-xs font-semibold text-[#233a59]">
+          {translateText("Nova categoria")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={120}
+            minLength={2}
+            onChange={(event) => setNewName(event.target.value)}
+            placeholder={translateText("Ex.: Acessibilidade")}
+            required
+            value={newName}
+          />
+        </label>
+        <button className="auth-header-primary self-end" disabled={createCategory.isPending} type="submit">
+          {translateText(createCategory.isPending ? "Salvando…" : "Adicionar categoria")}
+        </button>
+      </form>
+      {feedback && <p className="text-sm text-emerald-700" role="status">{feedback}</p>}
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
+      <div className="space-y-2">
+        {categories.map((category) => {
+          const draft = drafts[category.id] ?? { name: category.name, active: category.active };
+          const isDirty = draft.name !== category.name || draft.active !== category.active;
+          return (
+            <article className="grid gap-3 rounded-xl border border-[#233a59]/15 p-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end" key={category.id}>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome da categoria")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={120}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [category.id]: { ...draft, name: event.target.value },
+                  }))}
+                  value={draft.name}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Disponibilidade")}
+                <select
+                  className={`${inputClass} mt-1 block w-full`}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [category.id]: { ...draft, active: event.target.value === "true" },
+                  }))}
+                  value={String(draft.active)}
+                >
+                  <option value="true">{translateText("Ativo")}</option>
+                  <option value="false">{translateText("Inativo")}</option>
+                </select>
+              </label>
+              {isDirty && (
+                <button
+                  className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+                  disabled={updateCategory.isPending}
+                  onClick={() => void saveCategory(category)}
+                  type="button"
+                >
+                  {translateText(updateCategory.isPending ? "Salvando…" : "Salvar")}
+                </button>
+              )}
+            </article>
+          );
+        })}
+        {!categories.length && (
+          <p className="rounded-xl border border-dashed border-[#233a59]/20 p-6 text-center text-sm text-muted-foreground">
+            {translateText("Nenhuma categoria foi criada ainda.")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SupportSubjectsManager({ subjects }: { subjects: SupportRequestSubject[] }) {
+  const queryClient = useQueryClient();
+  const createSubject = useCreateAdminSupportSubject();
+  const updateSubject = useUpdateAdminSupportSubject();
+  const [newName, setNewName] = useState("");
+  const [drafts, setDrafts] = useState<Record<number, { name: string; active: boolean }>>({});
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+
+  async function refreshSubjects() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListAdminSupportSubjectsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListSupportSubjectsQueryKey() }),
+    ]);
+  }
+
+  async function addSubject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeedback("");
+    setError("");
+    try {
+      await createSubject.mutateAsync({ data: { name: newName.trim() } });
+      setNewName("");
+      setFeedback(translateText("Assunto criado."));
+      await refreshSubjects();
+    } catch (mutationError) {
+      setError(getApiResponseError(mutationError) ?? translateText("Não foi possível criar o assunto."));
+    }
+  }
+
+  async function saveSubject(subject: SupportRequestSubject) {
+    const draft = drafts[subject.id];
+    if (!draft) return;
+    setFeedback("");
+    setError("");
+    try {
+      await updateSubject.mutateAsync({
+        subjectId: subject.id,
+        data: { name: draft.name.trim(), active: draft.active },
+      });
+      setDrafts((current) => {
+        const { [subject.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setFeedback(translateText("Assunto atualizado."));
+      await refreshSubjects();
+    } catch (mutationError) {
+      setError(getApiResponseError(mutationError) ?? translateText("Não foi possível atualizar o assunto."));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-[#012140]">{translateText("Assuntos disponíveis no formulário")}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Assuntos não podem ser excluídos; somente inativados. As solicitações antigas permanecem registradas.")}</p>
+      </div>
+      <form className="flex flex-wrap gap-2 rounded-xl bg-[#f7f8fa] p-3" onSubmit={(event) => void addSubject(event)}>
+        <label className="min-w-[220px] flex-1 text-xs font-semibold text-[#233a59]">
+          {translateText("Novo assunto")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={120}
+            minLength={2}
+            onChange={(event) => setNewName(event.target.value)}
+            placeholder={translateText("Ex.: Dúvida sobre o portal")}
+            required
+            value={newName}
+          />
+        </label>
+        <button className="auth-header-primary self-end" disabled={createSubject.isPending} type="submit">
+          {translateText(createSubject.isPending ? "Salvando…" : "Adicionar assunto")}
+        </button>
+      </form>
+      {feedback && <p className="text-sm text-emerald-700" role="status">{feedback}</p>}
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p>}
+      <div className="space-y-2">
+        {subjects.map((subject) => {
+          const draft = drafts[subject.id] ?? { name: subject.name, active: subject.active };
+          const isDirty = draft.name !== subject.name || draft.active !== subject.active;
+          return (
+            <article className="grid gap-3 rounded-xl border border-[#233a59]/15 p-3 sm:grid-cols-[minmax(0,1fr)_160px_auto] sm:items-end" key={subject.id}>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome do assunto")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={120}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [subject.id]: { ...draft, name: event.target.value },
+                  }))}
+                  value={draft.name}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Disponibilidade")}
+                <select
+                  className={`${inputClass} mt-1 block w-full`}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [subject.id]: { ...draft, active: event.target.value === "true" },
+                  }))}
+                  value={String(draft.active)}
+                >
+                  <option value="true">{translateText("Ativo")}</option>
+                  <option value="false">{translateText("Inativo")}</option>
+                </select>
+              </label>
+              {isDirty && (
+                <button
+                  className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+                  disabled={updateSubject.isPending}
+                  onClick={() => void saveSubject(subject)}
+                  type="button"
+                >
+                  {translateText(updateSubject.isPending ? "Salvando…" : "Salvar")}
+                </button>
+              )}
+            </article>
+          );
+        })}
+        {!subjects.length && (
+          <p className="rounded-xl border border-dashed border-[#233a59]/20 p-6 text-center text-sm text-muted-foreground">
+            {translateText("Nenhum assunto foi criado ainda. Adicione as opções que aparecerão no formulário.")}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -579,7 +1536,7 @@ function AdminTestimonialsPanel({
   );
 }
 
-function SiteMediaManager() {
+function SiteMediaManager({ onDirtyChange }: { onDirtyChange: (slot: SiteMediaSlot, dirty: boolean) => void }) {
   const media = useListAdminSiteMedia({
     query: { queryKey: getListAdminSiteMediaQueryKey() },
   });
@@ -636,6 +1593,7 @@ function SiteMediaManager() {
                 folder={item.folder}
                 key={item.slot}
                 title={item.title}
+                onDirtyChange={(dirty) => onDirtyChange(item.slot, dirty)}
               />
             ) : null;
           })}
@@ -651,12 +1609,14 @@ function SiteMediaAssetEditor({
   extensions,
   folder,
   title,
+  onDirtyChange,
 }: {
   asset: SiteMediaAsset;
   description: string;
   extensions: SiteMediaAssetUpdateExtension[];
   folder: string;
   title: string;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const queryClient = useQueryClient();
   const update = useUpdateAdminSiteMedia();
@@ -672,6 +1632,10 @@ function SiteMediaAssetEditor({
     setExtension(asset.extension as SiteMediaAssetUpdateExtension);
   }, [asset.extension, asset.name]);
 
+  useEffect(() => {
+    onDirtyChange(name !== (asset.name ?? "") || extension !== asset.extension);
+  }, [asset.extension, asset.name, extension, name, onDirtyChange]);
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -686,6 +1650,7 @@ function SiteMediaAssetEditor({
         queryClient.invalidateQueries({ queryKey: getGetSiteMediaQueryKey() }),
       ]);
       setSaved(true);
+      onDirtyChange(false);
     } catch (saveError) {
       setError(getSiteMediaSaveError(saveError));
     }
@@ -777,10 +1742,12 @@ function TaxonomyManager({
   items,
   isLoading,
   isError,
+  onDirtyChange,
 }: {
   items: TaxonomyItem[];
   isLoading: boolean;
   isError: boolean;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const client = useQueryClient();
   const create = useCreateAdminTaxonomy();
@@ -792,6 +1759,11 @@ function TaxonomyManager({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [message, setMessage] = useState("");
+  const editingItem = items.find((item) => item.id === editingId);
+
+  useEffect(() => {
+    onDirtyChange(Boolean(name.trim()) || Boolean(editingItem && editName !== editingItem.name));
+  }, [editName, editingItem, name, onDirtyChange]);
 
   async function refreshCatalog(refreshPosts = false) {
     const queries = [
@@ -819,6 +1791,7 @@ function TaxonomyManager({
       await create.mutateAsync({ data: { kind, type, name: name.trim() } });
       setName("");
       setMessage("Opção cadastrada e disponível para novas publicações.");
+      onDirtyChange(false);
       await refreshCatalog();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível cadastrar esta opção.");
@@ -848,6 +1821,7 @@ function TaxonomyManager({
       setEditingId(null);
       setEditName("");
       setMessage("Nome atualizado nas publicações existentes e no catálogo.");
+      onDirtyChange(false);
       await refreshCatalog(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível editar esta opção.");
@@ -855,7 +1829,7 @@ function TaxonomyManager({
   }
 
   const kindLabel: Record<PostKind, string> = {
-    blog: "Blog",
+    blog: "Conteúdos",
     forum: "Comunidade",
     news: "Novidades",
     help: "Central de Ajuda",
@@ -875,7 +1849,7 @@ function TaxonomyManager({
         <label className="block text-sm font-semibold text-[#012140]">
           {translateText("Área")}
           <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => setKind(event.target.value as PostKind)} value={kind}>
-            <option value="blog">Blog</option>
+            <option value="blog">{translateText("Conteúdos")}</option>
             <option value="forum">{translateText("Comunidade")}</option>
             <option value="news">{translateText("Novidades")}</option>
             <option value="help">{translateText("Central de Ajuda")}</option>
@@ -1120,7 +2094,15 @@ function AdminPollManagement() {
   );
 }
 
-function EditPostForm({ post, onSaved }: { post: Post; onSaved: () => void | Promise<void> }) {
+function EditPostForm({
+  post,
+  onSaved,
+  onDirtyChange,
+}: {
+  post: Post;
+  onSaved: () => void | Promise<void>;
+  onDirtyChange: (dirty: boolean) => void;
+}) {
   const updatePost = useUpdatePost();
   const taxonomyParams = { kind: post.kind };
   const taxonomy = useListTaxonomy(taxonomyParams, {
@@ -1134,6 +2116,15 @@ function EditPostForm({ post, onSaved }: { post: Post; onSaved: () => void | Pro
   const [message, setMessage] = useState("");
   const categories = (taxonomy.data ?? []).filter((item) => item.type === "category");
   const tagOptions = (taxonomy.data ?? []).filter((item) => item.type === "tag");
+
+  useEffect(() => {
+    const dirty = title !== post.title
+      || category !== post.category
+      || JSON.stringify(tags) !== JSON.stringify(post.tags ?? [])
+      || body !== post.body
+      || imageUrl !== (post.coverImageUrl ?? "");
+    onDirtyChange(dirty);
+  }, [body, category, imageUrl, onDirtyChange, post, tags, title]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1150,6 +2141,7 @@ function EditPostForm({ post, onSaved }: { post: Post; onSaved: () => void | Pro
         },
       });
       setMessage("Alterações salvas.");
+      onDirtyChange(false);
       await onSaved();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível salvar.");
@@ -1201,9 +2193,41 @@ function EditPostForm({ post, onSaved }: { post: Post; onSaved: () => void | Pro
   );
 }
 
-function UsersTable({ users }: { users: UserProfile[] }) {
+function UsersTable({
+  users,
+  drafts,
+  stageDraft,
+  clearDraft,
+  feedback,
+  reportChange,
+}: {
+  users: UserProfile[];
+  drafts: Record<string, string>;
+  stageDraft: (key: string, value: string, originalValue: string) => void;
+  clearDraft: (key: string) => void;
+  feedback: Record<string, string>;
+  reportChange: (key: string, message: string) => void;
+}) {
   const queryClient = useQueryClient();
   const updateUser = useUpdateAdminUser();
+
+  async function saveUserField(user: UserProfile, field: "role" | "status") {
+    const key = `user:${user.id}:${field}`;
+    const draft = drafts[key];
+    if (!draft) return;
+    try {
+      await updateUser.mutateAsync({
+        userId: user.id,
+        data: field === "role" ? { role: draft as UserRole } : { status: draft as UserStatus },
+      });
+      clearDraft(key);
+      reportChange(key, "Alterações salvas.");
+      await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
+    } catch {
+      reportChange(key, "Não foi possível salvar.");
+    }
+  }
+
   return (
     <div className="space-y-3">
       {users.map((user) => (
@@ -1214,41 +2238,47 @@ function UsersTable({ users }: { users: UserProfile[] }) {
           </div>
           <label className="text-xs font-semibold text-[#233a59]">
             {translateText("Papel")}
+            {(() => {
+              const key = `user:${user.id}:role`;
+              const value = drafts[key] ?? user.role;
+              return (
+                <>
             <select
               className={`${inputClass} mt-1 block w-full`}
               disabled={updateUser.isPending}
-              onChange={async (event) => {
-                try {
-                  await updateUser.mutateAsync({ userId: user.id, data: { role: event.target.value as UserRole } });
-                  await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-                } catch {
-                  await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-                }
-              }}
-              value={user.role}
+              onChange={(event) => stageDraft(key, event.target.value, user.role)}
+              value={value}
             >
               <option value="member">{translateText("Membro")}</option>
               <option value="admin">{translateText("Administrador")}</option>
             </select>
+                  {value !== user.role && <button className="auth-header-primary mt-2 !min-h-8 !px-3 !py-1 !text-xs" disabled={updateUser.isPending} onClick={() => void saveUserField(user, "role")} type="button">{translateText(updateUser.isPending ? "Salvando…" : "Salvar")}</button>}
+                  {feedback[key] && <span className={`mt-1 block ${feedback[key] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">{translateText(feedback[key])}</span>}
+                </>
+              );
+            })()}
           </label>
           <label className="text-xs font-semibold text-[#233a59]">
             {translateText("Conta")}
+            {(() => {
+              const key = `user:${user.id}:status`;
+              const value = drafts[key] ?? user.status;
+              return (
+                <>
             <select
               className={`${inputClass} mt-1 block w-full`}
               disabled={updateUser.isPending}
-              onChange={async (event) => {
-                try {
-                  await updateUser.mutateAsync({ userId: user.id, data: { status: event.target.value as UserStatus } });
-                  await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-                } catch {
-                  await queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-                }
-              }}
-              value={user.status}
+              onChange={(event) => stageDraft(key, event.target.value, user.status)}
+              value={value}
             >
               <option value="active">{translateText("Ativa")}</option>
               <option value="suspended">{translateText("Suspensa")}</option>
             </select>
+                  {value !== user.status && <button className="auth-header-primary mt-2 !min-h-8 !px-3 !py-1 !text-xs" disabled={updateUser.isPending} onClick={() => void saveUserField(user, "status")} type="button">{translateText(updateUser.isPending ? "Salvando…" : "Salvar")}</button>}
+                  {feedback[key] && <span className={`mt-1 block ${feedback[key] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">{translateText(feedback[key])}</span>}
+                </>
+              );
+            })()}
           </label>
         </article>
       ))}
@@ -1259,11 +2289,39 @@ function UsersTable({ users }: { users: UserProfile[] }) {
 
 function SuggestionsTable({
   suggestions,
+  drafts,
+  stageDraft,
+  clearDraft,
+  feedback,
+  reportChange,
 }: {
   suggestions: Suggestion[];
+  drafts: Record<string, string>;
+  stageDraft: (key: string, value: string, originalValue: string) => void;
+  clearDraft: (key: string) => void;
+  feedback: Record<string, string>;
+  reportChange: (key: string, message: string) => void;
 }) {
   const queryClient = useQueryClient();
   const updateSuggestion = useUpdateAdminSuggestion();
+
+  async function saveSuggestion(suggestion: Suggestion) {
+    const key = `suggestion:${suggestion.id}:status`;
+    const draft = drafts[key];
+    if (!draft) return;
+    try {
+      await updateSuggestion.mutateAsync({
+        suggestionId: suggestion.id,
+        data: { status: draft as SuggestionStatus },
+      });
+      clearDraft(key);
+      reportChange(key, "Alterações salvas.");
+      await queryClient.invalidateQueries({ queryKey: getListSuggestionsQueryKey() });
+    } catch {
+      reportChange(key, "Não foi possível salvar.");
+    }
+  }
+
   return (
     <div className="space-y-3">
       {suggestions.map((suggestion) => (
@@ -1275,23 +2333,27 @@ function SuggestionsTable({
           </div>
           <label className="text-xs font-semibold text-[#233a59]">
             {translateText("Andamento")}
+            {(() => {
+              const key = `suggestion:${suggestion.id}:status`;
+              const value = drafts[key] ?? suggestion.status;
+              return (
+                <>
             <select
               className={`${inputClass} mt-1 block w-full`}
               disabled={updateSuggestion.isPending}
-              onChange={async (event) => {
-                await updateSuggestion.mutateAsync({
-                  suggestionId: suggestion.id,
-                  data: { status: event.target.value as SuggestionStatus },
-                });
-                await queryClient.invalidateQueries({ queryKey: getListSuggestionsQueryKey() });
-              }}
-              value={suggestion.status}
+              onChange={(event) => stageDraft(key, event.target.value, suggestion.status)}
+              value={value}
             >
               <option value="under_review">{translateText("Em análise")}</option>
               <option value="planned">{translateText("Planejada")}</option>
               <option value="in_progress">{translateText("Em andamento")}</option>
               <option value="completed">{translateText("Concluída")}</option>
             </select>
+                  {value !== suggestion.status && <button className="auth-header-primary mt-2 !min-h-8 !px-3 !py-1 !text-xs" disabled={updateSuggestion.isPending} onClick={() => void saveSuggestion(suggestion)} type="button">{translateText(updateSuggestion.isPending ? "Salvando…" : "Salvar")}</button>}
+                  {feedback[key] && <span className={`mt-1 block ${feedback[key] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">{translateText(feedback[key])}</span>}
+                </>
+              );
+            })()}
           </label>
         </article>
       ))}
@@ -1384,7 +2446,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-[#012140]">{post.title}</span>
                       <span className="mt-1 block text-xs text-muted-foreground">
-                        {translateText(post.kind === "forum" ? "Comunidade" : post.kind === "blog" ? "Blog" : post.kind === "news" ? "Novidades" : "Ajuda")}
+                        {translateText(post.kind === "forum" ? "Comunidade" : post.kind === "blog" ? "Conteúdos" : post.kind === "news" ? "Novidades" : "Ajuda")}
                       </span>
                     </span>
                     <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold tabular-nums ${isSelected ? "bg-[#012140] text-white" : "bg-[#e8e8e8] text-[#233a59]"}`}>

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetDashboardQueryKey,
@@ -77,11 +77,13 @@ export function CreatePostForm({
   onCreated,
   initialKind,
   fixedKind = false,
+  onDirtyChange,
 }: {
   mode: "community" | "admin";
   onCreated?: () => void;
   initialKind?: PostKind;
   fixedKind?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const client = useQueryClient();
   const mutation = useCreatePost();
@@ -99,6 +101,16 @@ export function CreatePostForm({
   });
   const categories = (taxonomy.data ?? []).filter((item) => item.type === "category");
   const tagOptions = (taxonomy.data ?? []).filter((item) => item.type === "tag");
+
+  useEffect(() => {
+    if (!onDirtyChange) return;
+    const defaultKind = initialKind ?? (mode === "community" ? "forum" : "blog");
+    const dirty = Boolean(title.trim() || category || body.trim() || image.trim() || tags.length)
+      || kind !== defaultKind
+      || status !== "published";
+    onDirtyChange(dirty);
+  }, [body, category, image, initialKind, kind, mode, onDirtyChange, status, tags, title]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -109,7 +121,8 @@ export function CreatePostForm({
         kind, category, tags,
         coverImageUrl: image.trim() || null, videoUrl: null, status: mode === "admin" ? status : "published",
       } });
-      setTitle(""); setBody(""); setTags([]); setImage("");
+      setTitle(""); setCategory(""); setBody(""); setTags([]); setImage(""); setStatus("published");
+      onDirtyChange?.(false);
       setMessage(status === "draft" ? "Rascunho salvo." : "Publicação criada.");
       await Promise.all([
         client.invalidateQueries({ queryKey: getListPostsQueryKey() }),

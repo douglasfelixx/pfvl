@@ -19,8 +19,6 @@ import {
   CreatePostResponse,
   CreateAdminTaxonomyBody,
   CreateAdminTaxonomyResponse,
-  CreateSuggestionBody,
-  CreateSuggestionResponse,
   CreateAdminPollBody,
   CreateAdminPollResponse,
   DeleteNotificationParams,
@@ -115,6 +113,7 @@ import {
   requireAdmin,
   requirePfvlUser,
 } from "../lib/pfvl-auth.js";
+import supportRequestsRouter from "./support-requests.js";
 
 const router = Router();
 
@@ -1989,52 +1988,7 @@ router.post(
   },
 );
 
-router.post(
-  "/suggestions",
-  requirePfvlUser,
-  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
-    const parsed = CreateSuggestionBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
-      return;
-    }
-
-    const user = getPfvlUser(req);
-    const recipients = await activeNotificationRecipients();
-    const created = await db.transaction(async (tx) => {
-      const [suggestion] = await tx
-        .insert(suggestionsTable)
-        .values({
-          title: parsed.data.title.trim(),
-          details: parsed.data.details.trim(),
-          category: parsed.data.category.trim(),
-          authorName: user.displayName,
-          authorUserId: user.id,
-        })
-        .returning();
-
-      const event: NotificationEvent = {
-        eventKey: `suggestion:${suggestion.id}:new`,
-        type: "new_suggestion",
-        title: "Nova sugestão no roadmap",
-        message: `${user.displayName}: ${suggestion.title}`,
-        href: "/suggestions",
-        actorUserId: user.id,
-      };
-      await persistNotificationBatch(
-        notificationRows(recipients, event),
-        async (batch) => {
-          await tx.insert(notificationsTable).values(batch).onConflictDoNothing();
-        },
-      );
-      return suggestion;
-    });
-
-    res.status(201).json(CreateSuggestionResponse.parse(created));
-  },
-);
-
-router.get("/suggestions", async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+router.get("/suggestions", requirePfvlUser, requireAdmin, async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const rows = await db
     .select()
     .from(suggestionsTable)
@@ -2132,5 +2086,7 @@ router.get("/indicators", async (req: ExpressRequest, res: ExpressResponse): Pro
     res.status(502).json({ error: "Fonte de indicadores indisponível" });
   }
 });
+
+router.use(supportRequestsRouter);
 
 export default router;

@@ -1,0 +1,170 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "wSao6LL6MgCsN-n9ZZK-c"
+uri = "file://generated-artifacts/PFVL-GitHub-download.html"
+type = "html"
+title = "Baixar atualização PFVL para GitHub"
+description = "Arquivo HTML com botão para baixar o ZIP corrigido para o próximo commit."
+logical_id = "390c4837-663d-4c4d-993d-b0494299b390"
+content_hash = "sha256:ded9a51b887e5ee551612ab87b038afec9093712002d63b900eeb6509416c533"
+size = 757602
+mtime_ms = 1793130909198
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/390c4837-663d-4c4d-993d-b0494299b390/a93f3795-ea59-4dec-bd29-88fbc8e90cbf"
+storage_version_token = "1793130927617904"
+content_type = "text/html"
+
+[[outputs]]
+id = "1sJsRqUJuqVk6MkSRL9Ak"
+uri = "file://generated-artifacts/PFVL-GitHub-indicadores.html"
+type = "html"
+title = "PFVL atualizado — correção dos indicadores"
+description = "Abra e clique em Baixar pacote ZIP atualizado. Inclui a correção do último erro da Vercel."
+logical_id = "10df24e9-50a2-4755-8835-63a2a93e0765"
+content_hash = "sha256:69afc8376144cac50bcde112d9a018d23e3a7a07fc65c69b90cd96fad09867d3"
+size = 757728
+mtime_ms = 1793131283051
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/10df24e9-50a2-4755-8835-63a2a93e0765/9e843522-27a8-4af7-a0eb-b13b310069ef"
+storage_version_token = "1793131283538700"
+content_type = "text/html"
+
+[[outputs]]
+id = "bgqXqecgG10PqTP_86WWD"
+uri = "file://generated-artifacts/PFVL-GitHub-rotas-api.html"
+type = "html"
+title = "PFVL — atualização das rotas da API"
+description = "Abra o cartão para baixar o ZIP. Também é necessário cadastrar as variáveis na Vercel."
+logical_id = "ae8f6a2e-7bff-4a52-9a01-7df0c9acd2be"
+content_hash = "sha256:5807f6de562893198f66227b58e4c341e6a8c57c3f7d0efe339a8cfc0443fc1e"
+size = 758361
+mtime_ms = 1793132564591
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/ae8f6a2e-7bff-4a52-9a01-7df0c9acd2be/4d5c4158-b45a-43bb-ac14-e4bfbed7ac05"
+storage_version_token = "1793132565226261"
+content_type = "text/html"
+
+[[outputs]]
+id = "XNpnCEsWCv8zodgXE0RL2"
+uri = "file://generated-artifacts/PFVL-GitHub-correcao-esm.html"
+type = "html"
+title = "PFVL — correção ERR_REQUIRE_ESM"
+description = "Abra o cartão e clique para baixar o ZIP atualizado para o GitHub."
+logical_id = "e1f20941-37b6-4133-aef5-b3e68ece1dd5"
+content_hash = "sha256:becef6f030f7df6c7f5beb79f5d935cc3308710ba6b93ab2a755a2ca79817330"
+size = 758387
+mtime_ms = 1793135006347
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/e1f20941-37b6-4133-aef5-b3e68ece1dd5/93e42a0d-715e-437e-b773-0f7a63b214b7"
+storage_version_token = "1793135006809983"
+content_type = "text/html"
+
+[[outputs]]
+id = "YY_MyQ_ROtIV3eZnRbf5R"
+uri = "file://generated-artifacts/PFVL-GitHub-correcao-workspace.html"
+type = "html"
+title = "PFVL — correção ERR_MODULE_NOT_FOUND"
+description = "Baixe o pacote atualizado para substituir os arquivos no GitHub."
+logical_id = "678d2d37-1d4f-46a2-a249-8fc88d15a90a"
+content_hash = "sha256:1f294be9a9d1e793014fef1bf6aa2d6a8eece9918e78bf7fa3e635fcb4d2b495"
+size = 758884
+mtime_ms = 1793135513267
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/678d2d37-1d4f-46a2-a249-8fc88d15a90a/764fe8d5-ff87-4857-a713-7e3691fe42f4"
+storage_version_token = "1793135513734205"
+content_type = "text/html"
+
+[[outputs]]
+id = "43cpq8PJti2RACyO1hmXF"
+uri = "file://generated-artifacts/PFVL-GitHub-diagnostico-banco.html"
+type = "html"
+title = "PFVL — diagnóstico seguro do banco"
+description = "Pacote atualizado para revelar o código real da falha de consulta, sem expor dados."
+logical_id = "f940bf60-85fa-4c56-8d7d-619a4298b98f"
+content_hash = "sha256:c86929989cce7d4c6ab21d4c368b049e61dc1417b6de5a9a0ac3e5b6fa83a4ec"
+size = 760549
+mtime_ms = 1793137197927
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/f940bf60-85fa-4c56-8d7d-619a4298b98f/2f205a4a-c81a-4445-bedc-635b068cab26"
+storage_version_token = "1793137198372698"
+content_type = "text/html"
+
+[[outputs]]
+id = "uBgC6LSBbjw48X--AvPXS"
+uri = "file://generated-artifacts/PFVL-correcao-retorno-comentarios.zip"
+type = "unspecified"
+title = "PFVL — correção do retorno após login"
+description = "ZIP com os três arquivos alterados e instruções para aplicar no repositório e fazer commit manual."
+logical_id = "80804c03-cffe-46fa-bc6a-5d1c7f64430c"
+content_hash = "sha256:563d1b6760cd4423b904a85b388c1fd41579b710c12c7af7246d277e42a06ae6"
+size = 14711
+mtime_ms = 1793232964663
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/80804c03-cffe-46fa-bc6a-5d1c7f64430c/3cf598c7-fdb5-4820-b9dd-717901c98586"
+storage_version_token = "1793232970184649"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Z-qbSMeEY8qwcvGBX_rLk"
+uri = "file://generated-artifacts/PFVL-GitHub-atualizado.zip"
+type = "unspecified"
+title = "ZIP atualizado do PFVL para GitHub"
+description = "Export limpo com as atualizações mais recentes, sem credenciais ou arquivos específicos do Replit."
+logical_id = "33634829-d908-43fc-bd4a-b4077421223f"
+content_hash = "sha256:2906aa81ba32afc7a652a6352404cb92de49832aa0ed721b3b4d8e0839ed9d86"
+size = 587539
+mtime_ms = 1793235866779
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/33634829-d908-43fc-bd4a-b4077421223f/3a1b2e87-a011-41a9-a6d3-91b91ab7aabd"
+storage_version_token = "1793235877702596"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "DxPivM6JRJ_tIJbreZFih"
+uri = "file://generated-artifacts/PFVL-Atualizacao-GitHub-2026-10-29.zip"
+type = "unspecified"
+title = "ZIP atualizado do Portal PFVL"
+description = "Projeto completo atualizado para extrair no repositório do GitHub e fazer o commit manualmente. Sem credenciais nem referências ao Replit."
+logical_id = "0da83dfd-8850-46fd-9907-9e59bc7356fb"
+content_hash = "sha256:7e528e4d05dd74eaf641ebe1c354f01c6fba4780c7c8e2226638d83fb481cbaa"
+size = 592506
+mtime_ms = 1793289032559
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/0da83dfd-8850-46fd-9907-9e59bc7356fb/909230ea-1047-4dbc-a66c-7ed6c3656686"
+storage_version_token = "1793289043846242"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "a89_5-IwPcQ-P3r_LnEZd"
+uri = "file://generated-artifacts/PFVL-Atualizacao-GitHub-2026-10-29-upload-corrigido.zip"
+type = "unspecified"
+title = "ZIP atualizado — correção do upload 503"
+description = "Projeto completo para atualizar seu repositório GitHub. Inclui a correção do caminho relativo de imagem e não contém credenciais nem referências ao Replit."
+logical_id = "57d8058a-a002-4c22-951e-644ee9b12eeb"
+content_hash = "sha256:567f007fcad618114f35f81f09f9d19c7546d707a4e95573e6f7d476c7b6bc5a"
+size = 592513
+mtime_ms = 1793290029914
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/57d8058a-a002-4c22-951e-644ee9b12eeb/59ada426-a561-44e6-aa84-1afb3cc3cb17"
+storage_version_token = "1793290036042659"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "uQfgTdMpY3j9L5hutOhkN"
+uri = "file://generated-artifacts/PFVL-GitHub-Atualizado-2026-10-29.zip"
+type = "unspecified"
+title = "Projeto PFVL atualizado para GitHub"
+description = "ZIP do projeto limpo, sem arquivos de ambiente ou referências ao Replit. Inclui as atualizações recentes de perfil, idiomas e depoimentos, com configurações para Vercel."
+logical_id = "e3f92035-8ca5-4aa9-94a7-ab7a166ea4d2"
+content_hash = "sha256:b75f5425780800b1bdde15dcfbc0ea4b352db177cfbd9dcdc31733fec7a1f702"
+size = 623339
+mtime_ms = 1793314407498
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/e3f92035-8ca5-4aa9-94a7-ab7a166ea4d2/6eeb06f4-7679-46e3-b13b-1b6df836cc1c"
+storage_version_token = "1793314508134309"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "FT5siyrZbD8_by8dVgUdn"
+uri = "file://generated-artifacts/PFVL-GitHub-Atualizado-Menu-Rodape.zip"
+type = "unspecified"
+title = "Projeto PFVL atualizado para GitHub"
+description = "ZIP completo e atualizado, incluindo o rodapé azul e os ajustes no menu do administrador. Sem arquivos de ambiente, segredos ou referências ao Replit."
+logical_id = "f75579ff-cdb4-4e81-b378-4cb81d628336"
+content_hash = "sha256:8b8fe75167ba22f39f6e14229b47a5767dcdb86ef4658df590ae000e4e665489"
+size = 623467
+mtime_ms = 1793317996682
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/f75579ff-cdb4-4e81-b378-4cb81d628336/d0138237-2378-403f-9e08-4a7ea40ec6c6"
+storage_version_token = "1793318002492286"
+content_type = "application/octet-stream"

@@ -1,0 +1,12 @@
+- [Vercel API typing](vercel-express-typing.md) — NodeNext can expose mismatched Express types and duplicate Drizzle identities; test preserved-symlink builds.
+- [Vercel API routing](vercel-api-routing.md) — explicit wildcard routing is needed for nested API paths; verify runtime responses separately from build status.
+- [Safe API error diagnostics](api-error-diagnostics.md) — inspect nested database cause codes; default Express output hides them, while raw errors can expose query data.
+- [PFVL company identity](pfvl-company-identity.md) — PFVL belongs to Orbe Sistemas Financeiros; never reuse another company’s prior contract details.
+- [PFVL R2 upload and delivery](pfvl-r2-upload-permissions.md) — Verify `PutObject`; the S3 endpoint is not a public image URL, and exposing the whole bucket is unnecessary.
+- [PFVL category and tag ownership](pfvl-taxonomy.md) — Administrators maintain publishing categories and tags; authors select from the approved options.
+- [PFVL Neon targets](pfvl-neon-targets.md) — The production Neon branch and Replit preview may use different databases; verify each before applying schema changes.
+- [PFVL language policy](pfvl-language-policy.md) — Translate interface only; use flag-only header switching and labeled flag choices in the profile.
+- [PFVL testimonial approval](pfvl-testimonials.md) — Show member testimonials on the homepage only after an administrator approves them.
+- [PFVL support protocols](pfvl-support-protocols.md) — Annual ticket numbers must use an atomic persistent counter and unique constraint, never counts of existing requests.
+- [Neon migration SQL](neon-migration-sql.md) — The Neon migration preparer can reject dollar-quoted blocks; favor plain SQL and test the temporary branch.
+- [PFVL responsive layout](pfvl-responsive-layout.md) — Center full-bleed sections within the viewport on mobile; negative-margin sizing produced uneven gutters in preview.

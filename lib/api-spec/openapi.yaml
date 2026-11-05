@@ -379,6 +379,388 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /support-subjects:
+    get:
+      operationId: listSupportSubjects
+      tags: [content]
+      summary: Lista assuntos ativos disponíveis para abrir uma solicitação
+      responses:
+        "200":
+          description: Assuntos ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportRequestSubject"
+  /support-requests:
+    post:
+      operationId: createSupportRequest
+      tags: [account]
+      summary: Registra uma solicitação para a equipe PFVL
+      description: A identidade do solicitante é obtida exclusivamente da sessão autenticada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestInput"
+      responses:
+        "201":
+          description: Solicitação registrada com protocolo anual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequestCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /suggestion-categories:
+    get:
+      operationId: listSuggestionCategories
+      tags: [content]
+      summary: Lista categorias ativas do assunto Sugestão
+      responses:
+        "200":
+          description: Categorias disponíveis para enviar sugestões
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupportRequestCategory" }
+  /roadmap/suggestions:
+    get:
+      operationId: listPublicRoadmapSuggestions
+      tags: [content]
+      summary: Lista sugestões aprovadas para o roadmap público
+      description: Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+      responses:
+        "200":
+          description: Sugestões aprovadas em ordem crescente de aprovação
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PublicRoadmapSuggestion" }
+  /my/support-requests:
+    get:
+      operationId: listMySupportRequests
+      tags: [account]
+      summary: Lista solicitações de atendimento da conta autenticada
+      description: Retorna somente as solicitações de atendimento e respostas da equipe vinculadas à conta autenticada.
+      responses:
+        "200":
+          description: Solicitações de atendimento da conta autenticada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MySupportRequest" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /my/suggestions:
+    get:
+      operationId: listMySuggestions
+      tags: [account]
+      summary: Lista as sugestões privadas enviadas pela conta autenticada
+      responses:
+        "200":
+          description: Solicitações de sugestão da conta autenticada
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MySuggestion" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createMySuggestion
+      tags: [account]
+      summary: Registra uma sugestão privada com o assunto fixo Sugestão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MySuggestionInput" }
+      responses:
+        "201":
+          description: Sugestão registrada com protocolo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestCreated" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/suggestion-categories:
+    get:
+      operationId: listAdminSuggestionCategories
+      tags: [admin]
+      summary: Lista categorias de sugestão, inclusive inativas
+      responses:
+        "200":
+          description: Categorias para gestão administrativa
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupportRequestCategory" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminSuggestionCategory
+      tags: [admin]
+      summary: Cria uma categoria para o assunto Sugestão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportRequestCategoryInput" }
+      responses:
+        "201":
+          description: Categoria criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestCategory" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Já existe uma categoria com esse nome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/suggestion-categories/{categoryId}:
+    patch:
+      operationId: updateAdminSuggestionCategory
+      tags: [admin]
+      summary: Edita ou ativa e desativa uma categoria de sugestão
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportRequestCategoryUpdate" }
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestCategory" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Já existe uma categoria com esse nome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/support-subjects:
+    get:
+      operationId: listAdminSupportSubjects
+      tags: [admin]
+      summary: Lista assuntos de atendimento, inclusive inativos
+      responses:
+        "200":
+          description: Catálogo de assuntos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportRequestSubject"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminSupportSubject
+      tags: [admin]
+      summary: Cria um assunto de atendimento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestSubjectInput"
+      responses:
+        "201":
+          description: Assunto criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequestSubject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Já existe um assunto com esse nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/support-subjects/{subjectId}:
+    patch:
+      operationId: updateAdminSupportSubject
+      tags: [admin]
+      summary: Edita ou ativa e desativa um assunto de atendimento
+      parameters:
+        - $ref: "#/components/parameters/SupportSubjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestSubjectUpdate"
+      responses:
+        "200":
+          description: Assunto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequestSubject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Já existe um assunto com esse nome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/support-requests:
+    get:
+      operationId: listAdminSupportRequests
+      tags: [admin]
+      summary: Lista solicitações e totais por status para o painel
+      responses:
+        "200":
+          description: Solicitações ordenadas pelas mais recentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportRequestsList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/support-requests/{requestId}:
+    patch:
+      operationId: updateAdminSupportRequest
+      tags: [admin]
+      summary: Atualiza o status de uma solicitação
+      parameters:
+        - $ref: "#/components/parameters/SupportRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestStatusUpdate"
+      responses:
+        "200":
+          description: Solicitação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSupportRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support-requests/{requestId}/roadmap:
+    patch:
+      operationId: updateAdminSupportRequestRoadmap
+      tags: [admin]
+      summary: Publica ou remove uma sugestão do roadmap público
+      parameters:
+        - $ref: "#/components/parameters/SupportRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestRoadmapApprovalInput"
+      responses:
+        "200":
+          description: Aprovação pública atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequestRoadmapApprovalResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/support-requests/{requestId}/comments:
+    post:
+      operationId: createAdminSupportRequestComment
+      tags: [admin]
+      summary: Adiciona um comentário administrativo visível ao solicitante
+      parameters:
+        - $ref: "#/components/parameters/SupportRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupportRequestCommentInput" }
+      responses:
+        "201":
+          description: Comentário registrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestComment" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /admin/testimonials:
     get:
       operationId: listAdminTestimonials
@@ -796,36 +1178,17 @@ paths:
   /suggestions:
     get:
       operationId: listSuggestions
-      tags: [suggestions]
-      summary: Lista sugestões agrupáveis por status
+      tags: [admin]
+      summary: Lista registros preservados do antigo mural de sugestões
       responses:
         "200":
-          description: Sugestões da comunidade
+          description: Registros antigos, disponíveis apenas para a equipe administrativa
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Suggestion"
-    post:
-      operationId: createSuggestion
-      tags: [suggestions]
-      summary: Envia uma sugestão da comunidade
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SuggestionInput"
-      responses:
-        "201":
-          description: Sugestão recebida e adicionada ao roadmap
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Suggestion"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -914,6 +1277,18 @@ components:
         type: integer
     NotificationId:
       name: notificationId
+      in: path
+      required: true
+      schema:
+        type: integer
+    SupportSubjectId:
+      name: subjectId
+      in: path
+      required: true
+      schema:
+        type: integer
+    SupportRequestId:
+      name: requestId
       in: path
       required: true
       schema:
@@ -1117,6 +1492,174 @@ components:
       properties:
         preferredLanguage: { $ref: "#/components/schemas/PreferredLanguage" }
       required: [preferredLanguage]
+    SupportRequestStatus:
+      type: string
+      enum: [new, in_progress, completed]
+    SupportRequestSubject:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        systemKey: { type: ["string", "null"] }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, systemKey, active, createdAt, updatedAt]
+    SupportRequestSubjectInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+      required: [name]
+    SupportRequestSubjectUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        active: { type: boolean }
+    SupportRequestCategory:
+      type: object
+      properties:
+        id: { type: integer }
+        subjectId: { type: integer }
+        name: { type: string }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, subjectId, name, active, createdAt, updatedAt]
+    SupportRequestCategoryInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+      required: [name]
+    SupportRequestCategoryUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        active: { type: boolean }
+    SupportRequestInput:
+      type: object
+      properties:
+        subjectId: { type: integer }
+        message: { type: string, minLength: 20, maxLength: 5000 }
+      required: [subjectId, message]
+    SupportRequestCreated:
+      type: object
+      properties:
+        protocol: { type: string, pattern: "^[0-9]{12}$" }
+        createdAt: { type: string, format: date-time }
+      required: [protocol, createdAt]
+    MySuggestionInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 4, maxLength: 220 }
+        categoryId: { type: integer }
+        message: { type: string, minLength: 20, maxLength: 5000 }
+      required: [title, categoryId, message]
+    SupportRequestComment:
+      type: object
+      properties:
+        id: { type: integer }
+        authorName: { type: string }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, authorName, message, createdAt]
+    MySuggestion:
+      type: object
+      properties:
+        id: { type: integer }
+        protocol: { type: string, pattern: "^[0-9]{12}$" }
+        subjectName: { type: string }
+        title: { type: ["string", "null"] }
+        categoryName: { type: ["string", "null"] }
+        message: { type: string }
+        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        comments:
+          type: array
+          items: { $ref: "#/components/schemas/SupportRequestComment" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, protocol, subjectName, title, categoryName, message, status, comments, createdAt, updatedAt]
+    MySupportRequest:
+      type: object
+      properties:
+        id: { type: integer }
+        protocol: { type: string, pattern: "^[0-9]{12}$" }
+        subjectName: { type: string }
+        message: { type: string }
+        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        comments:
+          type: array
+          items: { $ref: "#/components/schemas/SupportRequestComment" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, protocol, subjectName, message, status, comments, createdAt, updatedAt]
+    PublicRoadmapSuggestion:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        categoryName: { type: ["string", "null"] }
+        message: { type: string }
+        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        approvedAt: { type: string, format: date-time }
+      required: [id, title, categoryName, message, status, approvedAt]
+    AdminSupportRequest:
+      type: object
+      properties:
+        id: { type: integer }
+        protocol: { type: string, pattern: "^[0-9]{12}$" }
+        requestType: { type: string, enum: [support, suggestion] }
+        subjectName: { type: string }
+        title: { type: ["string", "null"] }
+        categoryName: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        requesterName: { type: string }
+        requesterEmail: { type: string, format: email }
+        message: { type: string }
+        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        comments:
+          type: array
+          items: { $ref: "#/components/schemas/SupportRequestComment" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, protocol, requestType, subjectName, title, categoryName, approvedAt, requesterName, requesterEmail, message, status, comments, createdAt, updatedAt]
+    SupportRequestCommentInput:
+      type: object
+      properties:
+        message: { type: string, minLength: 1, maxLength: 5000 }
+      required: [message]
+    SupportRequestStatusUpdate:
+      type: object
+      properties:
+        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+      required: [status]
+    SupportRequestRoadmapApprovalInput:
+      type: object
+      properties:
+        approved: { type: boolean }
+      required: [approved]
+    SupportRequestRoadmapApprovalResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        approvedAt: { type: ["string", "null"], format: date-time }
+      required: [id, approvedAt]
+    SupportRequestCounts:
+      type: object
+      properties:
+        new: { type: integer }
+        inProgress: { type: integer }
+        completed: { type: integer }
+      required: [new, inProgress, completed]
+    AdminSupportRequestsList:
+      type: object
+      properties:
+        requests:
+          type: array
+          items: { $ref: "#/components/schemas/AdminSupportRequest" }
+        counts: { $ref: "#/components/schemas/SupportRequestCounts" }
+      required: [requests, counts]
     TestimonialStatus:
       type: string
       enum: [pending, approved, rejected]

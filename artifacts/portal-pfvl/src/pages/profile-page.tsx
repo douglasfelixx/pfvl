@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
 import { Link } from "wouter";
-import { CalendarDays, MessageCircle, Star, UserRound } from "lucide-react";
+import { CalendarDays, Headphones, MessageCircle, Star, UserRound } from "lucide-react";
 import {
   getGetCurrentUserQueryKey,
   getGetMyTestimonialQueryKey,
@@ -104,6 +104,17 @@ function ProfileContent() {
         </div>
         <span className="profile-avatar" aria-hidden="true">{profile.data.displayName.trim().slice(0, 1).toLocaleUpperCase()}</span>
       </header>
+
+      <div className="mb-5">
+        <Link
+          className="auth-header-link inline-flex items-center gap-2 !border-[#233a59]/20 !text-[#233a59]"
+          data-testid="link-member-support-requests"
+          href="/help/requests"
+        >
+          <Headphones aria-hidden="true" size={16} />
+          {translateText("Minhas solicitações")}
+        </Link>
+      </div>
 
       <div className="profile-columns">
         <main className="profile-main-column">

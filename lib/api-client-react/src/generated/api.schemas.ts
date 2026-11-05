@@ -251,6 +251,204 @@ export interface UpdateMyProfileInput {
   preferredLanguage: PreferredLanguage;
 }
 
+export type SupportRequestStatus = typeof SupportRequestStatus[keyof typeof SupportRequestStatus];
+
+
+export const SupportRequestStatus = {
+  new: 'new',
+  in_progress: 'in_progress',
+  completed: 'completed',
+} as const;
+
+export interface SupportRequestSubject {
+  id: number;
+  name: string;
+  /** @nullable */
+  systemKey: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestSubjectInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+}
+
+export interface SupportRequestSubjectUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  active?: boolean;
+}
+
+export interface SupportRequestCategory {
+  id: number;
+  subjectId: number;
+  name: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestCategoryInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+}
+
+export interface SupportRequestCategoryUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  active?: boolean;
+}
+
+export interface SupportRequestInput {
+  subjectId: number;
+  /**
+     * @minLength 20
+     * @maxLength 5000
+     */
+  message: string;
+}
+
+export interface SupportRequestCreated {
+  /** @pattern ^[0-9]{12}$ */
+  protocol: string;
+  createdAt: string;
+}
+
+export interface MySuggestionInput {
+  /**
+     * @minLength 4
+     * @maxLength 220
+     */
+  title: string;
+  categoryId: number;
+  /**
+     * @minLength 20
+     * @maxLength 5000
+     */
+  message: string;
+}
+
+export interface SupportRequestComment {
+  id: number;
+  authorName: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface MySuggestion {
+  id: number;
+  /** @pattern ^[0-9]{12}$ */
+  protocol: string;
+  subjectName: string;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  categoryName: string | null;
+  message: string;
+  status: SupportRequestStatus;
+  comments: SupportRequestComment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MySupportRequest {
+  id: number;
+  /** @pattern ^[0-9]{12}$ */
+  protocol: string;
+  subjectName: string;
+  message: string;
+  status: SupportRequestStatus;
+  comments: SupportRequestComment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicRoadmapSuggestion {
+  id: number;
+  title: string;
+  /** @nullable */
+  categoryName: string | null;
+  message: string;
+  status: SupportRequestStatus;
+  approvedAt: string;
+}
+
+export type AdminSupportRequestRequestType = typeof AdminSupportRequestRequestType[keyof typeof AdminSupportRequestRequestType];
+
+
+export const AdminSupportRequestRequestType = {
+  support: 'support',
+  suggestion: 'suggestion',
+} as const;
+
+export interface AdminSupportRequest {
+  id: number;
+  /** @pattern ^[0-9]{12}$ */
+  protocol: string;
+  requestType: AdminSupportRequestRequestType;
+  subjectName: string;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  categoryName: string | null;
+  /** @nullable */
+  approvedAt: string | null;
+  requesterName: string;
+  requesterEmail: string;
+  message: string;
+  status: SupportRequestStatus;
+  comments: SupportRequestComment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestCommentInput {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  message: string;
+}
+
+export interface SupportRequestStatusUpdate {
+  status: SupportRequestStatus;
+}
+
+export interface SupportRequestRoadmapApprovalInput {
+  approved: boolean;
+}
+
+export interface SupportRequestRoadmapApprovalResponse {
+  id: number;
+  /** @nullable */
+  approvedAt: string | null;
+}
+
+export interface SupportRequestCounts {
+  new: number;
+  inProgress: number;
+  completed: number;
+}
+
+export interface AdminSupportRequestsList {
+  requests: AdminSupportRequest[];
+  counts: SupportRequestCounts;
+}
+
 export type TestimonialStatus = typeof TestimonialStatus[keyof typeof TestimonialStatus];
 
 

@@ -22,6 +22,8 @@ import type {
 import type {
   ActivePoll,
   AdminPollInput,
+  AdminSupportRequest,
+  AdminSupportRequestsList,
   AdminTestimonialUpdate,
   BadRequestResponse,
   Comment,
@@ -36,6 +38,9 @@ import type {
   Indicator,
   ListPostsParams,
   ListTaxonomyParams,
+  MySuggestion,
+  MySuggestionInput,
+  MySupportRequest,
   MyTestimonial,
   NotFoundResponse,
   Notification,
@@ -43,12 +48,25 @@ import type {
   PollSummary,
   PollVoteInput,
   Post,
+  PublicRoadmapSuggestion,
   SiteMedia,
   SiteMediaAsset,
   SiteMediaAssetUpdate,
   SiteMediaSlot,
   Suggestion,
-  SuggestionInput,
+  SupportRequestCategory,
+  SupportRequestCategoryInput,
+  SupportRequestCategoryUpdate,
+  SupportRequestComment,
+  SupportRequestCommentInput,
+  SupportRequestCreated,
+  SupportRequestInput,
+  SupportRequestRoadmapApprovalInput,
+  SupportRequestRoadmapApprovalResponse,
+  SupportRequestStatusUpdate,
+  SupportRequestSubject,
+  SupportRequestSubjectInput,
+  SupportRequestSubjectUpdate,
   TaxonomyInput,
   TaxonomyItem,
   TaxonomyUpdate,
@@ -1631,6 +1649,1422 @@ export const useUpsertMyTestimonial = <TError = ErrorType<UnauthorizedResponse |
       return useMutation(getUpsertMyTestimonialMutationOptions(options));
     }
 
+export const getListSupportSubjectsUrl = () => {
+
+
+
+
+  return `/api/support-subjects`
+}
+
+/**
+ * @summary Lista assuntos ativos disponíveis para abrir uma solicitação
+ */
+export const listSupportSubjects = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestSubject[]> => {
+
+  return customFetch<SupportRequestSubject[]>(getListSupportSubjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSupportSubjectsQueryKey = () => {
+    return [
+    `/api/support-subjects`
+    ] as const;
+    }
+
+
+export const getListSupportSubjectsQueryOptions = <TData = Awaited<ReturnType<typeof listSupportSubjects>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSupportSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSupportSubjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSupportSubjects>>> = ({ signal }) => listSupportSubjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSupportSubjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSupportSubjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listSupportSubjects>>>
+export type ListSupportSubjectsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista assuntos ativos disponíveis para abrir uma solicitação
+ */
+
+export function useListSupportSubjects<TData = Awaited<ReturnType<typeof listSupportSubjects>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSupportSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSupportSubjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSupportRequestUrl = () => {
+
+
+
+
+  return `/api/support-requests`
+}
+
+/**
+ * A identidade do solicitante é obtida exclusivamente da sessão autenticada.
+ * @summary Registra uma solicitação para a equipe PFVL
+ */
+export const createSupportRequest = async (supportRequestInput: SupportRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCreated> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestCreated>(getCreateSupportRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSupportRequestMutationKey = () => ['createSupportRequest'] as const;
+
+export const getCreateSupportRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupportRequest>>, TError,CreateSupportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSupportRequest>>, TError,CreateSupportRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateSupportRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSupportRequest>>, CreateSupportRequestMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSupportRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSupportRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createSupportRequest>>>
+    export type CreateSupportRequestMutationBody = BodyType<SupportRequestInput>
+    export type CreateSupportRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type CreateSupportRequestMutationVariables = {data: BodyType<SupportRequestInput>}
+
+    /**
+ * @summary Registra uma solicitação para a equipe PFVL
+ */
+export const useCreateSupportRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSupportRequest>>, TError,CreateSupportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSupportRequest>>,
+        TError,
+        CreateSupportRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateSupportRequestMutationOptions(options));
+    }
+
+export const getListSuggestionCategoriesUrl = () => {
+
+
+
+
+  return `/api/suggestion-categories`
+}
+
+/**
+ * @summary Lista categorias ativas do assunto Sugestão
+ */
+export const listSuggestionCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCategory[]> => {
+
+  return customFetch<SupportRequestCategory[]>(getListSuggestionCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSuggestionCategoriesQueryKey = () => {
+    return [
+    `/api/suggestion-categories`
+    ] as const;
+    }
+
+
+export const getListSuggestionCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listSuggestionCategories>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSuggestionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSuggestionCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSuggestionCategories>>> = ({ signal }) => listSuggestionCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSuggestionCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSuggestionCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listSuggestionCategories>>>
+export type ListSuggestionCategoriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista categorias ativas do assunto Sugestão
+ */
+
+export function useListSuggestionCategories<TData = Awaited<ReturnType<typeof listSuggestionCategories>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSuggestionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSuggestionCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPublicRoadmapSuggestionsUrl = () => {
+
+
+
+
+  return `/api/roadmap/suggestions`
+}
+
+/**
+ * Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+ * @summary Lista sugestões aprovadas para o roadmap público
+ */
+export const listPublicRoadmapSuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapSuggestion[]> => {
+
+  return customFetch<PublicRoadmapSuggestion[]>(getListPublicRoadmapSuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPublicRoadmapSuggestionsQueryKey = () => {
+    return [
+    `/api/roadmap/suggestions`
+    ] as const;
+    }
+
+
+export const getListPublicRoadmapSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPublicRoadmapSuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>> = ({ signal }) => listPublicRoadmapSuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPublicRoadmapSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>>
+export type ListPublicRoadmapSuggestionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Lista sugestões aprovadas para o roadmap público
+ */
+
+export function useListPublicRoadmapSuggestions<TData = Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicRoadmapSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPublicRoadmapSuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMySupportRequestsUrl = () => {
+
+
+
+
+  return `/api/my/support-requests`
+}
+
+/**
+ * Retorna somente as solicitações de atendimento e respostas da equipe vinculadas à conta autenticada.
+ * @summary Lista solicitações de atendimento da conta autenticada
+ */
+export const listMySupportRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<MySupportRequest[]> => {
+
+  return customFetch<MySupportRequest[]>(getListMySupportRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMySupportRequestsQueryKey = () => {
+    return [
+    `/api/my/support-requests`
+    ] as const;
+    }
+
+
+export const getListMySupportRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listMySupportRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMySupportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMySupportRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMySupportRequests>>> = ({ signal }) => listMySupportRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMySupportRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMySupportRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listMySupportRequests>>>
+export type ListMySupportRequestsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista solicitações de atendimento da conta autenticada
+ */
+
+export function useListMySupportRequests<TData = Awaited<ReturnType<typeof listMySupportRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMySupportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMySupportRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMySuggestionsUrl = () => {
+
+
+
+
+  return `/api/my/suggestions`
+}
+
+/**
+ * @summary Lista as sugestões privadas enviadas pela conta autenticada
+ */
+export const listMySuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<MySuggestion[]> => {
+
+  return customFetch<MySuggestion[]>(getListMySuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMySuggestionsQueryKey = () => {
+    return [
+    `/api/my/suggestions`
+    ] as const;
+    }
+
+
+export const getListMySuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listMySuggestions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMySuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMySuggestions>>> = ({ signal }) => listMySuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMySuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMySuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listMySuggestions>>>
+export type ListMySuggestionsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista as sugestões privadas enviadas pela conta autenticada
+ */
+
+export function useListMySuggestions<TData = Awaited<ReturnType<typeof listMySuggestions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMySuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMySuggestionUrl = () => {
+
+
+
+
+  return `/api/my/suggestions`
+}
+
+/**
+ * @summary Registra uma sugestão privada com o assunto fixo Sugestão
+ */
+export const createMySuggestion = async (mySuggestionInput: MySuggestionInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCreated> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestCreated>(getCreateMySuggestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mySuggestionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMySuggestionMutationKey = () => ['createMySuggestion'] as const;
+
+export const getCreateMySuggestionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMySuggestion>>, TError,CreateMySuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMySuggestion>>, TError,CreateMySuggestionMutationVariables, TContext> => {
+
+const mutationKey = getCreateMySuggestionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMySuggestion>>, CreateMySuggestionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMySuggestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMySuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof createMySuggestion>>>
+    export type CreateMySuggestionMutationBody = BodyType<MySuggestionInput>
+    export type CreateMySuggestionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type CreateMySuggestionMutationVariables = {data: BodyType<MySuggestionInput>}
+
+    /**
+ * @summary Registra uma sugestão privada com o assunto fixo Sugestão
+ */
+export const useCreateMySuggestion = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMySuggestion>>, TError,CreateMySuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMySuggestion>>,
+        TError,
+        CreateMySuggestionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateMySuggestionMutationOptions(options));
+    }
+
+export const getListAdminSuggestionCategoriesUrl = () => {
+
+
+
+
+  return `/api/admin/suggestion-categories`
+}
+
+/**
+ * @summary Lista categorias de sugestão, inclusive inativas
+ */
+export const listAdminSuggestionCategories = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCategory[]> => {
+
+  return customFetch<SupportRequestCategory[]>(getListAdminSuggestionCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSuggestionCategoriesQueryKey = () => {
+    return [
+    `/api/admin/suggestion-categories`
+    ] as const;
+    }
+
+
+export const getListAdminSuggestionCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSuggestionCategories>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSuggestionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSuggestionCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSuggestionCategories>>> = ({ signal }) => listAdminSuggestionCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSuggestionCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSuggestionCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSuggestionCategories>>>
+export type ListAdminSuggestionCategoriesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista categorias de sugestão, inclusive inativas
+ */
+
+export function useListAdminSuggestionCategories<TData = Awaited<ReturnType<typeof listAdminSuggestionCategories>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSuggestionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSuggestionCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminSuggestionCategoryUrl = () => {
+
+
+
+
+  return `/api/admin/suggestion-categories`
+}
+
+/**
+ * @summary Cria uma categoria para o assunto Sugestão
+ */
+export const createAdminSuggestionCategory = async (supportRequestCategoryInput: SupportRequestCategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCategory> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestCategory>(getCreateAdminSuggestionCategoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestCategoryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSuggestionCategoryMutationKey = () => ['createAdminSuggestionCategory'] as const;
+
+export const getCreateAdminSuggestionCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSuggestionCategory>>, TError,CreateAdminSuggestionCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSuggestionCategory>>, TError,CreateAdminSuggestionCategoryMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSuggestionCategoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSuggestionCategory>>, CreateAdminSuggestionCategoryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSuggestionCategory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSuggestionCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSuggestionCategory>>>
+    export type CreateAdminSuggestionCategoryMutationBody = BodyType<SupportRequestCategoryInput>
+    export type CreateAdminSuggestionCategoryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>
+    export type CreateAdminSuggestionCategoryMutationVariables = {data: BodyType<SupportRequestCategoryInput>}
+
+    /**
+ * @summary Cria uma categoria para o assunto Sugestão
+ */
+export const useCreateAdminSuggestionCategory = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSuggestionCategory>>, TError,CreateAdminSuggestionCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSuggestionCategory>>,
+        TError,
+        CreateAdminSuggestionCategoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSuggestionCategoryMutationOptions(options));
+    }
+
+export const getUpdateAdminSuggestionCategoryUrl = (categoryId: number,) => {
+
+
+
+
+  return `/api/admin/suggestion-categories/${categoryId}`
+}
+
+/**
+ * @summary Edita ou ativa e desativa uma categoria de sugestão
+ */
+export const updateAdminSuggestionCategory = async (categoryId: number,
+    supportRequestCategoryUpdate: SupportRequestCategoryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestCategory> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestCategory>(getUpdateAdminSuggestionCategoryUrl(categoryId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestCategoryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSuggestionCategoryMutationKey = () => ['updateAdminSuggestionCategory'] as const;
+
+export const getUpdateAdminSuggestionCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSuggestionCategory>>, TError,UpdateAdminSuggestionCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSuggestionCategory>>, TError,UpdateAdminSuggestionCategoryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSuggestionCategoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSuggestionCategory>>, UpdateAdminSuggestionCategoryMutationVariables> = (props) => {
+          const {categoryId,data} = props ?? {};
+
+          return  updateAdminSuggestionCategory(categoryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSuggestionCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSuggestionCategory>>>
+    export type UpdateAdminSuggestionCategoryMutationBody = BodyType<SupportRequestCategoryUpdate>
+    export type UpdateAdminSuggestionCategoryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type UpdateAdminSuggestionCategoryMutationVariables = {categoryId: number;data: BodyType<SupportRequestCategoryUpdate>}
+
+    /**
+ * @summary Edita ou ativa e desativa uma categoria de sugestão
+ */
+export const useUpdateAdminSuggestionCategory = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSuggestionCategory>>, TError,UpdateAdminSuggestionCategoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSuggestionCategory>>,
+        TError,
+        UpdateAdminSuggestionCategoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSuggestionCategoryMutationOptions(options));
+    }
+
+export const getListAdminSupportSubjectsUrl = () => {
+
+
+
+
+  return `/api/admin/support-subjects`
+}
+
+/**
+ * @summary Lista assuntos de atendimento, inclusive inativos
+ */
+export const listAdminSupportSubjects = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestSubject[]> => {
+
+  return customFetch<SupportRequestSubject[]>(getListAdminSupportSubjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSupportSubjectsQueryKey = () => {
+    return [
+    `/api/admin/support-subjects`
+    ] as const;
+    }
+
+
+export const getListAdminSupportSubjectsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSupportSubjects>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSupportSubjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSupportSubjects>>> = ({ signal }) => listAdminSupportSubjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportSubjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSupportSubjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSupportSubjects>>>
+export type ListAdminSupportSubjectsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista assuntos de atendimento, inclusive inativos
+ */
+
+export function useListAdminSupportSubjects<TData = Awaited<ReturnType<typeof listAdminSupportSubjects>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSupportSubjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminSupportSubjectUrl = () => {
+
+
+
+
+  return `/api/admin/support-subjects`
+}
+
+/**
+ * @summary Cria um assunto de atendimento
+ */
+export const createAdminSupportSubject = async (supportRequestSubjectInput: SupportRequestSubjectInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestSubject> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestSubject>(getCreateAdminSupportSubjectUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestSubjectInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSupportSubjectMutationKey = () => ['createAdminSupportSubject'] as const;
+
+export const getCreateAdminSupportSubjectMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportSubject>>, TError,CreateAdminSupportSubjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportSubject>>, TError,CreateAdminSupportSubjectMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSupportSubjectMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSupportSubject>>, CreateAdminSupportSubjectMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSupportSubject(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSupportSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSupportSubject>>>
+    export type CreateAdminSupportSubjectMutationBody = BodyType<SupportRequestSubjectInput>
+    export type CreateAdminSupportSubjectMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>
+    export type CreateAdminSupportSubjectMutationVariables = {data: BodyType<SupportRequestSubjectInput>}
+
+    /**
+ * @summary Cria um assunto de atendimento
+ */
+export const useCreateAdminSupportSubject = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportSubject>>, TError,CreateAdminSupportSubjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSupportSubject>>,
+        TError,
+        CreateAdminSupportSubjectMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSupportSubjectMutationOptions(options));
+    }
+
+export const getUpdateAdminSupportSubjectUrl = (subjectId: number,) => {
+
+
+
+
+  return `/api/admin/support-subjects/${subjectId}`
+}
+
+/**
+ * @summary Edita ou ativa e desativa um assunto de atendimento
+ */
+export const updateAdminSupportSubject = async (subjectId: number,
+    supportRequestSubjectUpdate: SupportRequestSubjectUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestSubject> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestSubject>(getUpdateAdminSupportSubjectUrl(subjectId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestSubjectUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupportSubjectMutationKey = () => ['updateAdminSupportSubject'] as const;
+
+export const getUpdateAdminSupportSubjectMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportSubject>>, TError,UpdateAdminSupportSubjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportSubject>>, TError,UpdateAdminSupportSubjectMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupportSubjectMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupportSubject>>, UpdateAdminSupportSubjectMutationVariables> = (props) => {
+          const {subjectId,data} = props ?? {};
+
+          return  updateAdminSupportSubject(subjectId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupportSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupportSubject>>>
+    export type UpdateAdminSupportSubjectMutationBody = BodyType<SupportRequestSubjectUpdate>
+    export type UpdateAdminSupportSubjectMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type UpdateAdminSupportSubjectMutationVariables = {subjectId: number;data: BodyType<SupportRequestSubjectUpdate>}
+
+    /**
+ * @summary Edita ou ativa e desativa um assunto de atendimento
+ */
+export const useUpdateAdminSupportSubject = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportSubject>>, TError,UpdateAdminSupportSubjectMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupportSubject>>,
+        TError,
+        UpdateAdminSupportSubjectMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupportSubjectMutationOptions(options));
+    }
+
+export const getListAdminSupportRequestsUrl = () => {
+
+
+
+
+  return `/api/admin/support-requests`
+}
+
+/**
+ * @summary Lista solicitações e totais por status para o painel
+ */
+export const listAdminSupportRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSupportRequestsList> => {
+
+  return customFetch<AdminSupportRequestsList>(getListAdminSupportRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSupportRequestsQueryKey = () => {
+    return [
+    `/api/admin/support-requests`
+    ] as const;
+    }
+
+
+export const getListAdminSupportRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSupportRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSupportRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSupportRequests>>> = ({ signal }) => listAdminSupportRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSupportRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSupportRequests>>>
+export type ListAdminSupportRequestsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista solicitações e totais por status para o painel
+ */
+
+export function useListAdminSupportRequests<TData = Awaited<ReturnType<typeof listAdminSupportRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSupportRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminSupportRequestUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/admin/support-requests/${requestId}`
+}
+
+/**
+ * @summary Atualiza o status de uma solicitação
+ */
+export const updateAdminSupportRequest = async (requestId: number,
+    supportRequestStatusUpdate: SupportRequestStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminSupportRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminSupportRequest>(getUpdateAdminSupportRequestUrl(requestId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupportRequestMutationKey = () => ['updateAdminSupportRequest'] as const;
+
+export const getUpdateAdminSupportRequestMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequest>>, TError,UpdateAdminSupportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequest>>, TError,UpdateAdminSupportRequestMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupportRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupportRequest>>, UpdateAdminSupportRequestMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  updateAdminSupportRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupportRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupportRequest>>>
+    export type UpdateAdminSupportRequestMutationBody = BodyType<SupportRequestStatusUpdate>
+    export type UpdateAdminSupportRequestMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateAdminSupportRequestMutationVariables = {requestId: number;data: BodyType<SupportRequestStatusUpdate>}
+
+    /**
+ * @summary Atualiza o status de uma solicitação
+ */
+export const useUpdateAdminSupportRequest = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequest>>, TError,UpdateAdminSupportRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupportRequest>>,
+        TError,
+        UpdateAdminSupportRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupportRequestMutationOptions(options));
+    }
+
+export const getUpdateAdminSupportRequestRoadmapUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/admin/support-requests/${requestId}/roadmap`
+}
+
+/**
+ * @summary Publica ou remove uma sugestão do roadmap público
+ */
+export const updateAdminSupportRequestRoadmap = async (requestId: number,
+    supportRequestRoadmapApprovalInput: SupportRequestRoadmapApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestRoadmapApprovalResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestRoadmapApprovalResponse>(getUpdateAdminSupportRequestRoadmapUrl(requestId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestRoadmapApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupportRequestRoadmapMutationKey = () => ['updateAdminSupportRequestRoadmap'] as const;
+
+export const getUpdateAdminSupportRequestRoadmapMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>, TError,UpdateAdminSupportRequestRoadmapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>, TError,UpdateAdminSupportRequestRoadmapMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupportRequestRoadmapMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>, UpdateAdminSupportRequestRoadmapMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  updateAdminSupportRequestRoadmap(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupportRequestRoadmapMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>>
+    export type UpdateAdminSupportRequestRoadmapMutationBody = BodyType<SupportRequestRoadmapApprovalInput>
+    export type UpdateAdminSupportRequestRoadmapMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateAdminSupportRequestRoadmapMutationVariables = {requestId: number;data: BodyType<SupportRequestRoadmapApprovalInput>}
+
+    /**
+ * @summary Publica ou remove uma sugestão do roadmap público
+ */
+export const useUpdateAdminSupportRequestRoadmap = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>, TError,UpdateAdminSupportRequestRoadmapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupportRequestRoadmap>>,
+        TError,
+        UpdateAdminSupportRequestRoadmapMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupportRequestRoadmapMutationOptions(options));
+    }
+
+export const getCreateAdminSupportRequestCommentUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/admin/support-requests/${requestId}/comments`
+}
+
+/**
+ * @summary Adiciona um comentário administrativo visível ao solicitante
+ */
+export const createAdminSupportRequestComment = async (requestId: number,
+    supportRequestCommentInput: SupportRequestCommentInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestComment> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestComment>(getCreateAdminSupportRequestCommentUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestCommentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSupportRequestCommentMutationKey = () => ['createAdminSupportRequestComment'] as const;
+
+export const getCreateAdminSupportRequestCommentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestComment>>, TError,CreateAdminSupportRequestCommentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestComment>>, TError,CreateAdminSupportRequestCommentMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSupportRequestCommentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSupportRequestComment>>, CreateAdminSupportRequestCommentMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  createAdminSupportRequestComment(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSupportRequestCommentMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSupportRequestComment>>>
+    export type CreateAdminSupportRequestCommentMutationBody = BodyType<SupportRequestCommentInput>
+    export type CreateAdminSupportRequestCommentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type CreateAdminSupportRequestCommentMutationVariables = {requestId: number;data: BodyType<SupportRequestCommentInput>}
+
+    /**
+ * @summary Adiciona um comentário administrativo visível ao solicitante
+ */
+export const useCreateAdminSupportRequestComment = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestComment>>, TError,CreateAdminSupportRequestCommentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSupportRequestComment>>,
+        TError,
+        CreateAdminSupportRequestCommentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSupportRequestCommentMutationOptions(options));
+    }
+
 export const getListAdminTestimonialsUrl = () => {
 
 
@@ -3113,7 +4547,7 @@ export const getListSuggestionsUrl = () => {
 }
 
 /**
- * @summary Lista sugestões agrupáveis por status
+ * @summary Lista registros preservados do antigo mural de sugestões
  */
 export const listSuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<Suggestion[]> => {
 
@@ -3137,7 +4571,7 @@ export const getListSuggestionsQueryKey = () => {
     }
 
 
-export const getListSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listSuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listSuggestions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3156,14 +4590,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSuggestions>>>
-export type ListSuggestionsQueryError = ErrorType<unknown>
+export type ListSuggestionsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
 
 
 /**
- * @summary Lista sugestões agrupáveis por status
+ * @summary Lista registros preservados do antigo mural de sugestões
  */
 
-export function useListSuggestions<TData = Awaited<ReturnType<typeof listSuggestions>>, TError = ErrorType<unknown>>(
+export function useListSuggestions<TData = Awaited<ReturnType<typeof listSuggestions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -3180,94 +4614,6 @@ export function useListSuggestions<TData = Awaited<ReturnType<typeof listSuggest
 
 
 
-
-export const getCreateSuggestionUrl = () => {
-
-
-
-
-  return `/api/suggestions`
-}
-
-/**
- * @summary Envia uma sugestão da comunidade
- */
-export const createSuggestion = async (suggestionInput: SuggestionInput, options?: Parameters<typeof customFetch>[1]): Promise<Suggestion> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<Suggestion>(getCreateSuggestionUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(suggestionInput)
-  }
-);}
-
-
-
-
-
-export const getCreateSuggestionMutationKey = () => ['createSuggestion'] as const;
-
-export const getCreateSuggestionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext> => {
-
-const mutationKey = getCreateSuggestionMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSuggestion>>, CreateSuggestionMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  createSuggestion(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type CreateSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof createSuggestion>>>
-    export type CreateSuggestionMutationBody = BodyType<SuggestionInput>
-    export type CreateSuggestionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
-    export type CreateSuggestionMutationVariables = {data: BodyType<SuggestionInput>}
-
-    /**
- * @summary Envia uma sugestão da comunidade
- */
-export const useCreateSuggestion = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSuggestion>>, TError,CreateSuggestionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createSuggestion>>,
-        TError,
-        CreateSuggestionMutationVariables,
-        TContext
-      > => {
-      return useMutation(getCreateSuggestionMutationOptions(options));
-    }
 
 export const getListNotificationsUrl = () => {
 
