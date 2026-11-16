@@ -1,4 +1,5 @@
 import { ArrowRight, Handshake, LifeBuoy, Mail, Play, ShieldCheck } from 'lucide-react';
+import { SiInstagram } from 'react-icons/si';
 import { getGetSiteMediaQueryKey, useGetSiteMedia } from '@workspace/api-client-react';
 import { Link } from 'wouter';
 import { AuthActionGate } from '@/components/auth-ui';
@@ -60,7 +61,7 @@ export function AboutPage() {
       <PageHeading
         eyebrow="Sobre"
         title={translateText("Conheça o PFVL.")}
-        description={translateText("Organização para o presente, planejamento para o futuro.") + " " + translateText("Conheça o PFVL e a Orbe Sistemas Financeiros, empresa responsável pelo produto.")}
+        description={translateText("Organização para o presente, planejamento para o futuro.") + " " + translateText("Conheça o PFVL e a Orbefin Sistemas Financeiros, empresa responsável pelo produto.")}
       />
       <div className="institutional-content-grid">
         <Surface className="institutional-copy-card">
@@ -72,17 +73,17 @@ export function AboutPage() {
         </Surface>
         <Surface className="institutional-copy-card company-card">
           <p className="eyebrow-pill">{translateText("A empresa responsável")}</p>
-          <h2>{translateText("Orbe Sistemas Financeiros")}</h2>
-          <p>{translateText("A Orbe Sistemas Financeiros é a empresa de tecnologia responsável pelo PFVL.")}</p>
+          <h2>{translateText("Orbefin Sistemas Financeiros")}</h2>
+          <p>{translateText("A Orbefin Sistemas Financeiros é a empresa de tecnologia responsável pelo PFVL.")}</p>
           <p>{translateText("Nosso propósito é criar ferramentas que ajudem as pessoas a compreender sua vida financeira e transformar objetivos em planos que possam acompanhar e revisar.")}</p>
           <p>{translateText("Com o PFVL, aproximamos organização, planejamento e acompanhamento para apoiar decisões mais conscientes, respeitando o contexto e as escolhas de cada pessoa.")}</p>
           <a className="company-domain-link" href="https://www.orbefin.com.br" rel="noreferrer" target="_blank">
-            {translateText("Conheça a Orbe Sistemas Financeiros")} <ArrowRight size={15} />
+            {translateText("Conheça a Orbefin Sistemas Financeiros")} <ArrowRight size={15} />
           </a>
         </Surface>
       </div>
       <footer className="institutional-legal-footer">
-        <p>{translateText("PFVL é um produto da Orbe Sistemas Financeiros.")}</p>
+        <p>{translateText("PFVL é um produto da Orbefin Sistemas Financeiros.")}</p>
         <p>{translateText("Razão social:")} <strong>ORBE SISTEMAS INTEGRADOS DE GESTAO FINANCEIRA LTDA</strong></p>
         <p>{translateText("CNPJ:")} <strong>69.815.402/0001-40</strong></p>
       </footer>
@@ -96,7 +97,7 @@ export function ContactPage() {
       <PageHeading
         eyebrow="Contato"
         title={translateText("Entre em contato")}
-        description={translateText("Encontre o canal adequado para falar com a equipe da Orbe Sistemas Financeiros sobre o PFVL.")}
+        description={translateText("Encontre o canal adequado para falar com a equipe da Orbefin Sistemas Financeiros sobre o PFVL.")}
       />
       <div className="mt-6 grid items-stretch gap-4 lg:grid-cols-3">
         <Surface className="institutional-copy-card flex h-full flex-col">
@@ -118,6 +119,19 @@ export function ContactPage() {
               </Link>
             </AuthActionGate>
           </div>
+          <div className="mt-5 rounded-xl bg-[#f4f6f8] p-4">
+            <p className="text-sm font-semibold text-[#012140]">{translateText("Acompanhe o PFVL no Instagram")}</p>
+            <a
+              aria-label={`${translateText("Acompanhe o PFVL no Instagram")} @pfvl.oficial`}
+              className="mt-2 inline-flex min-h-10 items-center gap-2 font-semibold text-[#233a59] underline underline-offset-2"
+              href="https://www.instagram.com/pfvl.oficial/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <SiInstagram aria-hidden="true" size={18} />
+              @pfvl.oficial <ArrowRight aria-hidden="true" size={14} />
+            </a>
+          </div>
           <div className="mt-auto border-t border-[#233a59]/10 pt-5">
             <h3 className="text-sm font-semibold text-[#012140]">{translateText("Não consegue acessar sua conta?")}</h3>
             <p className="!mt-1">{translateText("Entre em contato pelo e-mail")}{" "}
@@ -133,7 +147,7 @@ export function ContactPage() {
             </span>
             <h2 className="!mt-0">{translateText("Parcerias")}</h2>
           </div>
-          <p>{translateText("Quer apresentar uma proposta de parceria ou uma oportunidade de colaboração com a Orbe Sistemas Financeiros? Entre em contato pelo e-mail")}{" "}
+          <p>{translateText("Quer apresentar uma proposta de parceria ou uma oportunidade de colaboração com a Orbefin Sistemas Financeiros? Entre em contato pelo e-mail")}{" "}
             <a className="font-semibold text-[#233a59] underline underline-offset-2" href="mailto:parcerias@orbefin.com.br">parcerias@orbefin.com.br</a>.
           </p>
           <a
@@ -228,7 +242,7 @@ function PrivacyPolicyPage() {
       <PageHeading
         eyebrow="Informações legais"
         title={translateText("Política de Privacidade")}
-        description={translateText("Entenda como a Orbe Sistemas Financeiros trata seus dados pessoais no site e na aplicação PFVL, por que essas informações são utilizadas e como exercer seus direitos.")}
+        description={translateText("Entenda como a Orbefin Sistemas Financeiros trata seus dados pessoais no site e na aplicação PFVL, por que essas informações são utilizadas e como exercer seus direitos.")}
       />
 
       <div className="mt-6 space-y-4">

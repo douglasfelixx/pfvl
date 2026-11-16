@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetDashboardQueryKey,
@@ -15,8 +15,10 @@ import {
   type PostStatus,
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
+import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
 import { translateText } from "@/lib/i18n";
 
+const RichTextEditor = lazy(() => import("@/components/rich-text-editor").then((module) => ({ default: module.RichTextEditor })));
 const fieldClass = "mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10";
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir a solicitação.";
 
@@ -64,7 +66,7 @@ export function ImageUploadField({ imageUrl, onImageUrlChange, required = false 
         <input accept="image/jpeg,image/png,image/webp" className={fieldClass} disabled={upload.isPending} onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void uploadImage(file); event.currentTarget.value = ""; }} type="file" />
       </label>
       <p className="mt-1 text-xs text-muted-foreground">{translateText("JPG, PNG ou WebP até 5 MB. Também é possível informar um endereço HTTPS.")}</p>
-      <input aria-label={translateText("Endereço HTTPS da imagem")} className={fieldClass} onChange={(event) => onImageUrlChange(event.target.value)} placeholder="https://..." type="url" value={imageUrl} />
+      <input aria-label={translateText("Endereço HTTPS ou caminho da imagem")} className={fieldClass} inputMode="url" onChange={(event) => onImageUrlChange(event.target.value)} placeholder="https://..." type="text" value={imageUrl} />
       {upload.isPending && <p className="mt-2 text-xs text-muted-foreground">{translateText("Enviando imagem…")}</p>}
       {message && <p className="mt-2 text-xs text-[#233a59]" role="status">{translateText(message)}</p>}
       {imageUrl && <img alt={translateText("Prévia da imagem de capa")} className="mt-3 max-h-52 w-full rounded-xl object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} onLoad={(event) => { event.currentTarget.style.display = "block"; }} src={imageUrl} />}
@@ -115,9 +117,12 @@ export function CreatePostForm({
     event.preventDefault();
     setMessage("");
     if ((kind === "blog" || kind === "forum") && !image.trim()) return setMessage("Adicione uma imagem de capa.");
+    const safeBody = normalizeRichContent(body);
+    if (richContentToPlainText(safeBody).length < 10) return setMessage("O conteúdo precisa ter pelo menos 10 caracteres.");
+    if (safeBody.length > 20000) return setMessage("O conteúdo formatado ultrapassa o limite de 20.000 caracteres.");
     try {
       await mutation.mutateAsync({ data: {
-        title: title.trim(), excerpt: body.trim().replace(/\s+/g, " ").slice(0, 220), body: body.trim(),
+        title: title.trim(), excerpt: richContentToPlainText(safeBody).slice(0, 220), body: safeBody,
         kind, category, tags,
         coverImageUrl: image.trim() || null, videoUrl: null, status: mode === "admin" ? status : "published",
       } });
@@ -151,7 +156,12 @@ export function CreatePostForm({
         </div>
         {taxonomy.isError && <p className="text-sm text-red-700" role="alert">{translateText("Não foi possível carregar as opções desta área. Atualize a página e tente novamente.")}</p>}
         {categories.length === 0 && !taxonomy.isLoading && !taxonomy.isError && <p className="text-sm text-amber-800">{translateText("Ainda não há categorias para esta área. Peça ao administrador para cadastrá-las no painel.")}</p>}
-        <label className="block text-sm font-semibold text-[#012140]">{translateText("Conteúdo")}<textarea className={`${fieldClass} min-h-40 resize-y`} maxLength={20000} minLength={10} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
+        <div>
+          <label className="block text-sm font-semibold text-[#012140]" htmlFor={`post-content-${mode}`}>{translateText("Conteúdo")}</label>
+          <Suspense fallback={<div aria-busy="true" className={`${fieldClass} min-h-40`} />}>
+            <RichTextEditor id={`post-content-${mode}`} value={body} onChange={setBody} surfaceClassName={`${fieldClass} min-h-40 resize-y`} />
+          </Suspense>
+        </div>
         <ImageUploadField imageUrl={image} onImageUrlChange={setImage} required={kind === "blog" || kind === "forum"} />
         <fieldset className="space-y-2">
           <legend className="text-sm font-semibold text-[#012140]">{translateText("Marcadores")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>

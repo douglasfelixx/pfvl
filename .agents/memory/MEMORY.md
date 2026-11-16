@@ -1,7 +1,7 @@
 - [Vercel API typing](vercel-express-typing.md) — NodeNext can expose mismatched Express types and duplicate Drizzle identities; test preserved-symlink builds.
 - [Vercel API routing](vercel-api-routing.md) — explicit wildcard routing is needed for nested API paths; verify runtime responses separately from build status.
 - [Safe API error diagnostics](api-error-diagnostics.md) — inspect nested database cause codes; default Express output hides them, while raw errors can expose query data.
-- [PFVL company identity](pfvl-company-identity.md) — PFVL belongs to Orbe Sistemas Financeiros; never reuse another company’s prior contract details.
+- [PFVL company identity](pfvl-company-identity.md) — Use Orbefin Sistemas Financeiros as the brand; preserve the registered legal entity name.
 - [PFVL R2 upload and delivery](pfvl-r2-upload-permissions.md) — Verify `PutObject`; the S3 endpoint is not a public image URL, and exposing the whole bucket is unnecessary.
 - [PFVL category and tag ownership](pfvl-taxonomy.md) — Administrators maintain publishing categories and tags; authors select from the approved options.
 - [PFVL Neon targets](pfvl-neon-targets.md) — The production Neon branch and Replit preview may use different databases; verify each before applying schema changes.

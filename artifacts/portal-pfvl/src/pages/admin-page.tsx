@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -96,10 +96,13 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { CreatePostForm, ImageUploadField } from "@/components/community-actions";
+import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate, LoadingState, PageHeading, Surface } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
 import { ProfilePage } from "@/pages/profile-page";
+
+const RichTextEditor = lazy(() => import("@/components/rich-text-editor").then((module) => ({ default: module.RichTextEditor })));
 
 type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials" | "profile" | "requests";
 const inputClass =
@@ -170,7 +173,7 @@ const adminNavigation: {
       { key: "users", label: "Contas", icon: Users },
       { key: "suggestions", label: "Sugestões", icon: Lightbulb },
       { key: "polls", label: "Enquetes", icon: Vote },
-      { key: "taxonomy", label: "Configurar tags", icon: Tags },
+      { key: "taxonomy", label: "Categorias", icon: Tags },
       { key: "testimonials", label: "Depoimentos", icon: Star },
     ],
   },
@@ -1839,7 +1842,7 @@ function TaxonomyManager({
     <div className="space-y-5 p-4 sm:p-6">
       <header>
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Organização do conteúdo")}</p>
-        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Configurar tags")}</h2>
+        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Categorias")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {translateText("Cadastre as opções que autores e membros poderão escolher. Ao editar o nome, as publicações existentes também serão atualizadas; a exclusão continua bloqueada enquanto a opção estiver em uso.")}
         </p>
@@ -1859,7 +1862,7 @@ function TaxonomyManager({
           {translateText("Tipo")}
           <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => setType(event.target.value as "category" | "tag")} value={type}>
             <option value="category">{translateText("Categoria")}</option>
-            <option value="tag">{translateText("Marcador")}</option>
+            <option value="tag">{translateText("Subcategoria")}</option>
           </select>
         </label>
         <label className="block text-sm font-semibold text-[#012140]">
@@ -1880,7 +1883,7 @@ function TaxonomyManager({
       {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
 
       {isLoading ? <LoadingState rows={3} /> : isError ? (
-        <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as categorias e marcadores.")}</p>
+        <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as categorias e subcategorias.")}</p>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {(["blog", "forum", "news", "help"] as const).map((area) => (
@@ -1891,7 +1894,7 @@ function TaxonomyManager({
                 return (
                   <div className="mt-3" key={itemType}>
                     <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                      {itemType === "category" ? "Categorias" : "Marcadores"}
+                      {translateText(itemType === "category" ? "Categorias" : "Subcategorias")}
                     </h4>
                     {group.length ? (
                       <ul className="mt-2 flex flex-wrap gap-2">
@@ -2129,6 +2132,15 @@ function EditPostForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    const safeBody = normalizeRichContent(body);
+    if (richContentToPlainText(safeBody).length < 10) {
+      setMessage("O conteúdo precisa ter pelo menos 10 caracteres.");
+      return;
+    }
+    if (safeBody.length > 20000) {
+      setMessage("O conteúdo formatado ultrapassa o limite de 20.000 caracteres.");
+      return;
+    }
     try {
       await updatePost.mutateAsync({
         postId: post.id,
@@ -2136,7 +2148,7 @@ function EditPostForm({
           title: title.trim(),
           category,
           tags,
-          body: body.trim(),
+          body: safeBody,
           coverImageUrl: imageUrl.trim() || null,
         },
       });
@@ -2162,7 +2174,7 @@ function EditPostForm({
         </select>
       </label>
       <fieldset className="space-y-2">
-        <legend className="text-sm font-semibold text-[#012140]">{translateText("Marcadores")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>
+        <legend className="text-sm font-semibold text-[#012140]">{translateText("Subcategorias")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>
         <div className="flex flex-wrap gap-2">
           {tagOptions.map((item) => {
             const checked = tags.includes(item.name);
@@ -2180,10 +2192,12 @@ function EditPostForm({
           })}
         </div>
       </fieldset>
-      <label className="block text-sm font-semibold text-[#012140]">
-        {translateText("Conteúdo")}
-        <textarea className={`${inputClass} mt-1.5 min-h-36 w-full resize-y`} maxLength={20000} minLength={10} onChange={(event) => setBody(event.target.value)} required value={body} />
-      </label>
+      <div>
+        <label className="block text-sm font-semibold text-[#012140]" htmlFor={`edit-post-content-${post.id}`}>{translateText("Conteúdo")}</label>
+        <Suspense fallback={<div aria-busy="true" className={`${inputClass} mt-1.5 min-h-36 w-full`} />}>
+          <RichTextEditor id={`edit-post-content-${post.id}`} value={body} onChange={setBody} surfaceClassName={`${inputClass} mt-1.5 min-h-36 w-full resize-y`} />
+        </Suspense>
+      </div>
       <ImageUploadField imageUrl={imageUrl} onImageUrlChange={setImageUrl} required={post.kind === "blog" || post.kind === "forum"} />
       {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
       <button className="auth-header-primary" disabled={updatePost.isPending} type="submit">

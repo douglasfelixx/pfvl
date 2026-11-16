@@ -3,7 +3,7 @@ export const termsOfUseSections = [
     id: "quem-fornece-o-pfvl",
     title: "1. Quem fornece o PFVL",
     paragraphs: [
-      "O PFVL é um produto da empresa de razão social ORBE SISTEMAS INTEGRADOS DE GESTAO FINANCEIRA LTDA, nome fantasia Orbe Sistemas Financeiros, inscrita no CNPJ sob o número 69.815.402/0001-40.",
+      "O PFVL é um produto da empresa de razão social ORBE SISTEMAS INTEGRADOS DE GESTAO FINANCEIRA LTDA, nome fantasia Orbefin Sistemas Financeiros, inscrita no CNPJ sob o número 69.815.402/0001-40.",
       "Estes Termos de Uso apresentam as condições de utilização do site, da aplicação e dos demais recursos disponibilizados pelo PFVL.",
       "As condições específicas de cada plano ou serviço serão apresentadas antes da contratação e integrarão a relação contratual com o usuário.",
     ],
@@ -23,7 +23,7 @@ export const termsOfUseSections = [
     paragraphs: [
       "O usuário deve fornecer informações corretas e manter seus dados cadastrais atualizados.",
       "As credenciais de acesso devem ser mantidas em segurança. O usuário não deve compartilhar senhas ou códigos de autenticação e deve comunicar suspeitas de acesso indevido pelos canais oficiais.",
-      "A Orbe Sistemas Financeiros não solicita o envio de senhas ou códigos de autenticação por mensagens de atendimento.",
+      "A Orbefin Sistemas Financeiros não solicita o envio de senhas ou códigos de autenticação por mensagens de atendimento.",
       "As permissões de acesso devem ser respeitadas. Não é permitido utilizar credenciais de terceiros ou tentar acessar informações sem autorização.",
       "O cadastro no site não representa, por si só, a contratação de uma assinatura da aplicação. As condições de acesso a cada serviço serão apresentadas nos respectivos fluxos.",
     ],
@@ -56,7 +56,7 @@ export const termsOfUseSections = [
       "Algumas funcionalidades dependem de conexões com instituições financeiras e fornecedores de integração.",
       "O usuário deverá observar as informações e autorizações apresentadas durante a conexão, incluindo sua finalidade e abrangência.",
       "A disponibilidade e a atualização das informações podem ser afetadas pelo funcionamento das instituições e dos serviços envolvidos. Quando houver divergência, o usuário poderá consultar os registros da instituição de origem e comunicar o problema ao atendimento do PFVL.",
-      "O uso de serviços de terceiros não afasta as responsabilidades que a legislação atribuir à Orbe Sistemas Financeiros.",
+      "O uso de serviços de terceiros não afasta as responsabilidades que a legislação atribuir à Orbefin Sistemas Financeiros.",
     ],
   },
   {
@@ -95,7 +95,7 @@ export const termsOfUseSections = [
     id: "conteudos-marca-e-software",
     title: "10. Conteúdos, marca e software",
     paragraphs: [
-      "A utilização do PFVL não transfere ao usuário a propriedade do software, da marca, dos elementos visuais ou dos conteúdos protegidos disponibilizados pela Orbe Sistemas Financeiros.",
+      "A utilização do PFVL não transfere ao usuário a propriedade do software, da marca, dos elementos visuais ou dos conteúdos protegidos disponibilizados pela Orbefin Sistemas Financeiros.",
       "O usuário recebe autorização para utilizar os serviços nas condições contratadas.",
       "Os direitos sobre conteúdos de terceiros e contribuições dos usuários permanecem com seus respectivos titulares.",
       "Esta disposição não limita o acesso do usuário aos seus próprios dados nem o exercício dos direitos previstos em lei.",
@@ -108,7 +108,7 @@ export const termsOfUseSections = [
       "O PFVL poderá passar por manutenções e atualizações destinadas à correção de falhas, à segurança e à evolução dos serviços.",
       "Interrupções programadas que afetem significativamente o uso serão comunicadas com antecedência, sempre que possível.",
       "Em situações urgentes, especialmente relacionadas à segurança, poderão ser necessárias medidas imediatas.",
-      "A Orbe Sistemas Financeiros adotará as providências cabíveis para tratar falhas sob sua responsabilidade, preservados os direitos do usuário.",
+      "A Orbefin Sistemas Financeiros adotará as providências cabíveis para tratar falhas sob sua responsabilidade, preservados os direitos do usuário.",
     ],
   },
   {

@@ -168,3 +168,17 @@ mtime_ms = 1793317996682
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/f75579ff-cdb4-4e81-b378-4cb81d628336/d0138237-2378-403f-9e08-4a7ea40ec6c6"
 storage_version_token = "1793318002492286"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "5z9P1ZqdzX_Ds2qEOfAWb"
+uri = "file://generated-artifacts/PFVL-GitHub.zip"
+type = "unspecified"
+title = "Arquivo ZIP do projeto PFVL para GitHub"
+description = "Código-fonte atual do projeto, sem dependências, builds ou segredos. Extraia o conteúdo antes de preparar o commit."
+logical_id = "f8a68eaf-ec6f-485c-8664-2a718bcc0b1d"
+content_hash = "sha256:714768b6de4499a2e351107f8d649cf62808135d30c2957b212148938bc8a7f1"
+size = 2643446
+mtime_ms = 1793879914662
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/f8a68eaf-ec6f-485c-8664-2a718bcc0b1d/89148fd1-d5cd-462b-b973-f9187f3075db"
+storage_version_token = "1793879920185059"
+content_type = "application/octet-stream"

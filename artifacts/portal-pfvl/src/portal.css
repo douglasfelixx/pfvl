@@ -2376,6 +2376,20 @@
   color: #fff;
 }
 
+.footer-instagram-link {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.footer-instagram-link:hover,
+.footer-instagram-link:focus-visible {
+  background: rgba(255, 255, 255, .12);
+}
+
 .hero-panel,
 .home-hero-band {
   background:

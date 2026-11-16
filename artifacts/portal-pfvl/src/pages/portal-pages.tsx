@@ -14,6 +14,7 @@ import {
   Star,
   SlidersHorizontal,
 } from 'lucide-react';
+import { RichTextContent } from '@/components/rich-text-content';
 import {
   getGetCurrentUserQueryKey,
   getGetPostQueryKey,
@@ -340,7 +341,7 @@ export function PostDetailPage() {
             {coverImageUrl && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
             {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
             {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
-            <div className={`prose-content whitespace-pre-wrap text-sm leading-8 text-[#1d1d1b] ${isForum ? 'mt-3 forum-post-body' : 'mt-7'}`}>{post.data.body}</div>
+            <RichTextContent className={`prose-content text-sm leading-8 text-[#1d1d1b] ${isForum ? 'mt-3 forum-post-body' : 'mt-7'}`} value={post.data.body} />
             <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border pt-5">
               {!isForum && <span className="text-xs text-muted-foreground">{translateText('Publicado por')} <strong className="text-foreground">{post.data.authorName}</strong></span>}
               {post.data.tags?.map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}
@@ -452,7 +453,7 @@ export function HelpRequestPage() {
       <PageHeading
         eyebrow="Central de Ajuda"
         title="Fale com a equipe do PFVL."
-        description="Tem uma dúvida, encontrou alguma dificuldade ou quer conversar sobre outro assunto? Envie sua mensagem para a equipe da Orbe Sistemas Financeiros."
+        description="Tem uma dúvida, encontrou alguma dificuldade ou quer conversar sobre outro assunto? Envie sua mensagem para a equipe da Orbefin Sistemas Financeiros."
       />
       <p className="mb-6 text-sm text-muted-foreground">
         {translateText("Sua mensagem ficará registrada para acompanhamento pela nossa equipe.")}

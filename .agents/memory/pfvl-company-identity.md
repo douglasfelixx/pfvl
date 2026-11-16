@@ -3,8 +3,8 @@ name: PFVL company identity
 description: Institutional identity and company-information constraints for PFVL pages.
 ---
 
-PFVL is a product of Orbe Sistemas Financeiros, whose official website is https://www.orbefin.com.br. The user has provided the company's legal name and CNPJ for the PFVL About page.
+PFVL is a product of Orbefin Sistemas Financeiros, whose official website is https://www.orbefin.com.br. The registered legal entity remains ORBE SISTEMAS INTEGRADOS DE GESTAO FINANCEIRA LTDA, CNPJ 69.815.402/0001-40.
 
-**Why:** the user supplied the company identity details for public display and said not to reuse information from the company that signed an earlier contract.
+**Why:** the user asked to replace the public-facing Orbe brand with Orbefin; the registered legal name and CNPJ are separate official details that must remain exact.
 
-**How to apply:** Use the exact company name, website, and registration details supplied for PFVL. Do not reuse another company's details or invent contact and legal-policy content.
+**How to apply:** Use Orbefin Sistemas Financeiros in public-facing brand text. Preserve the registered legal entity, CNPJ, orbefin.com.br domain, and official email addresses exactly.

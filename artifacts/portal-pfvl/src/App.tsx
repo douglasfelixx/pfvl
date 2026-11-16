@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
+import { SiInstagram } from 'react-icons/si';
 import {
   AuthContextProvider,
   AuthHeaderActions,
@@ -116,18 +117,18 @@ const pageMetadata = [
   },
   {
     match: /^\/apresentacao$/,
-    title: 'Apresentação do PFVL | Orbe',
+    title: 'Apresentação do PFVL | Orbefin',
     description: 'Conheça o PFVL e veja como o produto conecta contas, compromissos e objetivos.',
   },
   {
     match: /^\/sobre$/,
-    title: 'Conheça o PFVL | Orbe',
-    description: 'Organização para o presente, planejamento para o futuro. Conheça o PFVL e a Orbe Sistemas Financeiros, empresa responsável pelo produto.',
+    title: 'Conheça o PFVL | Orbefin',
+    description: 'Organização para o presente, planejamento para o futuro. Conheça o PFVL e a Orbefin Sistemas Financeiros, empresa responsável pelo produto.',
   },
   {
     match: /^\/contato$/,
-    title: 'Contato | Orbe Sistemas Financeiros',
-    description: 'Informações de contato oficiais da Orbe Sistemas Financeiros.',
+    title: 'Contato | Orbefin Sistemas Financeiros',
+    description: 'Informações de contato oficiais da Orbefin Sistemas Financeiros.',
   },
   {
     match: /^\/privacidade$/,
@@ -259,12 +260,22 @@ function PortalShell({ children }: { children: ReactNode }) {
       <main className="main-area">
         <div className="page-container">{children}</div>
         <footer className="portal-footer">
-          <span>{translateText('PFVL é um produto da Orbe Sistemas Financeiros.')}</span>
+          <span>{translateText('PFVL é um produto da Orbefin Sistemas Financeiros.')}</span>
           <div className="footer-links">
             <Link href="/sobre">{translateText('Sobre')}</Link>
             <Link href="/contato">{translateText('Contato')}</Link>
             <Link href="/privacidade">{translateText('Privacidade')}</Link>
             <Link href="/termos">{translateText('Termos')}</Link>
+            <a
+              aria-label={translateText('Instagram oficial do PFVL')}
+              className="footer-instagram-link"
+              href="https://www.instagram.com/pfvl.oficial/"
+              rel="noopener noreferrer"
+              target="_blank"
+              title={translateText('Instagram oficial do PFVL')}
+            >
+              <SiInstagram aria-hidden="true" size={18} />
+            </a>
               <CookiePreferencesButton />
           </div>
         </footer>
