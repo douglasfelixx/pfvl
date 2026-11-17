@@ -259,6 +259,8 @@ export const englishTranslations: Record<string, string> = {
   'Verificando sua conta…': 'Checking your account…',
   'Entre para participar.': 'Sign in to participate.',
   'Sua conta permite publicar e responder.': 'Your account lets you post and reply.',
+  'Entre para votar na enquete.': 'Sign in to vote in the poll.',
+  'Entre ou crie uma conta para registrar sua avaliação.': 'Sign in or create an account to submit your vote.',
   'O acesso do Clerk precisa ser configurado para liberar contas e publicações.': 'Clerk must be configured to enable accounts and posts.',
   'Login ainda não conectado.': 'Sign-in is not connected yet.',
   'Configure as chaves do Clerk no ambiente do portal para liberar contas, publicações e respostas.': 'Configure the Clerk keys for this portal to enable accounts, posts, and replies.',

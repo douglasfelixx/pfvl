@@ -947,13 +947,23 @@
   .community-heading-copy { max-width: 440px; font-size: 13px; }
   .community-layout { grid-template-columns: 1fr; }
   .community-rail { grid-row: 1; }
-  .community-poll { padding: 15px; }
+  .community-poll { padding: 18px; }
+  .community-poll h2 { margin-top: 12px; font-size: 20px; }
+  .community-poll-votes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 14px; padding-top: 12px; }
+  .community-poll-votes > span { min-height: 42px; justify-content: center; border: 1px solid #e3e8ec; border-radius: 10px; background: #f7f9fa; font-size: 12px; }
+  .community-poll-votes small { display: inline; font-size: 10px; }
+  .community-poll-actions { gap: 8px; margin-top: 12px; }
+  .community-vote-button { min-height: 46px; border-radius: 9px; padding: 8px 6px; font-size: 12px; }
+  .community-poll > div:has(.signed-out-actions) { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 14px; border-radius: 14px; background: #f7f9fa; padding: 14px; }
+  .community-poll .signed-out-actions { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .community-poll .signed-out-actions > a { min-height: 44px; padding: 8px 10px; white-space: nowrap; }
+  .community-poll-note { font-size: 11px; }
   .community-guideline, .community-editorial-note { display: none; }
   .community-controls { grid-template-columns: minmax(0,1fr); }
-  .community-select-label { justify-self: end; width: min(100%, 190px); }
-  .community-topic-row { grid-template-columns: 52px minmax(0,1fr) 54px; gap: 8px; padding: 15px 2px; }
-  .topic-cover-link { width: 52px; height: 44px; }
-  .topic-cover { width: 52px; height: 44px; }
+  .community-select-label { display: none; }
+  .community-topic-row { grid-template-columns: 56px minmax(0,1fr) 54px; gap: 8px; padding: 15px 2px; }
+  .topic-cover-link { width: 56px; height: 50px; }
+  .topic-cover { width: 56px; height: 50px; }
   .topic-avatar { width: 32px; height: 32px; }
   .topic-title { font-size: 15px; }
   .topic-footer { align-items: flex-start; }
@@ -967,7 +977,7 @@
   .community-toolbar .auth-header-primary { width: 100%; }
   .topic-replies span { font-size: 8px; }
   .topic-footer { flex-direction: column; }
-  .community-poll-votes small { display: none; }
+  .community-poll-votes small { font-size: 9px; }
 }
 
 .site-header-inner {
@@ -4148,8 +4158,14 @@ table {
   }
 
   .community-topic-row {
-    grid-template-columns: 46px minmax(0, 1fr) 52px;
+    grid-template-columns: 56px minmax(0, 1fr) 52px;
     gap: 8px;
+  }
+
+  .topic-cover-link,
+  .topic-cover {
+    width: 56px;
+    height: 50px;
   }
 
   .community-topic-row:not(:has(.topic-cover)) {
@@ -4271,8 +4287,14 @@ table {
   }
 
   .community-topic-row {
-    grid-template-columns: 39px minmax(0, 1fr) 46px;
+    grid-template-columns: 56px minmax(0, 1fr) 46px;
     gap: 6px;
+  }
+
+  .topic-cover-link,
+  .topic-cover {
+    width: 56px;
+    height: 50px;
   }
 
   .community-topic-row:not(:has(.topic-cover)) {

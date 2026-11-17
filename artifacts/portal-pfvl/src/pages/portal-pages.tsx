@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Check,
   CircleDollarSign,
+  ClipboardList,
   LifeBuoy,
   MessageCircle,
   Play,
@@ -469,7 +470,8 @@ export function HelpPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link className="auth-header-link" href="/help/requests" data-testid="link-help-track-requests">
+            <Link className="auth-header-link inline-flex items-center gap-2 !border-[#233a59]/20 !bg-[#f4f6f8] !text-[#233a59] hover:!bg-[#e8eef4]" href="/help/requests" data-testid="link-help-track-requests">
+              <ClipboardList aria-hidden="true" size={16} />
               {translateText("Acompanhar solicitações")}
             </Link>
             <Link className="auth-header-primary" href="/help/request" data-testid="link-help-request">

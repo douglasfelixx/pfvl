@@ -332,6 +332,15 @@ function AdminConsole() {
     return confirmed;
   }
 
+  function closeCreatePost() {
+    if (
+      adminDrafts["create-post"]
+      && !window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))
+    ) return;
+    clearAdminDraft("create-post");
+    setCreateOpen(false);
+  }
+
   if (profile.isLoading) return <LoadingState rows={3} />;
   if (profile.isError || profile.data?.role !== "admin") {
     return (
@@ -457,7 +466,7 @@ function AdminConsole() {
                     {translateText(postSectionDetails[tab as PostKind].description)}
                   </p>
                 </div>
-                <button className="auth-header-primary" data-testid="admin-create-post" onClick={() => setCreateOpen((open) => !open)} type="button">
+                <button className="auth-header-primary" data-testid="admin-create-post" onClick={() => createOpen ? closeCreatePost() : setCreateOpen(true)} type="button">
                   {translateText(createOpen ? "Fechar criação" : "Nova publicação")}
                 </button>
               </div>
@@ -470,7 +479,10 @@ function AdminConsole() {
                   onDirtyChange={(dirty) => dirty
                     ? stageAdminDraft("create-post", "dirty", "")
                     : clearAdminDraft("create-post")}
-                  onCreated={() => setCreateOpen(false)}
+                  onCreated={() => {
+                    clearAdminDraft("create-post");
+                    setCreateOpen(false);
+                  }}
                 />
               )}
               {posts.isLoading ? <LoadingState rows={3} /> : posts.isError ? (

@@ -54,7 +54,11 @@ export function CommunityPoll() {
             <span><ThumbsUp size={15} /> {poll.likeCount} <small>{translateText("curtidas")}</small></span>
             <span><ThumbsDown size={15} /> {poll.dislikeCount} <small>{translateText("não curtidas")}</small></span>
           </div>
-          <AuthActionGate>
+          <AuthActionGate
+            returnTo="/community"
+            signedOutTitle="Entre para votar na enquete."
+            signedOutDescription="Entre ou crie uma conta para registrar sua avaliação."
+          >
             <div className="community-poll-actions">
               <button
                 aria-pressed={poll.userVote === "like"}
