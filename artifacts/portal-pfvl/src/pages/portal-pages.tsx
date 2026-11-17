@@ -374,7 +374,6 @@ export function PostDetailPage() {
             </div>
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
             {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText('respostas')}</span></div>}
-            {post.data.excerpt && !isForum && <p className="mt-4 border-l-2 border-primary/45 pl-4 text-base leading-7 text-muted-foreground">{post.data.excerpt}</p>}
             {coverImageUrl && post.data.kind !== 'blog' && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
             {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
             {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
