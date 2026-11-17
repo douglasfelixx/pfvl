@@ -234,27 +234,29 @@ function PortalShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
+            <div className="header-menu-controls">
+              <div aria-label={translateText('Idioma')} className="language-switch" role="group">
+                {([
+                  { locale: 'pt-BR', country: 'BR', label: 'Português (Brasil)' },
+                  { locale: 'en-US', country: 'US', label: 'English (United States)' },
+                ] as const).map((option) => (
+                  <button
+                    aria-label={option.label}
+                    aria-pressed={locale === option.locale}
+                    className={`language-option ${locale === option.locale ? 'language-option-active' : ''}`}
+                    data-testid={`button-language-${option.locale}`}
+                    key={option.locale}
+                    onClick={() => setLocale(option.locale as Locale)}
+                    title={option.label}
+                    type="button"
+                  >
+                    <CountryFlag country={option.country} />
+                  </button>
+                ))}
+              </div>
+              <AuthHeaderActions />
+            </div>
           </nav>
-          <div aria-label={translateText('Idioma')} className="language-switch" role="group">
-            {([
-              { locale: 'pt-BR', country: 'BR', label: 'Português (Brasil)' },
-              { locale: 'en-US', country: 'US', label: 'English (United States)' },
-            ] as const).map((option) => (
-              <button
-                aria-label={option.label}
-                aria-pressed={locale === option.locale}
-                className={`language-option ${locale === option.locale ? 'language-option-active' : ''}`}
-                data-testid={`button-language-${option.locale}`}
-                key={option.locale}
-                onClick={() => setLocale(option.locale as Locale)}
-                title={option.label}
-                type="button"
-              >
-                <CountryFlag country={option.country} />
-              </button>
-            ))}
-          </div>
-          <AuthHeaderActions />
         </div>
       </header>
       <main className="main-area">

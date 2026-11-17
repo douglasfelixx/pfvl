@@ -67,8 +67,16 @@
   display: flex;
   flex: 1;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 4px;
+}
+
+.header-menu-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
 .primary-nav-link {
@@ -186,6 +194,7 @@
 
 .portal-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   border-top: 1px solid #dfe6ef;
@@ -415,6 +424,48 @@
   color: #546b86;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.tag-pill-link {
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color .16s ease, color .16s ease;
+}
+
+.tag-pill-link:hover {
+  background: #dce8f4;
+  color: #233a59;
+}
+
+.tag-pill-link:focus-visible {
+  outline: 3px solid #6683a0;
+  outline-offset: 2px;
+}
+
+.active-tag-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  border: 1px solid #d8e2eb;
+  border-radius: 10px;
+  background: #f7fafc;
+  padding: 10px 13px;
+  color: #536578;
+  font-size: 12px;
+}
+
+.active-tag-filter strong {
+  color: #233a59;
+}
+
+.active-tag-filter a {
+  flex: 0 0 auto;
+  color: #233a59;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .search-field {
@@ -826,6 +877,8 @@
 .community-topic-row:hover { background: rgba(232,232,232,.58); }
 .topic-avatar { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border: 1px solid #cad2d9; border-radius: 50%; background: #e8e8e8; color: #233a59; font-size: 14px; font-weight: 700; }
 .topic-cover { width: 68px; height: 56px; align-self: center; border: 1px solid #d8dcdf; border-radius: 8px; background: #e8e8e8; object-fit: cover; }
+.topic-cover-link { display: block; width: 68px; height: 56px; align-self: center; border-radius: 8px; }
+.topic-cover-link:focus-visible, .post-cover-link:focus-visible { outline: 3px solid #6683a0; outline-offset: 3px; }
 .topic-main { min-width: 0; }
 .topic-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #7a838c; font-size: 10px; }
 .topic-category { color: #526171; font-size: 10px; font-weight: 700; }
@@ -839,6 +892,18 @@
 .topic-replies { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; align-self: center; color: #53697f; }
 .topic-replies strong { color: #233a59; font-size: 16px; font-variant-numeric: tabular-nums; }
 .topic-replies span { font-size: 9px; }
+.support-request-card { overflow: hidden; border: 1px solid rgba(35, 58, 89, .15); border-radius: 12px; background: #fff; }
+.support-request-summary { display: flex; min-height: 80px; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; cursor: pointer; list-style: none; }
+.support-request-summary::-webkit-details-marker { display: none; }
+.support-request-summary::marker { content: ""; }
+.support-request-summary:focus-visible { outline: 3px solid #6683a0; outline-offset: -3px; }
+.support-request-protocol { margin: 0; color: #617287; font: 700 10px/1.4 var(--app-font-sans); letter-spacing: .06em; }
+.support-request-protocol span { color: #233a59; font-family: var(--app-font-mono, monospace); }
+.support-request-summary h3 { overflow-wrap: anywhere; margin: 5px 0 0; color: #012140; font-size: 15px; font-weight: 700; line-height: 1.35; }
+.support-request-status { flex: 0 0 auto; border-radius: 999px; padding: 6px 10px; font-size: 11px; font-weight: 700; }
+.support-request-chevron { width: 9px; height: 9px; flex: 0 0 9px; transform: rotate(45deg); border-right: 1.5px solid #708094; border-bottom: 1.5px solid #708094; transition: transform .16s ease; }
+.support-request-card[open] .support-request-chevron { transform: rotate(225deg); }
+.support-request-details { border-top: 1px solid rgba(35, 58, 89, .1); padding: 16px; }
 .community-rail { display: grid; gap: 13px; }
 .community-poll { border: 1px solid #233a59; border-radius: 11px; background: #fff; padding: 17px; box-shadow: 0 5px 18px rgba(1,33,64,.07); }
 .community-poll-topline { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -887,6 +952,7 @@
   .community-controls { grid-template-columns: minmax(0,1fr); }
   .community-select-label { justify-self: end; width: min(100%, 190px); }
   .community-topic-row { grid-template-columns: 52px minmax(0,1fr) 54px; gap: 8px; padding: 15px 2px; }
+  .topic-cover-link { width: 52px; height: 44px; }
   .topic-cover { width: 52px; height: 44px; }
   .topic-avatar { width: 32px; height: 32px; }
   .topic-title { font-size: 15px; }
@@ -1914,6 +1980,8 @@
 .footer-links {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 18px;
 }
 
@@ -2380,6 +2448,8 @@
   display: grid;
   width: 30px;
   height: 30px;
+  flex: 0 0 30px;
+  align-self: center;
   place-items: center;
   border-radius: 8px;
   transition: background-color 160ms ease, color 160ms ease;
@@ -3916,6 +3986,26 @@ table {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .header-menu-controls {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 0 0;
+    border-top: 1px solid rgba(223, 235, 251, .14);
+    padding: 12px 4px 0;
+  }
+
+  .header-menu-controls .header-auth-actions {
+    width: auto;
+    flex: 0 1 auto;
+    justify-content: flex-end;
+    padding-top: 0;
+  }
+
+  .header-menu-controls > .public-access-label {
+    margin-left: auto;
+  }
+
   .primary-nav-link {
     min-height: 46px;
     gap: 9px;
@@ -3962,12 +4052,37 @@ table {
   }
 
   .portal-footer {
-    gap: 12px;
-    padding: 16px;
+    align-items: stretch;
+    gap: 7px;
+    padding: 11px 12px;
   }
 
   .footer-links {
-    gap: 12px 17px;
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+
+  .portal-footer > span {
+    text-align: center;
+    white-space: nowrap;
+    font-size: clamp(8px, 2.5vw, 10px);
+  }
+
+  .footer-links > a:not(.footer-instagram-link),
+  .footer-links > button {
+    flex: 0 1 auto;
+    white-space: nowrap;
+    font-size: clamp(8px, 2.5vw, 10px);
+  }
+
+  .footer-instagram-link {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
   }
 
   .home-hero-band {

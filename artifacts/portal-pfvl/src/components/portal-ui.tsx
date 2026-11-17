@@ -117,7 +117,13 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
   return (
     <article className="post-card group">
       {coverImageUrl && !compact && (
-        <img className="mb-5 aspect-video w-full rounded-xl object-cover" src={coverImageUrl} alt={post.title} width="1200" height="675" loading="lazy" />
+        <Link
+          aria-label={`${translateText('Abrir conteúdo')}: ${post.title}`}
+          className="post-cover-link mb-5 block overflow-hidden rounded-xl"
+          href={detailHref}
+        >
+          <img className="aspect-video w-full object-cover" src={coverImageUrl} alt="" width="1200" height="675" loading="lazy" />
+        </Link>
       )}
       <div className="flex flex-wrap items-center gap-2">
         <span className="eyebrow-pill">{translateText(postLabels[post.kind] ?? post.kind)}</span>

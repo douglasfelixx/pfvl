@@ -47,7 +47,7 @@ import {
   type PublicRoadmapSuggestion,
   type SupportRequestStatus,
 } from '@workspace/api-client-react';
-import { Link, useParams } from 'wouter';
+import { Link, useParams, useSearch } from 'wouter';
 import { AuthActionGate } from '@/components/auth-ui';
 import { getLocale, translateText } from '@/lib/i18n';
 import {
@@ -119,6 +119,33 @@ function IndicatorCard({ indicator }: { indicator: Indicator }) {
   );
 }
 
+function readSelectedTag(search: string): string {
+  return new URLSearchParams(search).get('tag')?.trim() ?? '';
+}
+
+function postListHref(kind: PostKind): string {
+  return kind === 'forum' ? '/community' : `/${kind}`;
+}
+
+function postTagHref(kind: PostKind, tag: string): string {
+  return `${postListHref(kind)}?tag=${encodeURIComponent(tag)}`;
+}
+
+function postHasTag(post: { tags?: string[] }, selectedTag: string): boolean {
+  if (!selectedTag) return true;
+  const normalizedTag = selectedTag.toLocaleLowerCase('pt-BR');
+  return post.tags?.some((tag) => tag.trim().toLocaleLowerCase('pt-BR') === normalizedTag) ?? false;
+}
+
+function ActiveTagFilter({ tag, clearHref }: { tag: string; clearHref: string }) {
+  return (
+    <div className="active-tag-filter">
+      <span>{translateText('Filtrando pela tag')}: <strong>{tag}</strong></span>
+      <Link href={clearHref}>{translateText('Limpar filtro')}</Link>
+    </div>
+  );
+}
+
 export function HomePage() {
   const siteMedia = useGetSiteMedia({
     query: { queryKey: getGetSiteMediaQueryKey() },
@@ -183,11 +210,14 @@ export function CommunityPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [sort, setSort] = useState<'recent' | 'discussed'>('recent');
+  const locationSearch = useSearch();
+  const selectedTag = readSelectedTag(locationSearch);
   const params = useMemo(() => ({ kind: 'forum' as PostKind, search: search.trim() || undefined }), [search]);
   const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params) } });
   const categories = [...new Set((query.data ?? []).map((post) => post.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const posts = [...(query.data ?? [])]
     .filter((post) => category === 'all' || post.category === category)
+    .filter((post) => postHasTag(post, selectedTag))
     .sort((a, b) => sort === 'discussed'
       ? b.commentCount - a.commentCount || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -234,6 +264,7 @@ export function CommunityPage() {
             <button aria-pressed={category === 'all'} className={category === 'all' ? 'community-filter active' : 'community-filter'} onClick={() => setCategory('all')} type="button">{translateText('Todos os tópicos')}</button>
             {categories.map((item) => <button aria-pressed={category === item} className={category === item ? 'community-filter active' : 'community-filter'} key={item} onClick={() => setCategory(item)} type="button">{item}</button>)}
           </div>
+          {selectedTag && <ActiveTagFilter tag={selectedTag} clearHref="/community" />}
           <div className="community-list-heading">
             <h2>{translateText('Conversas abertas')}</h2>
             <span>{posts.length} {translateText(posts.length === 1 ? 'tópico' : 'tópicos')}</span>
@@ -243,21 +274,27 @@ export function CommunityPage() {
               {posts.map((post) => (
                 <article className="community-topic-row" key={post.id} data-testid={`topic-${post.id}`}>
                   {getPostCoverImage(post) && (
-                    <img
-                      alt=""
-                      className="topic-cover"
-                      data-testid={`img-topic-cover-${post.id}`}
-                      height="56"
-                      loading="lazy"
-                      src={getPostCoverImage(post) ?? undefined}
-                      width="68"
-                    />
+                    <Link
+                      aria-label={`${translateText('Abrir tópico')}: ${post.title}`}
+                      className="topic-cover-link"
+                      href={`/community/${post.id}`}
+                    >
+                      <img
+                        alt=""
+                        className="topic-cover"
+                        data-testid={`img-topic-cover-${post.id}`}
+                        height="56"
+                        loading="lazy"
+                        src={getPostCoverImage(post) ?? undefined}
+                        width="68"
+                      />
+                    </Link>
                   )}
                   <div className="topic-main">
                     <div className="topic-meta"><span className="topic-category">{post.category}</span><span>{formatDate(post.createdAt)}</span></div>
                     <Link className="topic-title" href={`/community/${post.id}`}>{post.title}</Link>
                     <p className="topic-excerpt">{post.excerpt || post.body}</p>
-                    <div className="topic-footer"><span>{translateText('Iniciado por')} <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}</span></div>
+                    <div className="topic-footer"><span>{translateText('Iniciado por')} <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <Link className="tag-pill tag-pill-link" href={postTagHref('forum', tag)} key={tag}>{tag}</Link>)}</span></div>
                   </div>
                   <Link aria-label={`${post.commentCount} respostas em ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
                     <MessageCircle size={17} />
@@ -267,7 +304,7 @@ export function CommunityPage() {
                 </article>
               ))}
             </div>
-          ) : <EmptyState title={search || category !== 'all' ? 'Nenhuma conversa encontrada' : 'O fórum está começando'} description={search || category !== 'all' ? 'Ajuste a busca ou escolha outra categoria.' : 'Abra um tópico para compartilhar sua dúvida ou experiência com a comunidade.'} />}
+          ) : <EmptyState title={search || category !== 'all' || selectedTag ? 'Nenhuma conversa encontrada' : 'O fórum está começando'} description={search || category !== 'all' || selectedTag ? 'Ajuste a busca ou escolha outra categoria ou tag.' : 'Abra um tópico para compartilhar sua dúvida ou experiência com a comunidade.'} />}
         </main>
         <aside className="community-rail">
           <CommunityPoll />
@@ -338,13 +375,13 @@ export function PostDetailPage() {
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
             {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText('respostas')}</span></div>}
             {post.data.excerpt && !isForum && <p className="mt-4 border-l-2 border-primary/45 pl-4 text-base leading-7 text-muted-foreground">{post.data.excerpt}</p>}
-            {coverImageUrl && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
+            {coverImageUrl && post.data.kind !== 'blog' && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
             {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
             {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
             <RichTextContent className={`prose-content text-sm leading-8 text-[#1d1d1b] ${isForum ? 'mt-3 forum-post-body' : 'mt-7'}`} value={post.data.body} />
             <div className="mt-8 flex flex-wrap items-center gap-2 border-t border-border pt-5">
               {!isForum && <span className="text-xs text-muted-foreground">{translateText('Publicado por')} <strong className="text-foreground">{post.data.authorName}</strong></span>}
-              {post.data.tags?.map((tag) => <span className="tag-pill" key={tag}>{tag}</span>)}
+              {post.data.tags?.map((tag) => <Link className="tag-pill tag-pill-link" href={postTagHref(post.data.kind, tag)} key={tag}>{tag}</Link>)}
             </div>
           </article>
           <section className="mt-8 scroll-mt-6" id="comments">
@@ -385,8 +422,11 @@ export function PostDetailPage() {
 
 function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKind; eyebrow: string; title: string; description: string }) {
   const [search, setSearch] = useState('');
+  const locationSearch = useSearch();
+  const selectedTag = readSelectedTag(locationSearch);
   const params = useMemo(() => ({ kind, search: search.trim() || undefined }), [kind, search]);
   const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params) } });
+  const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
   return (
     <div className="page-enter">
       <PageHeading eyebrow={eyebrow} title={title} description={description} />
@@ -394,9 +434,10 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
         <Search size={17} />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText('Buscar neste espaço')} type="search" />
       </label>
-      {query.isLoading ? <LoadingState rows={4} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{query.data.map((post) => <PostCard key={post.id} post={post} />)}</div>
-      ) : <EmptyState title={search ? 'Nada encontrado com esse termo' : 'Estamos preparando novos conteúdos'} description={search ? 'Tente outra palavra ou remova a busca.' : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'} />}
+      {selectedTag && <ActiveTagFilter tag={selectedTag} clearHref={postListHref(kind)} />}
+      {query.isLoading ? <LoadingState rows={4} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : posts.length ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{posts.map((post) => <PostCard key={post.id} post={post} />)}</div>
+      ) : <EmptyState title={selectedTag ? 'Nenhuma publicação encontrada para esta tag' : search ? 'Nada encontrado com esse termo' : 'Estamos preparando novos conteúdos'} description={selectedTag ? 'Nenhuma publicação desta seção usa esta tag.' : search ? 'Tente outra palavra ou remova a busca.' : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'} />}
     </div>
   );
 }
@@ -410,7 +451,10 @@ export function NewsPage() {
 }
 
 export function HelpPage() {
+  const locationSearch = useSearch();
+  const selectedTag = readSelectedTag(locationSearch);
   const query = useListPosts({ kind: 'help' }, { query: { queryKey: getListPostsQueryKey({ kind: 'help' }) } });
+  const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
   return (
     <div className="page-enter">
       <PageHeading eyebrow="Central de ajuda" title="Aprenda a usar o PFVL." description="Tutoriais práticos, organizados por assunto, para configurar contas, planejamentos, objetivos e outros recursos do sistema." />
@@ -437,10 +481,11 @@ export function HelpPage() {
       </section>
       <section className="mt-8">
         <SectionHeading title="Tutoriais e orientações" />
-        {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : query.data?.length ? (
-          <div className="grid gap-3 md:grid-cols-2">{query.data.map((post) => <PostCard key={post.id} post={post} />)}</div>
+        {selectedTag && <ActiveTagFilter tag={selectedTag} clearHref="/help" />}
+        {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : posts.length ? (
+          <div className="grid gap-3 md:grid-cols-2">{posts.map((post) => <PostCard key={post.id} post={post} />)}</div>
         ) : (
-          <EmptyState title="Tutoriais do PFVL em preparação" description="Os guias de uso serão publicados por assunto, com instruções, imagens e vídeos quando os recursos do sistema estiverem disponíveis." />
+          <EmptyState title={selectedTag ? 'Nenhuma publicação encontrada para esta tag' : 'Tutoriais do PFVL em preparação'} description={selectedTag ? 'Nenhuma publicação desta seção usa esta tag.' : 'Os guias de uso serão publicados por assunto, com instruções, imagens e vídeos quando os recursos do sistema estiverem disponíveis.'} />
         )}
       </section>
     </div>

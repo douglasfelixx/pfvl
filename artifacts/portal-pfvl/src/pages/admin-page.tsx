@@ -1037,21 +1037,22 @@ function SupportInbox({
           const selectedStatus = drafts[request.id] ?? request.status;
           const statusKey = `request:${request.id}`;
           return (
-            <article className="rounded-xl border border-[#233a59]/15 p-4 sm:p-5" key={request.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs font-bold tracking-[.08em] text-[#233a59]">{request.protocol}</p>
-                  <h3 className="mt-1 font-semibold text-[#012140]">{request.title || request.subjectName}</h3>
-                  {request.title && <p className="mt-1 text-xs text-muted-foreground">{request.subjectName}{request.categoryName ? ` · ${request.categoryName}` : ""}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
-                  </p>
+            <details className="support-request-card" data-testid={`support-request-${request.id}`} key={request.id}>
+              <summary className="support-request-summary">
+                <div className="min-w-0">
+                  <p className="support-request-protocol">{translateText("Protocolo:")} <span>{request.protocol}</span></p>
+                  <h3>{request.title || request.subjectName}</h3>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
-                  {translateText(supportStatusLabel[request.status])}
+                <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
+                  {translateText("Status:")} {translateText(supportStatusLabel[request.status])}
                 </span>
-              </div>
-              <p className="mt-4 whitespace-pre-wrap break-words rounded-lg bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{request.message}</p>
+                <span className="support-request-chevron" aria-hidden="true" />
+              </summary>
+              <div className="support-request-details">
+                <p className="text-xs text-muted-foreground">
+                  {request.subjectName}{request.categoryName ? ` · ${request.categoryName}` : ""} · {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
+                </p>
+                <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{request.message}</p>
               {request.requestType === "suggestion" && (
                 <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#233a59]/10 p-3">
                   <div className="min-w-52 flex-1 text-xs text-muted-foreground">
@@ -1159,7 +1160,8 @@ function SupportInbox({
                 )}
               </div>
               <span className="sr-only" data-testid={`${statusKey}-status`}>{request.status}</span>
-            </article>
+              </div>
+            </details>
           );
         })}
         {!visibleRequests.length && (
