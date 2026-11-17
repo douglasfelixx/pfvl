@@ -6,6 +6,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   ClipboardList,
   LifeBuoy,
@@ -358,6 +360,10 @@ export function PostDetailPage() {
   const roots = (comments.data ?? []).filter((comment) => !comment.parentCommentId);
   const children = (comments.data ?? []).filter((comment) => comment.parentCommentId);
   const isForum = post.data?.kind === 'forum';
+  const wasEdited = Boolean(
+    post.data &&
+      new Date(post.data.updatedAt).getTime() > new Date(post.data.createdAt).getTime(),
+  );
   const backHref = post.data?.kind === 'forum' ? '/community' : `/${post.data?.kind ?? 'community'}`;
   const coverImageUrl = post.data ? getPostCoverImage(post.data) : null;
   return (
@@ -371,7 +377,19 @@ export function PostDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="eyebrow-pill">{isForum ? 'Tópico da comunidade' : post.data.category}</span>
               {isForum && <span className="text-xs font-semibold text-[#233a59]">{post.data.category}</span>}
-              <span className="text-xs text-muted-foreground">{formatDate(post.data.createdAt)}</span>
+              <div className="basis-full text-xs text-muted-foreground sm:basis-auto">
+                <time dateTime={post.data.createdAt}>
+                  {translateText('Criado em')}: {formatDate(post.data.createdAt)}
+                </time>
+                {wasEdited && (
+                  <>
+                    <span aria-hidden="true" className="px-2">|</span>
+                    <span className="text-[#315571]" data-testid="text-post-updated-at">
+                      {translateText('Atualizado em')}: <time dateTime={post.data.updatedAt}>{formatDate(post.data.updatedAt)}</time>
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
             {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText('respostas')}</span></div>}
@@ -422,11 +440,29 @@ export function PostDetailPage() {
 
 function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKind; eyebrow: string; title: string; description: string }) {
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const locationSearch = useSearch();
   const selectedTag = readSelectedTag(locationSearch);
   const params = useMemo(() => ({ kind, search: search.trim() || undefined }), [kind, search]);
   const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params) } });
   const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
+  const shouldPaginate = kind === 'blog';
+  const pageSize = 6;
+  const totalPages = shouldPaginate ? Math.max(1, Math.ceil(posts.length / pageSize)) : 1;
+  const visiblePage = Math.min(currentPage, totalPages);
+  const visiblePosts = shouldPaginate
+    ? posts.slice((visiblePage - 1) * pageSize, visiblePage * pageSize)
+    : posts;
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [kind, search, selectedTag]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   return (
     <div className="page-enter">
       <PageHeading eyebrow={eyebrow} title={title} description={description} />
@@ -436,7 +472,54 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
       </label>
       {selectedTag && <ActiveTagFilter tag={selectedTag} clearHref={postListHref(kind)} />}
       {query.isLoading ? <LoadingState rows={4} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : posts.length ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{posts.map((post) => <PostCard key={post.id} post={post} />)}</div>
+        <>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{visiblePosts.map((post) => <PostCard key={post.id} post={post} />)}</div>
+          {shouldPaginate && totalPages > 1 && (
+            <nav
+              aria-label={translateText('Paginação de conteúdos')}
+              className="mt-6 flex flex-wrap items-center justify-center gap-2"
+              data-testid="content-pagination"
+            >
+              <button
+                aria-label={translateText('Página anterior')}
+                className="grid h-10 w-10 place-items-center rounded-lg border border-[#233a59]/15 bg-white text-[#233a59] transition hover:bg-[#f4f6f8] disabled:cursor-not-allowed disabled:opacity-45"
+                data-testid="content-page-previous"
+                disabled={visiblePage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                type="button"
+              >
+                <ChevronLeft aria-hidden="true" size={17} />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  aria-current={visiblePage === page ? 'page' : undefined}
+                  aria-label={`${translateText('Página')} ${page}`}
+                  className={`grid h-10 min-w-10 place-items-center rounded-lg px-3 text-sm font-semibold transition ${
+                    visiblePage === page
+                      ? 'bg-[#233a59] text-white'
+                      : 'border border-[#233a59]/15 bg-white text-[#233a59] hover:bg-[#f4f6f8]'
+                  }`}
+                  data-testid={`content-page-${page}`}
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  type="button"
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                aria-label={translateText('Próxima página')}
+                className="grid h-10 w-10 place-items-center rounded-lg border border-[#233a59]/15 bg-white text-[#233a59] transition hover:bg-[#f4f6f8] disabled:cursor-not-allowed disabled:opacity-45"
+                data-testid="content-page-next"
+                disabled={visiblePage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                type="button"
+              >
+                <ChevronRight aria-hidden="true" size={17} />
+              </button>
+            </nav>
+          )}
+        </>
       ) : <EmptyState title={selectedTag ? 'Nenhuma publicação encontrada para esta tag' : search ? 'Nada encontrado com esse termo' : 'Estamos preparando novos conteúdos'} description={selectedTag ? 'Nenhuma publicação desta seção usa esta tag.' : search ? 'Tente outra palavra ou remova a busca.' : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'} />}
     </div>
   );

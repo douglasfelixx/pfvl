@@ -182,3 +182,17 @@ mtime_ms = 1793879914662
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/f8a68eaf-ec6f-485c-8664-2a718bcc0b1d/89148fd1-d5cd-462b-b973-f9187f3075db"
 storage_version_token = "1793879920185059"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "TpC1gprtxQobEcQBZF0MV"
+uri = "file://generated-artifacts/PFVL-GitHub-Update.zip"
+type = "unspecified"
+title = "PFVL atualizado para GitHub"
+description = "Projeto atualizado com as correções recentes do painel, da comunidade mobile, da enquete e do botão de acompanhamento. ZIP validado com 319 arquivos, sem dependências ou segredos locais."
+logical_id = "4da6297e-ceab-4806-92b2-ef884010d3a1"
+content_hash = "sha256:43b7687eaac157a57715d328139356cd6fae0597b5bd4d6b0a0c145b128b106a"
+size = 806160
+mtime_ms = 1794881291116
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/4da6297e-ceab-4806-92b2-ef884010d3a1/5262f93a-e2e6-4172-ae75-766c28c6db2a"
+storage_version_token = "1794881301834704"
+content_type = "application/octet-stream"

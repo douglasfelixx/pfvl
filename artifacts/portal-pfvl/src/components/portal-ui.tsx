@@ -114,6 +114,7 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
   const detailRoot = post.kind === 'forum' ? '/community' : `/${post.kind}`;
   const detailHref = `${detailRoot}/${post.id}`;
   const coverImageUrl = getPostCoverImage(post);
+  const wasEdited = new Date(post.updatedAt).getTime() > new Date(post.createdAt).getTime();
   return (
     <article className="post-card group">
       {coverImageUrl && !compact && (
@@ -130,6 +131,11 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
         <span className="text-[11px] font-medium text-muted-foreground">{post.category}</span>
         <span className="ml-auto text-[11px] text-muted-foreground">{formatDate(post.createdAt)}</span>
       </div>
+      {wasEdited && (
+        <p className="mt-1 text-[11px] font-medium text-[#315571]" data-testid={`text-post-card-updated-at-${post.id}`}>
+          {translateText('Atualizado em')}: <time dateTime={post.updatedAt}>{formatDate(post.updatedAt)}</time>
+        </p>
+      )}
       <Link href={detailHref} className="mt-3 block">
         <h3 className={`font-display font-semibold leading-snug tracking-[-.025em] transition group-hover:text-primary ${compact ? 'text-lg' : 'text-xl'}`}>
           {post.title}

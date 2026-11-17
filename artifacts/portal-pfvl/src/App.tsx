@@ -1,8 +1,9 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   BarChart3,
   BookOpen,
+  ChevronDown,
   CircleHelp,
   Lightbulb,
   Menu,
@@ -195,7 +196,36 @@ function SeoManager() {
 function PortalShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileLanguageOpen, setMobileLanguageOpen] = useState(false);
   const { locale, setLocale } = useI18n();
+  const mobileLanguagePickerRef = useRef<HTMLDivElement>(null);
+  const mobileLanguageTriggerRef = useRef<HTMLButtonElement>(null);
+  const languageOptions = [
+    { locale: 'pt-BR', country: 'BR', label: 'Português (Brasil)' },
+    { locale: 'en-US', country: 'US', label: 'English (United States)' },
+  ] as const;
+  const selectedLanguage = languageOptions.find((option) => option.locale === locale) ?? languageOptions[0];
+
+  useEffect(() => {
+    if (!mobileLanguageOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !mobileLanguagePickerRef.current?.contains(event.target)) {
+        setMobileLanguageOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMobileLanguageOpen(false);
+      mobileLanguageTriggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileLanguageOpen]);
+
   return (
     <CookieConsentManager>
     <div className="app-shell">
@@ -209,6 +239,62 @@ function PortalShell({ children }: { children: ReactNode }) {
               fetchPriority="high"
             />
           </Link>
+          <div className="header-menu-controls">
+            <ul aria-label={translateText('Idioma')} className="language-switch">
+              {languageOptions.map((option) => (
+                <li className="language-switch-item" key={option.locale}>
+                  <button
+                    aria-label={option.label}
+                    aria-pressed={locale === option.locale}
+                    className={`language-option ${locale === option.locale ? 'language-option-active' : ''}`}
+                    data-testid={`button-language-${option.locale}`}
+                    onClick={() => setLocale(option.locale as Locale)}
+                    title={option.label}
+                    type="button"
+                  >
+                    <CountryFlag country={option.country} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mobile-language-picker" ref={mobileLanguagePickerRef}>
+              <button
+                aria-controls="mobile-language-options"
+                aria-expanded={mobileLanguageOpen}
+                aria-label={`${translateText('Idioma')}: ${selectedLanguage.label}`}
+                className="mobile-language-trigger"
+                data-testid="button-mobile-language-menu"
+                onClick={() => setMobileLanguageOpen((open) => !open)}
+                ref={mobileLanguageTriggerRef}
+                type="button"
+              >
+                <CountryFlag country={selectedLanguage.country} />
+                <ChevronDown aria-hidden="true" size={13} />
+              </button>
+              {mobileLanguageOpen && (
+                <ul aria-label={translateText('Idioma')} className="mobile-language-options" id="mobile-language-options">
+                  {languageOptions.map((option) => (
+                    <li key={option.locale}>
+                      <button
+                        aria-pressed={locale === option.locale}
+                        className="mobile-language-option"
+                        data-testid={`button-mobile-language-${option.locale}`}
+                        onClick={() => {
+                          setLocale(option.locale as Locale);
+                          setMobileLanguageOpen(false);
+                        }}
+                        type="button"
+                      >
+                        <CountryFlag country={option.country} />
+                        <span>{option.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <AuthHeaderActions />
+          </div>
           <button
             aria-expanded={mobileOpen}
             aria-label={translateText(mobileOpen ? 'Fechar menu' : 'Abrir menu')}
@@ -234,28 +320,6 @@ function PortalShell({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            <div className="header-menu-controls">
-              <div aria-label={translateText('Idioma')} className="language-switch" role="group">
-                {([
-                  { locale: 'pt-BR', country: 'BR', label: 'Português (Brasil)' },
-                  { locale: 'en-US', country: 'US', label: 'English (United States)' },
-                ] as const).map((option) => (
-                  <button
-                    aria-label={option.label}
-                    aria-pressed={locale === option.locale}
-                    className={`language-option ${locale === option.locale ? 'language-option-active' : ''}`}
-                    data-testid={`button-language-${option.locale}`}
-                    key={option.locale}
-                    onClick={() => setLocale(option.locale as Locale)}
-                    title={option.label}
-                    type="button"
-                  >
-                    <CountryFlag country={option.country} />
-                  </button>
-                ))}
-              </div>
-              <AuthHeaderActions />
-            </div>
           </nav>
         </div>
       </header>
