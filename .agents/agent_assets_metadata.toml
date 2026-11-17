@@ -210,3 +210,31 @@ mtime_ms = 1794883600744
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/ae4ee7d8-fc90-4c9a-b32b-f6766d892bf4/442cfc07-b8d9-49d8-93be-b5bf19788c71"
 storage_version_token = "1794883624778344"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "WSy_Om5xEa9nphUbqHzWa"
+uri = "file://generated-artifacts/PFVL-GitHub-Atualizado-2026-11-16-mobile-idioma.zip"
+type = "unspecified"
+title = "PFVL — ZIP atualizado para GitHub"
+description = "Inclui o ajuste do fundo do seletor de idioma mobile. Arquivo validado e sem dependências locais, segredos ou metadados .git."
+logical_id = "55f19ab2-779b-4322-bd2e-172422b1c859"
+content_hash = "sha256:5ae4673f9cbf73f8701eb56654154e315e05983a8dc1a62a7d0cf163e7863786"
+size = 2642119
+mtime_ms = 1794884230597
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/55f19ab2-779b-4322-bd2e-172422b1c859/5c315a83-cf5a-4565-a3ef-fab1cb13e916"
+storage_version_token = "1794884268078613"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "gulgkPhVcH4gAPMgORAE5"
+uri = "file://generated-artifacts/PFVL-GitHub-Atualizado-2026-11-17-ordenacao.zip"
+type = "unspecified"
+title = "PFVL — arquivo atualizado para GitHub"
+description = "ZIP verificado com a ordenação por criação/atualização e recente/antigo. Sem .git, node_modules, .env ou pacotes gerados."
+logical_id = "51bfaf72-2d77-4f61-8bce-7854e51b3ad3"
+content_hash = "sha256:7765534a5831110834db7eb57091461bb81be35180c8311a4cdecf74038d313a"
+size = 2641668
+mtime_ms = 1794884995376
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/51bfaf72-2d77-4f61-8bce-7854e51b3ad3/6de9ef19-b238-4066-a59e-1252f62402a2"
+storage_version_token = "1794885004008082"
+content_type = "application/octet-stream"

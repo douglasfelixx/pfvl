@@ -3,8 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
   ArrowUpRight,
+  ArrowDownUp,
   BookOpen,
-  CalendarDays,
   CircleHelp,
   FileText,
   Headset,
@@ -109,15 +109,6 @@ type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | 
 const inputClass =
   "rounded-lg border border-[#233a59]/15 bg-white px-2.5 py-2 text-sm text-[#012140] outline-none focus:border-[#233a59]";
 
-function localDateInputValue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear().toString().padStart(4, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function getApiResponseError(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null || !("data" in error)) return undefined;
   const data = error.data;
@@ -220,9 +211,8 @@ function AdminConsole() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<AdminSection>("blog");
   const [createOpen, setCreateOpen] = useState(false);
-  const [dateFilterOpen, setDateFilterOpen] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [postDateOrder, setPostDateOrder] = useState<"createdAt" | "updatedAt">("createdAt");
+  const [postSortDirection, setPostSortDirection] = useState<"newest" | "oldest">("newest");
   const [editingPost, setEditingPost] = useState<number | null>(null);
   const [adminDrafts, setAdminDrafts] = useState<Record<string, string>>({});
   const [changeFeedback, setChangeFeedback] = useState<Record<string, string>>({});
@@ -394,18 +384,15 @@ function AdminConsole() {
   const visiblePosts = isPostSection
     ? (posts.data ?? []).filter((post) => post.kind === tab)
     : [];
-  const hasDateFilter = Boolean(dateFrom || dateTo);
-  const dateRangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
-  const filteredPosts = visiblePosts.filter((post) => {
-    if (tab !== "blog" || !hasDateFilter) return true;
-    const postDate = localDateInputValue(post.updatedAt);
-    return Boolean(
-      postDate &&
-        !dateRangeInvalid &&
-        (!dateFrom || postDate >= dateFrom) &&
-        (!dateTo || postDate <= dateTo),
-    );
-  });
+  const orderedPosts = tab === "blog"
+    ? [...visiblePosts].sort((left, right) => {
+        const leftDate = Date.parse(left[postDateOrder]);
+        const rightDate = Date.parse(right[postDateOrder]);
+        const difference = (Number.isFinite(rightDate) ? rightDate : 0) -
+          (Number.isFinite(leftDate) ? leftDate : 0);
+        return postSortDirection === "newest" ? difference : -difference;
+      })
+    : visiblePosts;
   const sectionCount = (section: AdminSection): number | string | undefined => {
     if (section in postSectionDetails) {
       return posts.isLoading
@@ -479,8 +466,8 @@ function AdminConsole() {
         <section className="min-w-0 overflow-hidden rounded-2xl border border-[#233a59]/15 bg-white">
           {isPostSection && (
             <div className="space-y-4 p-4 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">
                     {translateText(tab === "forum" ? "Comunidade" : tab === "blog" ? "Conteúdos" : tab === "news" ? "Atualizações" : "Suporte")}
                   </p>
@@ -491,78 +478,48 @@ function AdminConsole() {
                     {translateText(postSectionDetails[tab as PostKind].description)}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className={tab === "blog"
+                  ? "grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[560px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end"
+                  : "flex w-full flex-col gap-3 sm:w-auto sm:flex-row"}
+                >
                   {tab === "blog" && (
-                    <button
-                      aria-controls="admin-post-date-filter"
-                      aria-expanded={dateFilterOpen}
-                      className={`auth-header-link !border-[#233a59]/20 !bg-white !text-[#233a59] hover:!bg-[#f4f6f8] ${hasDateFilter ? "!bg-[#eef3f6]" : ""}`}
-                      data-testid="admin-post-date-filter-toggle"
-                      onClick={() => setDateFilterOpen((open) => !open)}
-                      type="button"
-                    >
-                      <CalendarDays aria-hidden="true" className="mr-2 h-4 w-4" />
-                      {translateText("Filtrar por data")}
-                    </button>
+                    <>
+                      <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+                        <span>{translateText("Ordenar por data")}</span>
+                        <span className="relative block min-w-0">
+                          <ArrowDownUp aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                          <select
+                            aria-label={translateText("Ordenar por data")}
+                            className={`${inputClass} min-h-10 w-full !pl-9`}
+                            data-testid="admin-post-date-sort"
+                            onChange={(event) => setPostDateOrder(event.target.value as "createdAt" | "updatedAt")}
+                            value={postDateOrder}
+                          >
+                            <option value="createdAt">{translateText("Data de criação")}</option>
+                            <option value="updatedAt">{translateText("Última atualização")}</option>
+                          </select>
+                        </span>
+                      </label>
+                      <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+                        <span>{translateText("Ordem dos resultados")}</span>
+                        <select
+                          aria-label={translateText("Ordem dos resultados")}
+                          className={`${inputClass} min-h-10 w-full`}
+                          data-testid="admin-post-date-direction"
+                          onChange={(event) => setPostSortDirection(event.target.value as "newest" | "oldest")}
+                          value={postSortDirection}
+                        >
+                          <option value="newest">{translateText("Mais recentes primeiro")}</option>
+                          <option value="oldest">{translateText("Mais antigas primeiro")}</option>
+                        </select>
+                      </label>
+                    </>
                   )}
-                  <button className="auth-header-primary" data-testid="admin-create-post" onClick={() => createOpen ? closeCreatePost() : setCreateOpen(true)} type="button">
+                  <button className={`auth-header-primary w-full ${tab === "blog" ? "sm:col-span-2 lg:col-span-1 lg:w-auto" : "sm:w-auto"}`} data-testid="admin-create-post" onClick={() => createOpen ? closeCreatePost() : setCreateOpen(true)} type="button">
                     {translateText(createOpen ? "Fechar criação" : "Nova publicação")}
                   </button>
                 </div>
               </div>
-              {tab === "blog" && dateFilterOpen && (
-                <div
-                  className="rounded-xl border border-[#233a59]/15 bg-[#f8fafb] p-3"
-                  data-testid="admin-post-date-filter"
-                  id="admin-post-date-filter"
-                >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      {translateText("Filtra pela data de publicação ou da última edição.")}
-                    </p>
-                    <button
-                      className="text-sm font-semibold text-[#315571] underline disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!hasDateFilter}
-                      onClick={() => {
-                        setDateFrom("");
-                        setDateTo("");
-                      }}
-                      type="button"
-                    >
-                      {translateText("Limpar filtro")}
-                    </button>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
-                      {translateText("Data inicial")}
-                      <input
-                        className={`${inputClass} w-full`}
-                        data-testid="admin-post-date-from"
-                        max={dateTo || undefined}
-                        onChange={(event) => setDateFrom(event.target.value)}
-                        type="date"
-                        value={dateFrom}
-                      />
-                    </label>
-                    <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
-                      {translateText("Data final")}
-                      <input
-                        className={`${inputClass} w-full`}
-                        data-testid="admin-post-date-to"
-                        min={dateFrom || undefined}
-                        onChange={(event) => setDateTo(event.target.value)}
-                        type="date"
-                        value={dateTo}
-                      />
-                    </label>
-                  </div>
-                  {dateRangeInvalid && (
-                    <p className="mt-2 text-sm text-red-700" role="alert">
-                      {translateText("A data inicial não pode ser posterior à data final.")}
-                    </p>
-                  )}
-                </div>
-              )}
               {createOpen && (
                 <CreatePostForm
                   key={tab}
@@ -582,7 +539,7 @@ function AdminConsole() {
                 <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as publicações.")}</p>
               ) : (
                 <div className="space-y-3">
-                  {filteredPosts.map((post) => (
+                  {orderedPosts.map((post) => (
                     <article className="rounded-xl border border-[#233a59]/15 p-4" data-testid={`admin-post-${post.id}`} key={post.id}>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 gap-3">
@@ -596,7 +553,9 @@ function AdminConsole() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-[#012140]">{post.title}</h3>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {post.category} · {post.authorName} · {formatDate(post.updatedAt)}
+                              {post.category} · {post.authorName} · {tab === "blog"
+                                ? `${translateText(postDateOrder === "createdAt" ? "Data de criação" : "Última atualização")}: ${formatDate(post[postDateOrder])}`
+                                : formatDate(post.updatedAt)}
                             </p>
                             {post.commentCount > 0 && (
                               <p className="mt-1 text-xs font-semibold text-[#233a59]">
@@ -674,18 +633,14 @@ function AdminConsole() {
                       )}
                     </article>
                   ))}
-                  {!filteredPosts.length && (
+                  {!orderedPosts.length && (
                     <div className="rounded-xl border border-dashed border-[#233a59]/25 px-5 py-10 text-center">
                       <FileText aria-hidden="true" className="mx-auto h-7 w-7 text-[#233a59]/55" />
                       <p className="mt-3 font-semibold text-[#012140]">
-                        {tab === "blog" && hasDateFilter
-                          ? translateText("Nenhuma publicação encontrada nesse período.")
-                          : translateText("Ainda não há publicações nesta seção.")}
+                        {translateText("Ainda não há publicações nesta seção.")}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {tab === "blog" && hasDateFilter
-                          ? translateText("Ajuste ou limpe o filtro de data para ver outras publicações.")
-                          : translateText("Crie a primeira para começar a organizar este espaço.")}
+                        {translateText("Crie a primeira para começar a organizar este espaço.")}
                       </p>
                     </div>
                   )}
