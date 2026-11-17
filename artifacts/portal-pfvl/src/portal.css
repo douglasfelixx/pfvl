@@ -3978,7 +3978,7 @@ table {
     gap: 4px;
     border: 1px solid rgba(255, 255, 255, .24);
     border-radius: 10px;
-    background: rgba(255, 255, 255, .08);
+    background: transparent;
     color: #fff;
     cursor: pointer;
   }
