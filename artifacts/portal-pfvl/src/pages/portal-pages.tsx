@@ -541,26 +541,24 @@ export function HelpPage() {
   return (
     <div className="page-enter">
       <PageHeading eyebrow="Central de ajuda" title="Aprenda a usar o PFVL." description="Tutoriais práticos, organizados por assunto, para configurar contas, planejamentos, objetivos e outros recursos do sistema." />
-      <section className="my-6 rounded-2xl border border-[#233a59]/15 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e8e8e8] text-[#233a59]">
+      <section className="my-6 grid gap-4 rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#eef3f6] text-[#233a59] sm:h-12 sm:w-12">
               <LifeBuoy aria-hidden="true" size={21} />
-            </span>
-            <div>
-              <h2 className="font-display text-lg font-semibold text-[#012140]">{translateText("Precisa de ajuda da equipe?")}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{translateText("Registre uma solicitação para acompanhar o atendimento pelo seu protocolo.")}</p>
-            </div>
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold text-[#012140]">{translateText("Precisa de ajuda da equipe?")}</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{translateText("Registre uma solicitação para acompanhar o atendimento pelo seu protocolo.")}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link className="auth-header-link inline-flex items-center gap-2 !border-[#233a59]/20 !bg-[#f4f6f8] !text-[#233a59] hover:!bg-[#e8eef4]" href="/help/requests" data-testid="link-help-track-requests">
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Link className="auth-header-primary w-full justify-center sm:w-auto" href="/help/request" data-testid="link-help-request">
+            {translateText("Registrar uma solicitação")}
+          </Link>
+          <Link className="auth-header-link inline-flex w-full items-center justify-center gap-2 !border-[#233a59]/20 !bg-[#f4f6f8] !text-[#233a59] hover:!bg-[#e8eef4] sm:w-auto" href="/help/requests" data-testid="link-help-track-requests">
               <ClipboardList aria-hidden="true" size={16} />
               {translateText("Acompanhar solicitações")}
-            </Link>
-            <Link className="auth-header-primary" href="/help/request" data-testid="link-help-request">
-              {translateText("Registrar uma solicitação")}
-            </Link>
-          </div>
+          </Link>
         </div>
       </section>
       <section className="mt-8">
