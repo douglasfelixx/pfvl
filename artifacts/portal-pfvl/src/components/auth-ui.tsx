@@ -1,7 +1,8 @@
-import { createContext, type ReactNode, useContext, useEffect } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from "@clerk/react";
 import { enUS, ptBR } from "@clerk/localizations";
 import { Bell, UserRound } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetCurrentUserQueryKey,
   getListNotificationsQueryKey,
@@ -12,8 +13,48 @@ import { Link } from "wouter";
 import { translateText, useI18n } from "@/lib/i18n";
 
 export const AuthAvailabilityContext = createContext(false);
+const SearchAccountContext = createContext<string | null>(null);
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 export const clerkAuthReady = Boolean(publishableKey?.startsWith("pk_"));
+const ptBrSignIn = ptBR.signIn ?? {};
+const ptBrAlternativeMethods = ptBrSignIn.alternativeMethods ?? {};
+const portalPtBR = {
+  ...ptBR,
+  signIn: {
+    ...ptBrSignIn,
+    alternativeMethods: {
+      ...ptBrAlternativeMethods,
+      getHelp: {
+        ...ptBrAlternativeMethods.getHelp,
+        content: "Se não conseguir entrar, fale com o suporte para recuperar o acesso.",
+      },
+    },
+  },
+};
+
+function ClerkSearchAccountProvider({ children }: { children: ReactNode }) {
+  const { userId } = useAuth();
+  const queryClient = useQueryClient();
+  const previousUserId = useRef(userId);
+  useEffect(() => {
+    if (previousUserId.current !== userId) {
+      const currentScope = userId ?? "anonymous";
+      queryClient.removeQueries({
+        predicate: (query) =>
+          ["/api/search", "/api/my/suggestions", "/api/my/support-requests"].includes(
+            String(query.queryKey[0]),
+          ) &&
+          query.queryKey.at(-1) !== currentScope,
+      });
+      previousUserId.current = userId;
+    }
+  }, [queryClient, userId]);
+  return <SearchAccountContext.Provider value={userId ?? null}>{children}</SearchAccountContext.Provider>;
+}
+
+export function useSearchAccountId() {
+  return useContext(SearchAccountContext);
+}
 
 function safeInternalRedirect(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
@@ -37,11 +78,15 @@ function authHref(path: "/sign-in" | "/sign-up", returnTo?: string): string {
 export function AuthContextProvider({ children }: { children: ReactNode }) {
   const { locale } = useI18n();
   return clerkAuthReady && publishableKey ? (
-    <ClerkProvider publishableKey={publishableKey} localization={locale === "en-US" ? enUS : ptBR}>
-      <AuthAvailabilityContext.Provider value>{children}</AuthAvailabilityContext.Provider>
+    <ClerkProvider publishableKey={publishableKey} localization={locale === "en-US" ? enUS : portalPtBR}>
+      <AuthAvailabilityContext.Provider value>
+        <ClerkSearchAccountProvider>{children}</ClerkSearchAccountProvider>
+      </AuthAvailabilityContext.Provider>
     </ClerkProvider>
   ) : (
-    <AuthAvailabilityContext.Provider value={false}>{children}</AuthAvailabilityContext.Provider>
+    <AuthAvailabilityContext.Provider value={false}>
+      <SearchAccountContext.Provider value={null}>{children}</SearchAccountContext.Provider>
+    </AuthAvailabilityContext.Provider>
   );
 }
 
@@ -116,7 +161,7 @@ function ClerkAuthRoute({ mode }: { mode: "sign-in" | "sign-up" }) {
       <div className="w-full max-w-[460px] text-center">
         <p className="eyebrow-pill">{translateText(mode === "sign-in" ? "Bem-vindo de volta" : "Comunidade PFVL")}</p>
         <h1 className="mt-3 font-display text-3xl font-semibold text-[#012140]">{translateText(mode === "sign-in" ? "Entre na sua conta." : "Crie sua conta PFVL.")}</h1>
-        <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">{translateText("Participe das conversas e responda aos artigos.")}</p>
+        <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">{translateText("Acesse sua conta para participar da comunidade e acompanhar suas solicitações e sugestões.")}</p>
         <div className="flex justify-center">
           {mode === "sign-in"
             ? <SignIn {...common} path="/sign-in" signUpUrl={authHref("/sign-up", redirectUrl)} />

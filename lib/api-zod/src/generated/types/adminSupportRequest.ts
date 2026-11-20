@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminSupportRequestRequestType } from './adminSupportRequestRequestType';
+import type { AdminSupportRequestRoadmapStatus } from './adminSupportRequestRoadmapStatus';
 import type { SupportRequestComment } from './supportRequestComment';
 import type { SupportRequestStatus } from './supportRequestStatus';
 
@@ -17,6 +18,12 @@ export interface AdminSupportRequest {
   subjectName: string;
   /** @nullable */
   title: string | null;
+  /** @nullable */
+  roadmapTitle: string | null;
+  /** @nullable */
+  roadmapDescription: string | null;
+  /** @nullable */
+  roadmapStatus: AdminSupportRequestRoadmapStatus;
   /** @nullable */
   categoryName: string | null;
   /** @nullable */

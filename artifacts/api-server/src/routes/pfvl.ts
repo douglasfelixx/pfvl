@@ -57,7 +57,6 @@ import {
   ListPostsQueryParams,
   ListPostsResponse,
   ListTestimonialsResponse,
-  ListTaxonomyQueryParams,
   ListTaxonomyResponse,
   ListSuggestionsResponse,
   MarkNotificationReadParams,
@@ -114,6 +113,7 @@ import {
   requirePfvlUser,
 } from "../lib/pfvl-auth.js";
 import supportRequestsRouter from "./support-requests.js";
+import searchRouter from "./search.js";
 
 const router = Router();
 
@@ -221,7 +221,7 @@ function postNotification(
   return {
     eventKey: `published-post:${post.id}`,
     type: isUpdate ? "new_update" : "new_publication",
-    title: isUpdate ? "Nova novidade no PFVL" : "Nova publicação no PFVL",
+    title: isUpdate ? "Nova atualização no PFVL" : "Nova publicação no PFVL",
     message: post.title || post.excerpt,
     href: postHref(post.kind, post.id),
     actorUserId,
@@ -347,15 +347,27 @@ function safeCoverUrl(value: string | null | undefined): boolean {
   }
 }
 
+function postExcerptFromBody(body: string): string {
+  return body
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+}
+
 async function hasValidTaxonomySelection(
-  kind: string,
   category: string,
   tags: string[],
 ): Promise<boolean> {
   const rows = await db
     .select({ type: taxonomyTable.type, name: taxonomyTable.name })
-    .from(taxonomyTable)
-    .where(eq(taxonomyTable.kind, kind));
+    .from(taxonomyTable);
   const normalizedCategory = category.trim().toLocaleLowerCase("pt-BR");
   const categories = new Set(
     rows
@@ -461,16 +473,10 @@ router.get("/posts", async (req: ExpressRequest, res: ExpressResponse): Promise<
 
 router.get(
   "/taxonomy",
-  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
-    const parsed = ListTaxonomyQueryParams.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
-      return;
-    }
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const rows = await db
       .select()
       .from(taxonomyTable)
-      .where(eq(taxonomyTable.kind, parsed.data.kind))
       .orderBy(taxonomyTable.type, taxonomyTable.name);
     res.json(ListTaxonomyResponse.parse(rows));
   },
@@ -536,7 +542,7 @@ router.get(
           sql`COALESCE(to_jsonb(${commentsTable})->>'status', 'published') = 'published'`,
         ),
       )
-      .orderBy(commentsTable.createdAt);
+      .orderBy(commentsTable.createdAt, commentsTable.id);
     const comments: PublicCommentRow[] = rows.map((comment) => ({
       ...comment,
       parentCommentId: comment.parentCommentId ?? null,
@@ -634,7 +640,7 @@ router.put(
     const user = getPfvlUser(req);
     const body = parsed.data.body.trim();
     if (body.length < 10) {
-      res.status(400).json({ error: "O depoimento precisa ter pelo menos 10 caracteres." });
+      res.status(400).json({ error: "A avaliação precisa ter pelo menos 10 caracteres." });
       return;
     }
     const [testimonial] = await db
@@ -771,6 +777,11 @@ router.delete(
 );
 
 router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+  const rawTitle = (req.body as { title?: unknown } | null)?.title;
+  if (typeof rawTitle !== "string" || rawTitle.trim().length < 4) {
+    res.status(400).json({ error: "Informe um título com pelo menos 4 caracteres." });
+    return;
+  }
   const parsed = CreatePostBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -785,7 +796,7 @@ router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressR
   }
   const category = input.category.trim();
   const tags = [...new Set((input.tags ?? []).map((tag) => tag.trim()))];
-  if (!(await hasValidTaxonomySelection(input.kind, category, tags))) {
+  if (!(await hasValidTaxonomySelection(category, tags))) {
     res.status(400).json({ error: "Selecione uma categoria e marcadores cadastrados pelo administrador." });
     return;
   }
@@ -797,7 +808,7 @@ router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressR
     return;
   }
   if (!safeCoverUrl(input.coverImageUrl)) {
-    res.status(400).json({ error: "Use uma imagem HTTPS válida" });
+    res.status(400).json({ error: "Use uma imagem HTTPS válida." });
     return;
   }
 
@@ -809,7 +820,7 @@ router.post("/posts", requirePfvlUser, async (req: ExpressRequest, res: ExpressR
       .insert(postsTable)
       .values({
         title: input.title.trim(),
-        excerpt: input.excerpt?.trim() || input.body.trim().slice(0, 220),
+        excerpt: input.excerpt?.trim() || postExcerptFromBody(input.body),
         body: input.body.trim(),
         kind: input.kind,
         category,
@@ -842,6 +853,12 @@ router.patch(
   requirePfvlUser,
   async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = UpdatePostParams.safeParse(req.params);
+    const rawBody = req.body as { title?: unknown } | null;
+    if (rawBody && Object.prototype.hasOwnProperty.call(rawBody, "title")
+      && (typeof rawBody.title !== "string" || rawBody.title.trim().length < 4)) {
+      res.status(400).json({ error: "Informe um título com pelo menos 4 caracteres." });
+      return;
+    }
     const parsed = UpdatePostBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
       res.status(400).json({
@@ -874,7 +891,7 @@ router.patch(
     }
     const category = parsed.data.category?.trim() ?? post.category;
     const tags = parsed.data.tags ?? post.tags ?? [];
-    if (!(await hasValidTaxonomySelection(post.kind, category, tags))) {
+    if (!(await hasValidTaxonomySelection(category, tags))) {
       res.status(400).json({ error: "Selecione uma categoria e marcadores cadastrados pelo administrador." });
       return;
     }
@@ -884,7 +901,7 @@ router.patch(
         ? post.coverImageUrl
         : parsed.data.coverImageUrl;
     if (!safeCoverUrl(coverImageUrl)) {
-      res.status(400).json({ error: "Use uma imagem HTTPS válida" });
+      res.status(400).json({ error: "Use uma imagem HTTPS válida." });
       return;
     }
     if (
@@ -905,7 +922,10 @@ router.patch(
         .set({
           ...parsed.data,
           title: parsed.data.title?.trim(),
-          excerpt: parsed.data.excerpt?.trim(),
+          excerpt: parsed.data.excerpt?.trim()
+            || (parsed.data.body !== undefined
+              ? postExcerptFromBody(parsed.data.body)
+              : post.excerpt),
           body: parsed.data.body?.trim(),
           category,
           tags,
@@ -1255,7 +1275,7 @@ router.get(
     const rows = await db
       .select()
       .from(taxonomyTable)
-      .orderBy(taxonomyTable.kind, taxonomyTable.type, taxonomyTable.name);
+      .orderBy(taxonomyTable.type, taxonomyTable.name);
     res.json(ListAdminTaxonomyResponse.parse(rows));
   },
 );
@@ -1265,6 +1285,11 @@ router.post(
   requirePfvlUser,
   requireAdmin,
   async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const rawName = (req.body as { name?: unknown } | null)?.name;
+    if (typeof rawName !== "string" || rawName.trim().length < 2) {
+      res.status(400).json({ error: "Informe um nome com pelo menos 2 caracteres." });
+      return;
+    }
     const parsed = CreateAdminTaxonomyBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
@@ -1274,18 +1299,22 @@ router.post(
     if (name.length < 2 || (parsed.data.type === "tag" && name.length > 40)) {
       res.status(400).json({
         error: parsed.data.type === "tag"
-          ? "O marcador deve ter entre 2 e 40 caracteres."
-          : "A categoria deve ter pelo menos 2 caracteres.",
+          ? "O marcador deve ter no máximo 40 caracteres."
+          : "Informe um nome com pelo menos 2 caracteres.",
       });
       return;
     }
     const [created] = await db
       .insert(taxonomyTable)
-      .values({ kind: parsed.data.kind, type: parsed.data.type, name })
+      .values({ type: parsed.data.type, name })
       .onConflictDoNothing()
       .returning();
     if (!created) {
-      res.status(409).json({ error: "Já existe uma opção com esse nome nesta área." });
+      res.status(409).json({
+        error: parsed.data.type === "category"
+          ? "Já existe uma categoria com esse nome."
+          : "Já existe um marcador com esse nome.",
+      });
       return;
     }
     res.status(201).json(CreateAdminTaxonomyResponse.parse(created));
@@ -1298,6 +1327,11 @@ router.patch(
   requireAdmin,
   async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
     const params = UpdateAdminTaxonomyParams.safeParse(req.params);
+    const rawName = (req.body as { name?: unknown } | null)?.name;
+    if (typeof rawName !== "string" || rawName.trim().length < 2) {
+      res.status(400).json({ error: "Informe um nome com pelo menos 2 caracteres." });
+      return;
+    }
     const parsed = UpdateAdminTaxonomyBody.safeParse(req.body);
     if (!params.success) {
       res.status(400).json({ error: params.error.message });
@@ -1310,7 +1344,11 @@ router.patch(
 
     const name = parsed.data.name.trim();
     if (name.length < 2 || name.length > 100) {
-      res.status(400).json({ error: "O nome deve ter entre 2 e 100 caracteres." });
+      res.status(400).json({
+        error: name.length < 2
+          ? "Informe um nome com pelo menos 2 caracteres."
+          : "O nome deve ter no máximo 100 caracteres.",
+      });
       return;
     }
 
@@ -1326,12 +1364,11 @@ router.patch(
         .select({ id: taxonomyTable.id })
         .from(taxonomyTable)
         .where(and(
-          eq(taxonomyTable.kind, item.kind),
           eq(taxonomyTable.type, item.type),
           sql`lower(${taxonomyTable.name}) = lower(${name})`,
         ));
       if (duplicates.some((duplicate) => duplicate.id !== item.id)) {
-        return { kind: "duplicate" as const };
+        return { kind: "duplicate" as const, type: item.type };
       }
 
       const [updated] = await tx
@@ -1347,7 +1384,6 @@ router.patch(
           .update(postsTable)
           .set({ category: name, updatedAt })
           .where(and(
-            eq(postsTable.kind, item.kind),
             sql`lower(btrim(${postsTable.category})) = lower(${item.name})`,
           ));
       } else {
@@ -1365,7 +1401,6 @@ router.patch(
             updatedAt,
           })
           .where(and(
-            eq(postsTable.kind, item.kind),
             sql`EXISTS (
               SELECT 1
               FROM unnest(${postsTable.tags}) AS existing_tag(tag_value)
@@ -1382,7 +1417,11 @@ router.patch(
       return;
     }
     if (result.kind === "duplicate") {
-      res.status(409).json({ error: "Já existe uma opção com esse nome nesta área." });
+      res.status(409).json({
+        error: result.type === "category"
+          ? "Já existe uma categoria com esse nome."
+          : "Já existe um marcador com esse nome.",
+      });
       return;
     }
 
@@ -1420,7 +1459,7 @@ router.delete(
     const [usage] = await db
       .select({ id: postsTable.id })
       .from(postsTable)
-      .where(and(eq(postsTable.kind, item.kind), usedBy))
+      .where(usedBy)
       .limit(1);
     if (usage) {
       res.status(409).json({
@@ -1445,7 +1484,7 @@ router.get(
     const rows = await db
       .select()
       .from(postsTable)
-      .orderBy(desc(postsTable.updatedAt));
+      .orderBy(desc(postsTable.updatedAt), desc(postsTable.id));
     res.json(ListAdminPostsResponse.parse(rows.map(postResponse)));
   },
 );
@@ -1461,6 +1500,7 @@ router.get(
       .orderBy(
         sql`CASE WHEN ${testimonialsTable.status} = 'pending' THEN 0 ELSE 1 END`,
         desc(testimonialsTable.createdAt),
+        desc(testimonialsTable.id),
       )
       .limit(200);
     res.json(ListAdminTestimonialsResponse.parse(rows));
@@ -1488,7 +1528,7 @@ router.patch(
       .where(eq(testimonialsTable.id, params.data.testimonialId))
       .returning();
     if (!updated) {
-      res.status(404).json({ error: "Depoimento não encontrado" });
+      res.status(404).json({ error: "Avaliação não encontrada" });
       return;
     }
     res.json(UpdateAdminTestimonialResponse.parse(updated));
@@ -1503,7 +1543,7 @@ router.get(
     const rows = await db
       .select()
       .from(pollsTable)
-      .orderBy(desc(pollsTable.createdAt))
+      .orderBy(desc(pollsTable.createdAt), desc(pollsTable.id))
       .limit(100);
     res.json(ListAdminPollsResponse.parse(await pollSummaries(rows)));
   },
@@ -1592,7 +1632,7 @@ router.get(
     const rows = await db
       .select()
       .from(usersTable)
-      .orderBy(desc(usersTable.createdAt));
+      .orderBy(desc(usersTable.createdAt), desc(usersTable.id));
     res.json(ListAdminUsersResponse.parse(rows));
   },
 );
@@ -1992,7 +2032,7 @@ router.get("/suggestions", requirePfvlUser, requireAdmin, async (_req: ExpressRe
   const rows = await db
     .select()
     .from(suggestionsTable)
-    .orderBy(desc(suggestionsTable.createdAt));
+    .orderBy(desc(suggestionsTable.createdAt), desc(suggestionsTable.id));
   res.json(ListSuggestionsResponse.parse(rows));
 });
 
@@ -2087,6 +2127,7 @@ router.get("/indicators", async (req: ExpressRequest, res: ExpressResponse): Pro
   }
 });
 
+router.use(searchRouter);
 router.use(supportRequestsRouter);
 
 export default router;

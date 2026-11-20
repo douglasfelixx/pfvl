@@ -37,7 +37,6 @@ import type {
   ImageUploadInput,
   Indicator,
   ListPostsParams,
-  ListTaxonomyParams,
   MySuggestion,
   MySuggestionInput,
   MySupportRequest,
@@ -47,8 +46,10 @@ import type {
   Notifications,
   PollSummary,
   PollVoteInput,
+  PortalSearch,
   Post,
   PublicRoadmapSuggestion,
+  SearchPortalParams,
   SiteMedia,
   SiteMediaAsset,
   SiteMediaAssetUpdate,
@@ -512,7 +513,7 @@ export const useCreatePost = <TError = ErrorType<UnauthorizedResponse | Forbidde
       return useMutation(getCreatePostMutationOptions(options));
     }
 
-export const getListTaxonomyUrl = (params: ListTaxonomyParams,) => {
+export const getSearchPortalUrl = (params: SearchPortalParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -524,15 +525,16 @@ export const getListTaxonomyUrl = (params: ListTaxonomyParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/taxonomy?${stringifiedParams}` : `/api/taxonomy`
+  return stringifiedParams.length > 0 ? `/api/search?${stringifiedParams}` : `/api/search`
 }
 
 /**
- * @summary Lista categorias e marcadores disponíveis para uma área
+ * Pesquisa somente publicações e comentários publicados, itens aprovados do roadmap e registros privados vinculados à conta autenticada atual. Nunca retorna registros privados de outras contas.
+ * @summary Busca conteúdo público e registros próprios autorizados
  */
-export const listTaxonomy = async (params: ListTaxonomyParams, options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem[]> => {
+export const searchPortal = async (params: SearchPortalParams, options?: Parameters<typeof customFetch>[1]): Promise<PortalSearch> => {
 
-  return customFetch<TaxonomyItem[]>(getListTaxonomyUrl(params),
+  return customFetch<PortalSearch>(getSearchPortalUrl(params),
   {
     ...options,
     method: 'GET'
@@ -545,23 +547,100 @@ export const listTaxonomy = async (params: ListTaxonomyParams, options?: Paramet
 
 
 
-export const getListTaxonomyQueryKey = (params?: ListTaxonomyParams,) => {
+export const getSearchPortalQueryKey = (params?: SearchPortalParams,) => {
     return [
-    `/api/taxonomy`, ...(params ? [params] : [])
+    `/api/search`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListTaxonomyQueryOptions = <TData = Awaited<ReturnType<typeof listTaxonomy>>, TError = ErrorType<unknown>>(params: ListTaxonomyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getSearchPortalQueryOptions = <TData = Awaited<ReturnType<typeof searchPortal>>, TError = ErrorType<BadRequestResponse>>(params: SearchPortalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListTaxonomyQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getSearchPortalQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTaxonomy>>> = ({ signal }) => listTaxonomy(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchPortal>>> = ({ signal }) => searchPortal(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchPortal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchPortalQueryResult = NonNullable<Awaited<ReturnType<typeof searchPortal>>>
+export type SearchPortalQueryError = ErrorType<BadRequestResponse>
+
+
+/**
+ * @summary Busca conteúdo público e registros próprios autorizados
+ */
+
+export function useSearchPortal<TData = Awaited<ReturnType<typeof searchPortal>>, TError = ErrorType<BadRequestResponse>>(
+ params: SearchPortalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchPortalQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTaxonomyUrl = () => {
+
+
+
+
+  return `/api/taxonomy`
+}
+
+/**
+ * @summary Lista categorias e marcadores do catálogo compartilhado
+ */
+export const listTaxonomy = async ( options?: Parameters<typeof customFetch>[1]): Promise<TaxonomyItem[]> => {
+
+  return customFetch<TaxonomyItem[]>(getListTaxonomyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTaxonomyQueryKey = () => {
+    return [
+    `/api/taxonomy`
+    ] as const;
+    }
+
+
+export const getListTaxonomyQueryOptions = <TData = Awaited<ReturnType<typeof listTaxonomy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTaxonomyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTaxonomy>>> = ({ signal }) => listTaxonomy({ signal, ...requestOptions });
 
 
 
@@ -575,15 +654,15 @@ export type ListTaxonomyQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Lista categorias e marcadores disponíveis para uma área
+ * @summary Lista categorias e marcadores do catálogo compartilhado
  */
 
 export function useListTaxonomy<TData = Awaited<ReturnType<typeof listTaxonomy>>, TError = ErrorType<unknown>>(
- params: ListTaxonomyParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTaxonomy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListTaxonomyQueryOptions(params,options)
+  const queryOptions = getListTaxonomyQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1901,7 +1980,7 @@ export const getListPublicRoadmapSuggestionsUrl = () => {
 }
 
 /**
- * Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+ * Retorna somente o texto próprio aprovado para publicação, sua categoria, estágio e data de aprovação; nunca inclui mensagem original ou respostas privadas.
  * @summary Lista sugestões aprovadas para o roadmap público
  */
 export const listPublicRoadmapSuggestions = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapSuggestion[]> => {

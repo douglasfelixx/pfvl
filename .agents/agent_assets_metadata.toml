@@ -252,3 +252,31 @@ mtime_ms = 1794885281152
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/970b37e8-9424-4898-851d-cc55d3da2700/87661897-3b90-41e1-8fb6-91919d9aa4d9"
 storage_version_token = "1794885288445537"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "GAON_MMIrwoOI9fYa5LdQ"
+uri = "file://generated-artifacts/PFVL-GitHub-Atualizado-2026-11-17-card-ajuda-mobile.zip"
+type = "unspecified"
+title = "PFVL — ZIP atualizado para GitHub"
+description = "Arquivo validado com o novo layout mobile do card da Central de Ajuda. Sem .git, node_modules, .env ou pacotes gerados."
+logical_id = "772095d0-cfca-442a-97f2-a35d5887daa4"
+content_hash = "sha256:1a7ca7f724da500aa5b18f3623c560fd7a4c050ed89334cf126e34e3b909b6df"
+size = 2642326
+mtime_ms = 1794886152283
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/772095d0-cfca-442a-97f2-a35d5887daa4/bde7973c-8fe9-42d4-b8fb-2c9e3f3c1806"
+storage_version_token = "1794886159764486"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "JmZ5Ng2E79tGrFPlmBRsV"
+uri = "file://generated-artifacts/PFVL-GitHub-manual-2026-11-20.zip"
+type = "unspecified"
+title = "ZIP do Portal PFVL para GitHub"
+description = "Pacote com os arquivos de código atuais do projeto, pronto para extrair e enviar manualmente ao GitHub. Sem .git, dependências instaladas ou credenciais."
+logical_id = "398dcce6-1b33-4f07-8bc0-f3ca2e06e2a9"
+content_hash = "sha256:5780fdbc0d4fe9663be97759a0d7917708288da0df0864a5902d4381c86fbc61"
+size = 832494
+mtime_ms = 1795208042246
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/398dcce6-1b33-4f07-8bc0-f3ca2e06e2a9/f4dac0a9-41b9-4239-b692-5775105ad28d"
+storage_version_token = "1795208059017670"
+content_type = "application/octet-stream"

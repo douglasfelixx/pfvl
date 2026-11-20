@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@clerk/react";
 import { useListMySupportRequests, getListMySupportRequestsQueryKey, type MySupportRequest } from "@workspace/api-client-react";
 import { ArrowUpRight, Check, Clock3, Headphones, MessageSquareText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -36,7 +37,9 @@ function RequestCard({ request }: { request: MySupportRequest }) {
 
   return (
     <article
+      id={`support-request-${request.id}`}
       className="overflow-hidden rounded-[22px] border border-[#d9e2df] bg-[#fffefa] shadow-[0_8px_28px_rgba(24,55,50,0.045)] transition-transform duration-200 hover:-translate-y-0.5"
+      style={{ scrollMarginTop: '6rem' }}
       data-testid={`card-support-request-${request.id}`}
     >
       <div className="border-b border-[#e7ece8] px-5 py-5 sm:px-7">
@@ -162,6 +165,13 @@ function SupportRequestsContent() {
       refetchInterval: 30_000,
     },
   });
+  useEffect(() => {
+    const targetId = window.location.hash.slice(1);
+    if (!requestsQuery.data || !/^support-request-\d+$/.test(targetId)) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [requestsQuery.data]);
   const requests = requestsQuery.data ?? [];
 
   return (

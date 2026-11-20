@@ -150,15 +150,44 @@ export const CreatePostResponse = zod.object({
 
 
 /**
- * @summary Lista categorias e marcadores disponíveis para uma área
+ * Pesquisa somente publicações e comentários publicados, itens aprovados do roadmap e registros privados vinculados à conta autenticada atual. Nunca retorna registros privados de outras contas.
+ * @summary Busca conteúdo público e registros próprios autorizados
  */
-export const ListTaxonomyQueryParams = zod.object({
-  "kind": zod.enum(['blog', 'news', 'forum', 'help'])
+export const searchPortalQueryQMin = 2;
+export const searchPortalQueryQMax = 120;
+
+export const searchPortalQueryPageMax = 1000;
+
+
+
+export const SearchPortalQueryParams = zod.object({
+  "q": zod.coerce.string().min(searchPortalQueryQMin).max(searchPortalQueryQMax),
+  "area": zod.enum(['content', 'community', 'news', 'tutorials', 'roadmap', 'private']).optional(),
+  "page": zod.coerce.number().int().min(1).max(searchPortalQueryPageMax).optional()
 })
 
+export const SearchPortalResponse = zod.object({
+  "query": zod.string(),
+  "page": zod.number().int(),
+  "groups": zod.array(zod.object({
+  "area": zod.enum(['content', 'community', 'news', 'tutorials', 'roadmap', 'private']),
+  "results": zod.array(zod.object({
+  "id": zod.number().int(),
+  "type": zod.enum(['article', 'community_topic', 'community_comment', 'update', 'tutorial', 'roadmap_item', 'support_request', 'private_suggestion', 'private_update']),
+  "title": zod.string(),
+  "excerpt": zod.string(),
+  "href": zod.string()
+})),
+  "hasMore": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Lista categorias e marcadores do catálogo compartilhado
+ */
 export const ListTaxonomyResponseItem = zod.object({
   "id": zod.number().int(),
-  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
   "type": zod.enum(['category', 'tag']),
   "name": zod.string(),
   "createdAt": zod.coerce.date()
@@ -507,15 +536,15 @@ export const ListSuggestionCategoriesResponse = zod.array(ListSuggestionCategori
 
 
 /**
- * Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+ * Retorna somente o texto próprio aprovado para publicação, sua categoria, estágio e data de aprovação; nunca inclui mensagem original ou respostas privadas.
  * @summary Lista sugestões aprovadas para o roadmap público
  */
 export const ListPublicRoadmapSuggestionsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "categoryName": zod.string().nullable(),
-  "message": zod.string(),
-  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "description": zod.string(),
+  "status": zod.enum(['planned', 'in_progress', 'available']),
   "approvedAt": zod.coerce.date()
 })
 export const ListPublicRoadmapSuggestionsResponse = zod.array(ListPublicRoadmapSuggestionsResponseItem)
@@ -737,6 +766,9 @@ export const ListAdminSupportRequestsResponse = zod.object({
   "requestType": zod.enum(['support', 'suggestion']),
   "subjectName": zod.string(),
   "title": zod.string().nullable(),
+  "roadmapTitle": zod.string().nullable(),
+  "roadmapDescription": zod.string().nullable(),
+  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable(),
   "categoryName": zod.string().nullable(),
   "approvedAt": zod.coerce.date().nullable(),
   "requesterName": zod.string(),
@@ -780,6 +812,9 @@ export const UpdateAdminSupportRequestResponse = zod.object({
   "requestType": zod.enum(['support', 'suggestion']),
   "subjectName": zod.string(),
   "title": zod.string().nullable(),
+  "roadmapTitle": zod.string().nullable(),
+  "roadmapDescription": zod.string().nullable(),
+  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable(),
   "categoryName": zod.string().nullable(),
   "approvedAt": zod.coerce.date().nullable(),
   "requesterName": zod.string(),
@@ -804,13 +839,27 @@ export const UpdateAdminSupportRequestRoadmapParams = zod.object({
   "requestId": zod.coerce.number().int()
 })
 
+export const updateAdminSupportRequestRoadmapBodyRoadmapTitleMin = 4;
+export const updateAdminSupportRequestRoadmapBodyRoadmapTitleMax = 220;
+
+export const updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMin = 10;
+export const updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMax = 5000;
+
+
+
 export const UpdateAdminSupportRequestRoadmapBody = zod.object({
-  "approved": zod.boolean()
+  "approved": zod.boolean().optional(),
+  "roadmapTitle": zod.string().min(updateAdminSupportRequestRoadmapBodyRoadmapTitleMin).max(updateAdminSupportRequestRoadmapBodyRoadmapTitleMax).optional(),
+  "roadmapDescription": zod.string().min(updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMin).max(updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMax).optional(),
+  "roadmapStatus": zod.enum(['planned', 'in_progress', 'available']).optional()
 })
 
 export const UpdateAdminSupportRequestRoadmapResponse = zod.object({
   "id": zod.number().int(),
-  "approvedAt": zod.coerce.date().nullable()
+  "approvedAt": zod.coerce.date().nullable(),
+  "roadmapTitle": zod.string().nullable(),
+  "roadmapDescription": zod.string().nullable(),
+  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable()
 })
 
 
@@ -975,7 +1024,6 @@ export const UpdateAdminSiteMediaResponse = zod.object({
  */
 export const ListAdminTaxonomyResponseItem = zod.object({
   "id": zod.number().int(),
-  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
   "type": zod.enum(['category', 'tag']),
   "name": zod.string(),
   "createdAt": zod.coerce.date()
@@ -992,14 +1040,12 @@ export const createAdminTaxonomyBodyNameMax = 100;
 
 
 export const CreateAdminTaxonomyBody = zod.object({
-  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
   "type": zod.enum(['category', 'tag']),
   "name": zod.string().min(createAdminTaxonomyBodyNameMin).max(createAdminTaxonomyBodyNameMax)
 })
 
 export const CreateAdminTaxonomyResponse = zod.object({
   "id": zod.number().int(),
-  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
   "type": zod.enum(['category', 'tag']),
   "name": zod.string(),
   "createdAt": zod.coerce.date()
@@ -1024,7 +1070,6 @@ export const UpdateAdminTaxonomyBody = zod.object({
 
 export const UpdateAdminTaxonomyResponse = zod.object({
   "id": zod.number().int(),
-  "kind": zod.enum(['blog', 'news', 'forum', 'help']),
   "type": zod.enum(['category', 'tag']),
   "name": zod.string(),
   "createdAt": zod.coerce.date()

@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { Link } from "wouter";
 import {
   ArrowUpRight,
   ArrowDownUp,
   BookOpen,
+  ChevronDown,
   CircleHelp,
   FileText,
   Headset,
@@ -97,11 +99,13 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { CreatePostForm, ImageUploadField } from "@/components/community-actions";
+import { useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
 import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { formatDate, LoadingState, PageHeading, Surface } from "@/components/portal-ui";
+import { formatDate, LoadingState, PageHeading, QueryError, Surface } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
 import { ProfilePage } from "@/pages/profile-page";
+import { refreshPostQueries } from "@/lib/post-query-refresh";
 
 const RichTextEditor = lazy(() => import("@/components/rich-text-editor").then((module) => ({ default: module.RichTextEditor })));
 
@@ -174,8 +178,8 @@ const adminNavigation: {
       { key: "users", label: "Contas", icon: Users },
       { key: "suggestions", label: "Sugestões", icon: Lightbulb },
       { key: "polls", label: "Enquetes", icon: Vote },
-      { key: "taxonomy", label: "Categorias", icon: Tags },
-      { key: "testimonials", label: "Depoimentos", icon: Star },
+      { key: "taxonomy", label: "Categorias / Marcadores", icon: Tags },
+      { key: "testimonials", label: "Avaliações", icon: Star },
     ],
   },
   {
@@ -190,6 +194,86 @@ const adminNavigation: {
 
 function statusLabel(status: PostStatus) {
   return translateText(status === "published" ? "Publicado" : status === "draft" ? "Rascunho" : "Oculto");
+}
+
+function PaginationControls({
+  page,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, pageCount);
+  if (totalItems <= pageSize) return null;
+
+  return (
+    <nav aria-label={translateText("Paginação da lista")} className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <p className="text-xs text-muted-foreground" aria-live="polite">
+        {translateText("Mostrando")} {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, totalItems)} {translateText("de")} {totalItems}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          className="min-h-9 rounded-lg border border-[#233a59]/20 px-3 text-sm font-semibold text-[#233a59] disabled:opacity-45"
+          disabled={safePage <= 1}
+          onClick={() => onPageChange(safePage - 1)}
+          type="button"
+        >
+          {translateText("Anterior")}
+        </button>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {safePage} / {pageCount}
+        </span>
+        <button
+          className="min-h-9 rounded-lg border border-[#233a59]/20 px-3 text-sm font-semibold text-[#233a59] disabled:opacity-45"
+          disabled={safePage >= pageCount}
+          onClick={() => onPageChange(safePage + 1)}
+          type="button"
+        >
+          {translateText("Próxima")}
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function SortSelect({
+  label,
+  value,
+  onChange,
+  options,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  testId?: string;
+}) {
+  return (
+    <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+      <span>{translateText(label)}</span>
+      <span className="grid min-h-10 min-w-0 grid-cols-[18px_minmax(0,1fr)_16px] items-center gap-2 rounded-lg border border-[#233a59]/15 bg-white px-2.5 focus-within:border-[#233a59]">
+        <ArrowDownUp aria-hidden="true" className="h-4 w-4 text-[#233a59]" />
+        <select
+          aria-label={translateText(label)}
+          className="min-w-0 appearance-none bg-transparent py-2 text-sm font-normal text-[#012140] outline-none"
+          data-testid={testId}
+          onChange={(event) => onChange(event.target.value)}
+          value={value}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>{translateText(option.label)}</option>
+          ))}
+        </select>
+        <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#233a59]" />
+      </span>
+    </label>
+  );
 }
 
 export function AdminPage() {
@@ -209,19 +293,29 @@ export function AdminPage() {
 
 function AdminConsole() {
   const queryClient = useQueryClient();
+  const { confirm: confirmUnsavedChanges, dialog: unsavedChangesDialog } = useUnsavedChangesConfirm();
   const [tab, setTab] = useState<AdminSection>("blog");
   const [createOpen, setCreateOpen] = useState(false);
   const [postDateOrder, setPostDateOrder] = useState<"createdAt" | "updatedAt">("createdAt");
   const [postSortDirection, setPostSortDirection] = useState<"newest" | "oldest">("newest");
+  const [postStatusFilter, setPostStatusFilter] = useState<"all" | PostStatus>("all");
+  const [postCategoryFilter, setPostCategoryFilter] = useState("all");
+  const [postTagFilter, setPostTagFilter] = useState("all");
+  const [postPage, setPostPage] = useState(1);
   const [editingPost, setEditingPost] = useState<number | null>(null);
   const [adminDrafts, setAdminDrafts] = useState<Record<string, string>>({});
   const [changeFeedback, setChangeFeedback] = useState<Record<string, string>>({});
+  const [adminActionFeedback, setAdminActionFeedback] = useState<{ message: string; kind: "success" | "error" } | null>(null);
   const dirtyKeys = Object.keys(adminDrafts);
   const profile = useGetCurrentUser({
     query: { queryKey: getGetCurrentUserQueryKey(), retry: false },
   });
   const posts = useListAdminPosts({
-    query: { queryKey: getListAdminPostsQueryKey(), enabled: profile.data?.role === "admin" },
+    query: {
+      queryKey: getListAdminPostsQueryKey(),
+      enabled: profile.data?.role === "admin",
+      refetchOnWindowFocus: true,
+    },
   });
   const users = useListAdminUsers({
     query: { queryKey: getListAdminUsersQueryKey(), enabled: profile.data?.role === "admin" },
@@ -260,33 +354,41 @@ function AdminConsole() {
   useEffect(() => {
     if (!dirtyKeys.length) return;
     const currentUrl = window.location.href;
+    let allowUnload = false;
 
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowUnload) return;
       event.preventDefault();
       event.returnValue = "";
     };
     const confirmHistoryNavigation = (event: PopStateEvent) => {
-      if (window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))) {
-        setAdminDrafts({});
-        return;
-      }
       event.stopImmediatePropagation();
-      window.history.replaceState(window.history.state, "", currentUrl);
+      const destinationUrl = window.location.href;
+      window.history.pushState(window.history.state, "", currentUrl);
+      void confirmUnsavedChanges().then((confirmed) => {
+        if (!confirmed) return;
+        allowUnload = true;
+        setAdminDrafts({});
+        window.location.assign(destinationUrl);
+      });
     };
     const confirmInternalNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
       const anchor = target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank") return;
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
 
       const destination = new URL(anchor.href, window.location.href);
       if (destination.href === window.location.href) return;
-      if (!window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      setAdminDrafts({});
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void confirmUnsavedChanges().then((confirmed) => {
+        if (!confirmed) return;
+        allowUnload = true;
+        setAdminDrafts({});
+        window.location.assign(destination.href);
+      });
     };
 
     window.addEventListener("beforeunload", warnBeforeUnload);
@@ -297,7 +399,7 @@ function AdminConsole() {
       window.removeEventListener("popstate", confirmHistoryNavigation, true);
       document.removeEventListener("click", confirmInternalNavigation, true);
     };
-  }, [dirtyKeys.length]);
+  }, [confirmUnsavedChanges, dirtyKeys.length]);
 
   function stageAdminDraft(key: string, value: string, originalValue: string) {
     setAdminDrafts((current) => {
@@ -324,34 +426,93 @@ function AdminConsole() {
     });
   }
 
+  function clearAdminDrafts(keys: string[]) {
+    if (!keys.length) return;
+    const keysToClear = new Set(keys);
+    setAdminDrafts((current) => {
+      const remaining = Object.fromEntries(
+        Object.entries(current).filter(([key]) => !keysToClear.has(key)),
+      );
+      return Object.keys(remaining).length === Object.keys(current).length ? current : remaining;
+    });
+  }
+
   function reportChange(key: string, message: string) {
     setChangeFeedback((current) => ({ ...current, [key]: message }));
   }
 
-  function confirmDiscardChanges() {
-    if (!dirtyKeys.length) return true;
-    const confirmed = window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"));
-    if (confirmed) setAdminDrafts({});
+  async function confirmDiscardChanges(keys = dirtyKeys) {
+    const pendingKeys = keys.filter((key) => key in adminDrafts);
+    if (!pendingKeys.length) return true;
+    const confirmed = await confirmUnsavedChanges();
+    if (confirmed) clearAdminDrafts(pendingKeys);
     return confirmed;
   }
 
-  function closeCreatePost() {
-    if (
-      adminDrafts["create-post"]
-      && !window.confirm(translateText("Há alterações não salvas. Se sair agora, você perderá essas alterações. Deseja sair mesmo assim?"))
-    ) return;
+  async function closeCreatePost() {
+    if (!await confirmDiscardChanges(["create-post"])) return;
     clearAdminDraft("create-post");
     setCreateOpen(false);
   }
 
+  function currentSectionDraftKeys(section: AdminSection): string[] {
+    const keys = Object.keys(adminDrafts);
+    if (section in postSectionDetails) {
+      const visiblePostKeys = new Set(visiblePosts.map((post) => `post:${post.id}:status`));
+      return keys.filter((key) =>
+        (createOpen && key === "create-post")
+        || (editingPost !== null && key === `edit-post:${editingPost}`)
+        || visiblePostKeys.has(key),
+      );
+    }
+    if (section === "taxonomy") return keys.filter((key) => key === "taxonomy-form");
+    if (section === "media") return keys.filter((key) => key.startsWith("media:"));
+    if (section === "users") return keys.filter((key) => key.startsWith("user:"));
+    if (section === "suggestions") return keys.filter((key) => key.startsWith("suggestion:"));
+    return [];
+  }
+
+  async function openCreatePost() {
+    if (editingPost !== null) {
+      const key = `edit-post:${editingPost}`;
+      if (!await confirmDiscardChanges([key])) return;
+      clearAdminDraft(key);
+      setEditingPost(null);
+    }
+    setCreateOpen(true);
+  }
+
+  async function toggleEditingPost(postId: number) {
+    const currentEditKey = editingPost === null ? null : `edit-post:${editingPost}`;
+    if (editingPost === postId) {
+      if (!await confirmDiscardChanges([`edit-post:${postId}`])) return;
+      clearAdminDraft(`edit-post:${postId}`);
+      setEditingPost(null);
+      return;
+    }
+    if (createOpen && !await confirmDiscardChanges(["create-post"])) return;
+    if (currentEditKey && !await confirmDiscardChanges([currentEditKey])) return;
+    if (createOpen) {
+      clearAdminDraft("create-post");
+      setCreateOpen(false);
+    }
+    if (currentEditKey) clearAdminDraft(currentEditKey);
+    setEditingPost(postId);
+  }
+
   if (profile.isLoading) return <LoadingState rows={3} />;
+  const profileErrorStatus = (profile.error as { status?: number } | null)?.status;
+  if (profile.isError && profileErrorStatus !== 401 && profileErrorStatus !== 403) {
+    return <QueryError retry={() => void profile.refetch()} />;
+  }
   if (profile.isError || profile.data?.role !== "admin") {
     return (
       <Surface className="p-6">
         <h2 className="font-display text-xl font-semibold text-[#012140]">{translateText("Acesso administrativo restrito")}</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {translateText("Esta conta não tem permissão para administrar o portal. Se você acabou de criar a conta inicial, confirme o e-mail no Clerk e verifique a configuração do administrador.")}
+          {translateText("Sua conta não tem acesso ao painel administrativo.")}
         </p>
+        <Link className="auth-header-primary mt-4 inline-flex" href="/">{translateText("Voltar ao início")}</Link>
       </Surface>
     );
   }
@@ -362,37 +523,65 @@ function AdminConsole() {
       await updatePost.mutateAsync({ postId: post.id, data: { status } });
       clearAdminDraft(key);
       setChangeFeedback((current) => ({ ...current, [key]: "Alterações salvas." }));
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-      ]);
+      await refreshPostQueries(queryClient, post.id);
     } catch {
       setChangeFeedback((current) => ({ ...current, [key]: "Não foi possível salvar." }));
     }
   }
 
   async function removePost(post: Post) {
-    if (!window.confirm(`${translateText("Excluir permanentemente")} “${post.title}” ${translateText("e os comentários vinculados?")}`)) return;
-    await deletePost.mutateAsync({ postId: post.id });
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-    ]);
+    const confirmed = await confirmUnsavedChanges({
+      title: "Confirmar exclusão",
+      description: translateText('Excluir permanentemente “{{title}}” e os comentários vinculados?')
+        .replace("{{title}}", post.title),
+      confirmLabel: "Excluir permanentemente",
+      cancelLabel: "Cancelar",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    if (editingPost === post.id && !await confirmDiscardChanges([`edit-post:${post.id}`])) return;
+    setAdminActionFeedback(null);
+    try {
+      await deletePost.mutateAsync({ postId: post.id });
+      if (editingPost === post.id) {
+        clearAdminDraft(`edit-post:${post.id}`);
+        setEditingPost(null);
+      }
+      await refreshPostQueries(queryClient, post.id);
+      setAdminActionFeedback({ message: "Publicação excluída.", kind: "success" });
+    } catch (error) {
+      setAdminActionFeedback({
+        message: getApiResponseError(error) ?? "Não foi possível excluir a publicação.",
+        kind: "error",
+      });
+    }
   }
 
   const isPostSection = tab in postSectionDetails;
   const visiblePosts = isPostSection
-    ? (posts.data ?? []).filter((post) => post.kind === tab)
+    ? (posts.data ?? []).filter((post) =>
+        post.kind === tab
+        && (postStatusFilter === "all" || post.status === postStatusFilter)
+        && (postCategoryFilter === "all" || post.category === postCategoryFilter)
+        && (postTagFilter === "all" || post.tags.includes(postTagFilter)),
+      )
     : [];
-  const orderedPosts = tab === "blog"
-    ? [...visiblePosts].sort((left, right) => {
-        const leftDate = Date.parse(left[postDateOrder]);
-        const rightDate = Date.parse(right[postDateOrder]);
-        const difference = (Number.isFinite(rightDate) ? rightDate : 0) -
-          (Number.isFinite(leftDate) ? leftDate : 0);
-        return postSortDirection === "newest" ? difference : -difference;
-      })
-    : visiblePosts;
+  const orderedPosts = [...visiblePosts].sort((left, right) => {
+    const difference =
+      new Date(left[postDateOrder]).getTime() - new Date(right[postDateOrder]).getTime();
+    const orderedDifference = postSortDirection === "oldest" ? difference : -difference;
+    return orderedDifference || (postSortDirection === "oldest" ? left.id - right.id : right.id - left.id);
+  });
+  const postCategories = [...new Set((posts.data ?? []).filter((post) => post.kind === tab).map((post) => post.category))]
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const postTags = [...new Set((posts.data ?? []).filter((post) => post.kind === tab).flatMap((post) => post.tags))]
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const postPageSize = 10;
+  const postPageCount = Math.max(1, Math.ceil(orderedPosts.length / postPageSize));
+  const visiblePostPage = orderedPosts.slice(
+    (Math.min(postPage, postPageCount) - 1) * postPageSize,
+    Math.min(postPage, postPageCount) * postPageSize,
+  );
   const sectionCount = (section: AdminSection): number | string | undefined => {
     if (section in postSectionDetails) {
       return posts.isLoading
@@ -416,9 +605,19 @@ function AdminConsole() {
     return undefined;
   };
 
+  async function preparePostListChange() {
+    if (editingPost === null) return true;
+    const key = `edit-post:${editingPost}`;
+    if (!await confirmDiscardChanges([key])) return false;
+    clearAdminDraft(key);
+    setEditingPost(null);
+    return true;
+  }
+
   return (
     <div className="mt-6 space-y-5">
-      <div className="grid gap-4 lg:grid-cols-[248px_minmax(0,1fr)]">
+      {unsavedChangesDialog}
+      <div className="grid gap-4 lg:grid-cols-[296px_minmax(0,1fr)]">
         <aside className="min-w-0 rounded-2xl bg-[#012140] p-3 text-white shadow-sm lg:sticky lg:top-24 lg:h-fit lg:p-4">
           <div className="mb-3 border-b border-white/15 px-3 pb-3">
             <p className="text-[10px] font-bold uppercase tracking-[.18em] text-white/55">{translateText("Área administrativa")}</p>
@@ -439,18 +638,25 @@ function AdminConsole() {
                         className={`flex min-h-10 shrink-0 items-center gap-2.5 rounded-xl px-3 text-left text-sm font-semibold transition lg:w-full ${isActive ? "bg-white text-[#012140] shadow-sm" : "text-white/80 hover:bg-white/10 hover:text-white"}`}
                         data-testid={`admin-nav-${item.key}`}
                         key={item.key}
-                        onClick={() => {
-                          if (!confirmDiscardChanges()) return;
+                        onClick={async () => {
+                          if (tab === item.key) return;
+                          const pendingKeys = currentSectionDraftKeys(tab);
+                          if (!await confirmDiscardChanges(pendingKeys)) return;
+                          clearAdminDrafts(pendingKeys);
                           setTab(item.key);
+                          setPostPage(1);
+                          setPostStatusFilter("all");
+                          setPostCategoryFilter("all");
+                          setPostTagFilter("all");
                           setCreateOpen(false);
                           setEditingPost(null);
                         }}
                         type="button"
                       >
                         <Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${isActive ? "text-[#233a59]" : "text-white/65"}`} />
-                        <span className="whitespace-nowrap">{translateText(item.label)}</span>
+                        <span className="shrink-0 whitespace-nowrap">{translateText(item.label)}</span>
                         {count !== undefined && (
-                          <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] tabular-nums ${isActive ? "bg-[#e8e8e8] text-[#012140]" : "bg-white/10 text-white/70"}`}>
+                          <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] tabular-nums ${isActive ? "bg-[#e8e8e8] text-[#012140]" : "bg-white/10 text-white/70"}`}>
                             {count}
                           </span>
                         )}
@@ -464,6 +670,14 @@ function AdminConsole() {
         </aside>
 
         <section className="min-w-0 overflow-hidden rounded-2xl border border-[#233a59]/15 bg-white">
+          {adminActionFeedback && (
+            <p
+              className={`mx-4 mt-4 rounded-lg px-3 py-2 text-sm sm:mx-6 ${adminActionFeedback.kind === "success" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}
+              role={adminActionFeedback.kind === "success" ? "status" : "alert"}
+            >
+              {translateText(adminActionFeedback.message)}
+            </p>
+          )}
           {isPostSection && (
             <div className="space-y-4 p-4 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -478,44 +692,71 @@ function AdminConsole() {
                     {translateText(postSectionDetails[tab as PostKind].description)}
                   </p>
                 </div>
-                <div className={tab === "blog"
-                  ? "grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[560px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end"
-                  : "flex w-full flex-col gap-3 sm:w-auto sm:flex-row"}
-                >
-                  {tab === "blog" && (
-                    <>
-                      <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
-                        <span>{translateText("Ordenar por data")}</span>
-                        <span className="relative block min-w-0">
-                          <ArrowDownUp aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                          <select
-                            aria-label={translateText("Ordenar por data")}
-                            className={`${inputClass} min-h-10 w-full !pl-9`}
-                            data-testid="admin-post-date-sort"
-                            onChange={(event) => setPostDateOrder(event.target.value as "createdAt" | "updatedAt")}
-                            value={postDateOrder}
-                          >
-                            <option value="createdAt">{translateText("Data de criação")}</option>
-                            <option value="updatedAt">{translateText("Última atualização")}</option>
-                          </select>
-                        </span>
-                      </label>
-                      <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
-                        <span>{translateText("Ordem dos resultados")}</span>
-                        <select
-                          aria-label={translateText("Ordem dos resultados")}
-                          className={`${inputClass} min-h-10 w-full`}
-                          data-testid="admin-post-date-direction"
-                          onChange={(event) => setPostSortDirection(event.target.value as "newest" | "oldest")}
-                          value={postSortDirection}
-                        >
-                          <option value="newest">{translateText("Mais recentes primeiro")}</option>
-                          <option value="oldest">{translateText("Mais antigas primeiro")}</option>
-                        </select>
-                      </label>
-                    </>
-                  )}
-                  <button className={`auth-header-primary w-full ${tab === "blog" ? "sm:col-span-2 lg:col-span-1 lg:w-auto" : "sm:w-auto"}`} data-testid="admin-create-post" onClick={() => createOpen ? closeCreatePost() : setCreateOpen(true)} type="button">
+                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:w-[760px] xl:grid-cols-3">
+                  <SortSelect
+                    label="Ordenar por data"
+                    value={postDateOrder}
+                    onChange={async (value) => {
+                      if (!await preparePostListChange()) return;
+                      setPostDateOrder(value as "createdAt" | "updatedAt");
+                      setPostPage(1);
+                    }}
+                    options={[
+                      { value: "createdAt", label: "Data de criação" },
+                      { value: "updatedAt", label: "Última atualização" },
+                    ]}
+                    testId="admin-post-date-sort"
+                  />
+                  <SortSelect
+                    label="Ordem dos resultados"
+                    value={postSortDirection}
+                    onChange={async (value) => {
+                      if (!await preparePostListChange()) return;
+                      setPostSortDirection(value as "newest" | "oldest");
+                      setPostPage(1);
+                    }}
+                    options={[
+                      { value: "newest", label: "Mais recentes primeiro" },
+                      { value: "oldest", label: "Mais antigas primeiro" },
+                    ]}
+                    testId="admin-post-date-direction"
+                  />
+                  <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+                    <span>{translateText("Filtrar por status")}</span>
+                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                      if (!await preparePostListChange()) return;
+                      setPostStatusFilter(event.target.value as "all" | PostStatus);
+                      setPostPage(1);
+                    }} value={postStatusFilter}>
+                      <option value="all">{translateText("Todos os status")}</option>
+                      <option value="published">{translateText("Publicado")}</option>
+                      <option value="draft">{translateText("Rascunho")}</option>
+                      <option value="hidden">{translateText("Oculto")}</option>
+                    </select>
+                  </label>
+                  <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+                    <span>{translateText("Filtrar por categoria")}</span>
+                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                      if (!await preparePostListChange()) return;
+                      setPostCategoryFilter(event.target.value);
+                      setPostPage(1);
+                    }} value={postCategoryFilter}>
+                      <option value="all">{translateText("Todas as categorias")}</option>
+                      {postCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                  </label>
+                  <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+                    <span>{translateText("Filtrar por marcador")}</span>
+                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                      if (!await preparePostListChange()) return;
+                      setPostTagFilter(event.target.value);
+                      setPostPage(1);
+                    }} value={postTagFilter}>
+                      <option value="all">{translateText("Todos os marcadores")}</option>
+                      {postTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+                    </select>
+                  </label>
+                  <button className="auth-header-primary w-full self-end" data-testid="admin-create-post" onClick={() => void (createOpen ? closeCreatePost() : openCreatePost())} type="button">
                     {translateText(createOpen ? "Fechar criação" : "Nova publicação")}
                   </button>
                 </div>
@@ -539,7 +780,7 @@ function AdminConsole() {
                 <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as publicações.")}</p>
               ) : (
                 <div className="space-y-3">
-                  {orderedPosts.map((post) => (
+                  {visiblePostPage.map((post) => (
                     <article className="rounded-xl border border-[#233a59]/15 p-4" data-testid={`admin-post-${post.id}`} key={post.id}>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 gap-3">
@@ -553,9 +794,7 @@ function AdminConsole() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-[#012140]">{post.title}</h3>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {post.category} · {post.authorName} · {tab === "blog"
-                                ? `${translateText(postDateOrder === "createdAt" ? "Data de criação" : "Última atualização")}: ${formatDate(post[postDateOrder])}`
-                                : formatDate(post.updatedAt)}
+                              {post.category} · {post.authorName} · {translateText(postDateOrder === "createdAt" ? "Data de criação" : "Última atualização")}: {formatDate(post[postDateOrder])}
                             </p>
                             {post.commentCount > 0 && (
                               <p className="mt-1 text-xs font-semibold text-[#233a59]">
@@ -590,16 +829,7 @@ function AdminConsole() {
                             {translateText(updatePost.isPending ? "Salvando…" : "Salvar")}
                           </button>
                         )}
-                        <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" data-testid={`admin-post-edit-${post.id}`} onClick={() => {
-                          if (editingPost === post.id) {
-                            if (!confirmDiscardChanges()) return;
-                            clearAdminDraft(`edit-post:${post.id}`);
-                            setEditingPost(null);
-                          } else {
-                            if (!confirmDiscardChanges()) return;
-                            setEditingPost(post.id);
-                          }
-                        }} type="button">
+                        <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" data-testid={`admin-post-edit-${post.id}`} onClick={() => void toggleEditingPost(post.id)} type="button">
                           {translateText(editingPost === post.id ? "Fechar edição" : "Editar")}
                         </button>
                         <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" data-testid={`admin-post-delete-${post.id}`} disabled={deletePost.isPending} onClick={() => void removePost(post)} type="button">
@@ -624,10 +854,7 @@ function AdminConsole() {
                           onSaved={async () => {
                             clearAdminDraft(`edit-post:${post.id}`);
                             setEditingPost(null);
-                            await Promise.all([
-                              queryClient.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
-                              queryClient.invalidateQueries({ queryKey: ["/api/posts"] }),
-                            ]);
+                            await refreshPostQueries(queryClient, post.id);
                           }}
                         />
                       )}
@@ -637,13 +864,24 @@ function AdminConsole() {
                     <div className="rounded-xl border border-dashed border-[#233a59]/25 px-5 py-10 text-center">
                       <FileText aria-hidden="true" className="mx-auto h-7 w-7 text-[#233a59]/55" />
                       <p className="mt-3 font-semibold text-[#012140]">
-                        {translateText("Ainda não há publicações nesta seção.")}
+                        {translateText(postStatusFilter === "all" && postCategoryFilter === "all" && postTagFilter === "all"
+                          ? "Ainda não há publicações nesta seção."
+                          : "Nenhuma publicação corresponde aos filtros.")}
                       </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      {postStatusFilter === "all" && postCategoryFilter === "all" && postTagFilter === "all" && <p className="mt-1 text-sm text-muted-foreground">
                         {translateText("Crie a primeira para começar a organizar este espaço.")}
-                      </p>
+                      </p>}
                     </div>
                   )}
+                  <PaginationControls
+                    page={postPage}
+                    pageSize={postPageSize}
+                    totalItems={orderedPosts.length}
+                    onPageChange={async (nextPage) => {
+                      if (!await preparePostListChange()) return;
+                      setPostPage(nextPage);
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -784,6 +1022,7 @@ function SupportRequestsManager({
   retry: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"requests" | "subjects">("requests");
+  const [requestsPage, setRequestsPage] = useState(1);
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div>
@@ -818,6 +1057,8 @@ function SupportRequestsManager({
           isLoading={isLoading}
           isError={isError}
           retry={retry}
+          page={requestsPage}
+          onPageChange={setRequestsPage}
         />
       ) : (
         <SupportSubjectsManager subjects={subjects} />
@@ -866,6 +1107,7 @@ function AdminSuggestionsManager({
   reportChange: (key: string, message: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"inbox" | "categories" | "legacy">("inbox");
+  const [inboxPage, setInboxPage] = useState(1);
   const suggestionCounts = requests.reduce(
     (total, request) => {
       if (request.status === "new") total.new += 1;
@@ -882,7 +1124,7 @@ function AdminSuggestionsManager({
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Caixa de entrada privada")}</p>
         <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Sugestões")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("As novas sugestões são privadas: somente a pessoa que enviou e a equipe administrativa podem acessá-las.")}</p>
-        <p className="mt-2 rounded-lg bg-[#f7f8fa] p-3 text-xs leading-5 text-[#233a59]">{translateText("Aprovar no roadmap publica o título, a categoria e a descrição para todos. Nome e dados da conta não são exibidos.")}</p>
+        <p className="mt-2 rounded-lg bg-[#f7f8fa] p-3 text-xs leading-5 text-[#233a59]">{translateText("O roadmap usa um título, uma descrição e um estágio próprios. A mensagem original, as respostas e os dados da conta não são publicados.")}</p>
       </div>
       <div aria-label={translateText("Seções de sugestões")} className="flex flex-wrap gap-2 border-b border-[#233a59]/10 pb-3" role="tablist">
         {([
@@ -910,6 +1152,8 @@ function AdminSuggestionsManager({
           isError={requestsError}
           retry={retryRequests}
           emptyMessage="Ainda não há sugestões recebidas."
+          page={inboxPage}
+          onPageChange={setInboxPage}
         />
       ) : activeTab === "categories" ? (
         <SuggestionCategoriesManager
@@ -935,6 +1179,7 @@ function AdminSuggestionsManager({
             clearDraft={clearDraft}
             feedback={feedback}
             reportChange={reportChange}
+            emptyMessage="Nenhuma ideia anterior cadastrada."
           />
         </div>
       )}
@@ -949,6 +1194,8 @@ function SupportInbox({
   isError,
   retry,
   emptyMessage = "Ainda não há solicitações registradas.",
+  page = 1,
+  onPageChange,
 }: {
   requests: AdminSupportRequest[];
   counts: { new: number; inProgress: number; completed: number };
@@ -956,28 +1203,46 @@ function SupportInbox({
   isError: boolean;
   retry: () => void;
   emptyMessage?: string;
+  page?: number;
+  onPageChange?: (page: number) => void;
 }) {
   const queryClient = useQueryClient();
   const updateRequest = useUpdateAdminSupportRequest();
   const updateRoadmap = useUpdateAdminSupportRequestRoadmap();
   const createComment = useCreateAdminSupportRequestComment();
   const [statusFilter, setStatusFilter] = useState<"all" | SupportRequestStatus>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const pageSize = 10;
   const [drafts, setDrafts] = useState<Record<number, SupportRequestStatus>>({});
   const [feedback, setFeedback] = useState<Record<number, string>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [commentFeedback, setCommentFeedback] = useState<Record<number, string>>({});
   const [roadmapFeedback, setRoadmapFeedback] = useState<Record<number, string>>({});
+  const [roadmapDrafts, setRoadmapDrafts] = useState<Record<number, {
+    title: string;
+    description: string;
+    status: NonNullable<AdminSupportRequest["roadmapStatus"]>;
+  }>>({});
 
   const visibleRequests = requests
-    .filter((request) => statusFilter === "all" || request.status === statusFilter)
+    .filter((request) =>
+      (statusFilter === "all" || request.status === statusFilter)
+      && (categoryFilter === "all"
+        || (categoryFilter === "uncategorized" ? request.categoryName === null : request.categoryName === categoryFilter)),
+    )
     .sort((left, right) => {
-      const difference =
-        new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      const difference = new Date(left[dateField]).getTime() - new Date(right[dateField]).getTime();
       return sortOrder === "oldest"
         ? difference || left.id - right.id
         : -difference || right.id - left.id;
     });
+  const requestCategories = [...new Set(requests.map((request) => request.categoryName).filter((name): name is string => Boolean(name)))]
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const pageCount = Math.max(1, Math.ceil(visibleRequests.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleRequestPage = visibleRequests.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function saveStatus(request: AdminSupportRequest) {
     const status = drafts[request.id];
@@ -1020,13 +1285,50 @@ function SupportInbox({
     }
   }
 
-  async function updateRoadmapApproval(request: AdminSupportRequest) {
-    const approved = request.approvedAt === null;
+  function roadmapDraft(request: AdminSupportRequest) {
+    return roadmapDrafts[request.id] ?? {
+      title: request.roadmapTitle ?? "",
+      description: request.roadmapDescription ?? "",
+      status: request.roadmapStatus ?? "planned",
+    };
+  }
+
+  function stageRoadmapDraft(
+    request: AdminSupportRequest,
+    field: "title" | "description" | "status",
+    value: string,
+  ) {
+    const current = roadmapDraft(request);
+    setRoadmapDrafts((drafts) => ({
+      ...drafts,
+      [request.id]: {
+        ...current,
+        [field]: field === "status"
+          ? value as NonNullable<AdminSupportRequest["roadmapStatus"]>
+          : value,
+      },
+    }));
+    setRoadmapFeedback((currentFeedback) => ({
+      ...currentFeedback,
+      [request.id]: "",
+    }));
+  }
+
+  async function saveRoadmap(request: AdminSupportRequest, approved: boolean) {
+    const draft = roadmapDraft(request);
+    const title = draft.title.trim();
+    const description = draft.description.trim();
+    if (title.length < 4 || description.length < 10) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Informe um título público e uma descrição com pelo menos 10 caracteres.",
+      }));
+      return;
+    }
     if (
       approved &&
-      !window.confirm(
-        translateText("Ao aprovar, o título, a categoria e a descrição ficarão visíveis para todos. Deseja publicar?"),
-      )
+      request.approvedAt === null &&
+      !window.confirm(translateText("Ao publicar, somente o título e a descrição pública ficarão visíveis para todos. A mensagem original e as respostas continuam privadas. Deseja publicar?"))
     ) {
       return;
     }
@@ -1034,15 +1336,32 @@ function SupportInbox({
     try {
       await updateRoadmap.mutateAsync({
         requestId: request.id,
-        data: { approved },
+        data: {
+          approved,
+          roadmapTitle: title,
+          roadmapDescription: description,
+          roadmapStatus: draft.status,
+        },
       });
-      setRoadmapFeedback((current) => ({ ...current, [request.id]: "A publicação do roadmap foi atualizada." }));
+      setRoadmapDrafts((current) => {
+        const { [request.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: approved
+          ? "Texto público salvo e publicado."
+          : "Texto público salvo como rascunho.",
+      }));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListPublicRoadmapSuggestionsQueryKey() }),
       ]);
-    } catch {
-      setRoadmapFeedback((current) => ({ ...current, [request.id]: "Não foi possível atualizar a publicação do roadmap." }));
+    } catch (error) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: getApiResponseError(error) ?? "Não foi possível atualizar a publicação do roadmap.",
+      }));
     }
   }
 
@@ -1073,35 +1392,58 @@ function SupportInbox({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-[#f7f8fa] p-3">
-        <label className="text-xs font-semibold text-[#233a59]">
-          {translateText("Filtrar por status")}
-          <select
-            className={`${inputClass} ml-2`}
-            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            value={statusFilter}
-          >
+      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por status")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setStatusFilter(event.target.value as typeof statusFilter);
+            onPageChange?.(1);
+          }} value={statusFilter}>
             <option value="all">{translateText("Todos")}</option>
             <option value="new">{translateText("Nova")}</option>
             <option value="in_progress">{translateText("Em andamento")}</option>
             <option value="completed">{translateText("Concluída")}</option>
           </select>
         </label>
-        <label className="text-xs font-semibold text-[#233a59]">
-          {translateText("Ordenar por data")}
-          <select
-            className={`${inputClass} ml-2`}
-            onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}
-            value={sortOrder}
-          >
-            <option value="newest">{translateText("Mais recentes primeiro")}</option>
-            <option value="oldest">{translateText("Mais antigas primeiro")}</option>
+        <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por categoria")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            onPageChange?.(1);
+          }} value={categoryFilter}>
+            <option value="all">{translateText("Todas as categorias")}</option>
+            {requestCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+            {requests.some((request) => request.categoryName === null) && <option value="uncategorized">{translateText("Sem categoria")}</option>}
           </select>
         </label>
+        <SortSelect
+          label="Ordenar por data"
+          value={dateField}
+          onChange={(value) => {
+            setDateField(value as "createdAt" | "updatedAt");
+            onPageChange?.(1);
+          }}
+          options={[
+            { value: "createdAt", label: "Data de criação" },
+            { value: "updatedAt", label: "Última atualização" },
+          ]}
+        />
+        <SortSelect
+          label="Ordem dos resultados"
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value as typeof sortOrder);
+            onPageChange?.(1);
+          }}
+          options={[
+            { value: "newest", label: "Mais recentes primeiro" },
+            { value: "oldest", label: "Mais antigas primeiro" },
+          ]}
+        />
       </div>
 
       <div className="space-y-3">
-        {visibleRequests.map((request) => {
+        {visibleRequestPage.map((request) => {
           const selectedStatus = drafts[request.id] ?? request.status;
           const statusKey = `request:${request.id}`;
           return (
@@ -1110,6 +1452,7 @@ function SupportInbox({
                 <div className="min-w-0">
                   <p className="support-request-protocol">{translateText("Protocolo:")} <span>{request.protocol}</span></p>
                   <h3>{request.title || request.subjectName}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{request.categoryName ?? request.subjectName}</p>
                 </div>
                 <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
                   {translateText("Status:")} {translateText(supportStatusLabel[request.status])}
@@ -1122,28 +1465,76 @@ function SupportInbox({
                 </p>
                 <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{request.message}</p>
               {request.requestType === "suggestion" && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#233a59]/10 p-3">
-                  <div className="min-w-52 flex-1 text-xs text-muted-foreground">
-                    <p className="font-bold text-[#233a59]">{translateText("Roadmap público")}</p>
-                    {request.approvedAt ? (
-                      <p className="mt-1">{translateText("Aprovada em")} {formatDate(request.approvedAt)}</p>
-                    ) : (
-                      <p className="mt-1">{translateText("Ainda não aprovada para exibição pública.")}</p>
+                <div className="mt-3 space-y-3 rounded-xl border border-[#233a59]/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <div>
+                      <p className="font-bold text-[#233a59]">{translateText("Texto próprio do roadmap público")}</p>
+                      <p className="mt-1">{translateText("A mensagem original e as respostas permanecem privadas.")}</p>
+                    </div>
+                    {request.approvedAt && <span>{translateText("Publicada em")} {formatDate(request.approvedAt)}</span>}
+                  </div>
+                  {(() => {
+                    const draft = roadmapDraft(request);
+                    return (
+                      <div className="grid gap-3">
+                        <label className="block text-xs font-semibold text-[#233a59]">
+                          {translateText("Título público")}
+                          <input
+                            className={`${inputClass} mt-1 block w-full`}
+                            maxLength={220}
+                            minLength={4}
+                            onChange={(event) => stageRoadmapDraft(request, "title", event.target.value)}
+                            value={draft.title}
+                          />
+                        </label>
+                        <label className="block text-xs font-semibold text-[#233a59]">
+                          {translateText("Descrição pública")}
+                          <textarea
+                            className={`${inputClass} mt-1 block min-h-24 w-full resize-y`}
+                            maxLength={5000}
+                            minLength={10}
+                            onChange={(event) => stageRoadmapDraft(request, "description", event.target.value)}
+                            value={draft.description}
+                          />
+                        </label>
+                        <label className="block text-xs font-semibold text-[#233a59]">
+                          {translateText("Estágio")}
+                          <select
+                            className={`${inputClass} mt-1 block w-full sm:w-auto`}
+                            onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
+                            value={draft.status}
+                          >
+                            <option value="planned">{translateText("Planejada")}</option>
+                            <option value="in_progress">{translateText("Em desenvolvimento")}</option>
+                            <option value="available">{translateText("Disponível")}</option>
+                          </select>
+                        </label>
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      className="rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]"
+                      disabled={updateRoadmap.isPending}
+                      onClick={() => void saveRoadmap(request, Boolean(request.approvedAt))}
+                      type="button"
+                    >
+                      {translateText("Salvar texto público")}
+                    </button>
+                    <button
+                      className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
+                      disabled={updateRoadmap.isPending}
+                      onClick={() => void saveRoadmap(request, !request.approvedAt)}
+                      type="button"
+                    >
+                      {translateText(request.approvedAt ? "Retirar do roadmap" : "Salvar e publicar")}
+                    </button>
+                    {roadmapFeedback[request.id] && (
+                      <span className={roadmapFeedback[request.id].startsWith("Texto público salvo") ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                        {translateText(roadmapFeedback[request.id])}
+                      </span>
                     )}
                   </div>
-                  <button
-                    className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
-                    disabled={updateRoadmap.isPending}
-                    onClick={() => void updateRoadmapApproval(request)}
-                    type="button"
-                  >
-                    {translateText(request.approvedAt ? "Retirar do roadmap" : "Aprovar e publicar")}
-                  </button>
-                  {roadmapFeedback[request.id] && (
-                    <span className={roadmapFeedback[request.id] === "A publicação do roadmap foi atualizada." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
-                      {translateText(roadmapFeedback[request.id])}
-                    </span>
-                  )}
                 </div>
               )}
               <section className="mt-4 rounded-xl border border-[#233a59]/10 p-3" data-testid={`support-request-updates-${request.id}`}>
@@ -1237,6 +1628,9 @@ function SupportInbox({
             {translateText(statusFilter === "all" ? emptyMessage : "Não há solicitações com este status.")}
           </div>
         )}
+        {onPageChange && (
+          <PaginationControls page={safePage} pageSize={pageSize} totalItems={visibleRequests.length} onPageChange={onPageChange} />
+        )}
       </div>
     </div>
   );
@@ -1316,7 +1710,7 @@ function SuggestionCategoriesManager({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-[#012140]">{translateText("Categorias do assunto Sugestão")}</h3>
+        <h3 className="font-semibold text-[#012140]">{translateText("Categorias de sugestões")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("Crie, edite ou inative categorias. Não é possível excluir opções, para preservar as mensagens já associadas.")}</p>
       </div>
       <form className="flex flex-wrap gap-2 rounded-xl bg-[#f7f8fa] p-3" onSubmit={(event) => void addCategory(event)}>
@@ -1541,6 +1935,21 @@ function AdminTestimonialsPanel({
   const updateTestimonial = useUpdateAdminTestimonial();
   const [feedback, setFeedback] = useState("");
   const [failure, setFailure] = useState("");
+  const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const orderedTestimonials = [...testimonials].sort((left, right) => {
+    const pendingDifference = Number(right.status === "pending") - Number(left.status === "pending");
+    if (pendingDifference) return pendingDifference;
+    const difference = new Date(left[dateField]).getTime() - new Date(right[dateField]).getTime();
+    return sortOrder === "oldest"
+      ? difference || left.id - right.id
+      : -difference || right.id - left.id;
+  });
+  const pageCount = Math.max(1, Math.ceil(orderedTestimonials.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleTestimonials = orderedTestimonials.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function review(testimonialId: number, status: "approved" | "rejected") {
     setFeedback("");
@@ -1551,9 +1960,9 @@ function AdminTestimonialsPanel({
         queryClient.invalidateQueries({ queryKey: getListAdminTestimonialsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListTestimonialsQueryKey() }),
       ]);
-      setFeedback(translateText(status === "approved" ? "Depoimento aprovado e publicado." : "Depoimento recusado."));
+      setFeedback(translateText(status === "approved" ? "Avaliação aprovada e publicada." : "Avaliação recusada."));
     } catch {
-      setFailure(translateText("Não foi possível atualizar este depoimento. Tente novamente."));
+      setFailure(translateText("Não foi possível atualizar esta avaliação. Tente novamente."));
     }
   }
 
@@ -1561,19 +1970,45 @@ function AdminTestimonialsPanel({
     <div className="space-y-4 p-4 sm:p-6">
       <header>
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Voz da comunidade")}</p>
-        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Revisão de depoimentos")}</h2>
+        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Revisão de avaliações")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("Leia cada avaliação antes de aprová-la para a página inicial ou recusá-la.")}</p>
       </header>
       {feedback && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800" role="status">{feedback}</p>}
       {failure && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800" role="alert">{failure}</p>}
       {isLoading ? <LoadingState rows={3} /> : isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-          <p>{translateText("Não foi possível carregar os depoimentos.")}</p>
+          <p>{translateText("Não foi possível carregar as avaliações.")}</p>
           <button className="mt-2 font-semibold underline" type="button" onClick={retry}>{translateText("Tentar novamente")}</button>
         </div>
       ) : testimonials.length ? (
         <div className="space-y-3">
-          {testimonials.map((item) => (
+          <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-2">
+            <SortSelect
+              label="Ordenar por data"
+              value={dateField}
+              onChange={(value) => {
+                setDateField(value as "createdAt" | "updatedAt");
+                setPage(1);
+              }}
+              options={[
+                { value: "createdAt", label: "Data de criação" },
+                { value: "updatedAt", label: "Última atualização" },
+              ]}
+            />
+            <SortSelect
+              label="Ordem dos resultados"
+              value={sortOrder}
+              onChange={(value) => {
+                setSortOrder(value as typeof sortOrder);
+                setPage(1);
+              }}
+              options={[
+                { value: "newest", label: "Mais recentes primeiro" },
+                { value: "oldest", label: "Mais antigas primeiro" },
+              ]}
+            />
+          </div>
+          {visibleTestimonials.map((item) => (
             <article className="rounded-xl border border-[#233a59]/15 bg-[#fbfcfd] p-4 sm:p-5" key={item.id} data-testid={`admin-testimonial-${item.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -1584,7 +2019,7 @@ function AdminTestimonialsPanel({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`testimonial-status-chip status-${item.status}`}>{translateText(item.status === "pending" ? "Em análise" : item.status === "approved" ? "Aprovado" : "Recusado")}</span>
+                  <span className={`testimonial-status-chip status-${item.status}`}>{translateText(item.status === "pending" ? "Em análise" : item.status === "approved" ? "Aprovada" : "Recusada")}</span>
                   <time className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</time>
                 </div>
               </div>
@@ -1597,12 +2032,13 @@ function AdminTestimonialsPanel({
               )}
             </article>
           ))}
+          <PaginationControls page={safePage} pageSize={pageSize} totalItems={orderedTestimonials.length} onPageChange={setPage} />
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-[#233a59]/25 px-5 py-10 text-center">
           <Star className="mx-auto h-7 w-7 text-[#233a59]/55" />
-          <p className="mt-3 font-semibold text-[#012140]">{translateText("Nenhum depoimento enviado ainda.")}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{translateText("Os depoimentos enviados pelos membros aparecerão para revisão.")}</p>
+          <p className="mt-3 font-semibold text-[#012140]">{translateText("Nenhuma avaliação enviada ainda.")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{translateText("As avaliações enviadas pelos membros aparecerão para revisão.")}</p>
         </div>
       )}
     </div>
@@ -1623,15 +2059,15 @@ function SiteMediaManager({ onDirtyChange }: { onDirtyChange: (slot: SiteMediaSl
     {
       slot: "home_image",
       folder: "imagemprincipal",
-      title: "Imagem principal da Home",
-      description: "Imagem de fundo da página inicial. O painel não envia o arquivo ao R2.",
+      title: "Imagem principal da página inicial",
+      description: "Imagem de fundo da página inicial. Esta configuração aponta para um arquivo no armazenamento configurado; ela não envia o arquivo.",
       extensions: ["jpg", "jpeg", "png", "webp"],
     },
     {
       slot: "presentation_video",
       folder: "videop",
       title: "Vídeo de apresentação",
-      description: "Vídeo exibido na página de apresentação do PFVL. O painel não envia o arquivo ao R2.",
+      description: "Vídeo exibido na página de apresentação do PFVL. Esta configuração aponta para um arquivo no armazenamento configurado; ela não envia o arquivo.",
       extensions: ["mp4", "webm"],
     },
   ];
@@ -1639,10 +2075,10 @@ function SiteMediaManager({ onDirtyChange }: { onDirtyChange: (slot: SiteMediaSl
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Arquivos no R2")}</p>
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Arquivos de mídia")}</p>
         <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Imagem / Vídeo")}</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          {translateText("Informe o nome e a extensão exatos do arquivo já colocado no R2. A pasta é fixa; para trocar a mídia, substitua o arquivo no bucket e atualize esta referência.")}
+          {translateText("Informe o nome e a extensão exatos do arquivo já disponível no armazenamento configurado. A pasta exibida é fixa; para trocar a mídia, substitua o arquivo nesse armazenamento e atualize esta referência. Esta configuração informa o nome e a extensão do arquivo; ela não envia o arquivo.")}
         </p>
       </div>
 
@@ -1742,7 +2178,7 @@ function SiteMediaAssetEditor({
       </div>
 
       <p className="mt-4 rounded-lg bg-[#f5f7fa] px-3 py-2 text-xs text-[#233a59]">
-        {translateText("Pasta do R2:")} <code className="font-semibold">{folder}/</code>
+        {translateText("Pasta configurada:")} <code className="font-semibold">{folder}/</code>
         <span className="mx-1.5 text-[#233a59]/45">·</span>
         {translateText("Arquivo atual:")} <code className="font-semibold">{asset.name ? `${asset.name}.${asset.extension}` : translateText("não configurado")}</code>
       </p>
@@ -1767,7 +2203,7 @@ function SiteMediaAssetEditor({
             title={translateText("Use letras sem acento, números, hífen ou sublinhado; não inclua a extensão.")}
             value={name}
           />
-          <p className="mt-1 text-xs text-muted-foreground">{translateText("Sem a extensão e sem a pasta do R2.")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{translateText("Informe somente o nome do arquivo, sem a extensão ou o caminho da pasta.")}</p>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-semibold text-[#012140]" htmlFor={`media-extension-${asset.slot}`}>
@@ -1791,7 +2227,7 @@ function SiteMediaAssetEditor({
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        {translateText("O objeto precisa existir no R2 como")} <code>{folder}/{name.trim() || "nome"}.{extension}</code>.
+        {translateText("O arquivo precisa estar no armazenamento configurado em")} <code>{folder}/{name.trim() || "nome"}.{extension}</code>.
       </p>
 
       {error && <p className="mt-3 text-sm font-medium text-red-700" role="alert">{translateText(error)}</p>}
@@ -1826,11 +2262,13 @@ function TaxonomyManager({
   const create = useCreateAdminTaxonomy();
   const remove = useDeleteAdminTaxonomy();
   const update = useUpdateAdminTaxonomy();
-  const [kind, setKind] = useState<PostKind>("blog");
+  const { confirm: confirmAction, dialog: confirmationDialog } = useUnsavedChangesConfirm();
   const [type, setType] = useState<"category" | "tag">("category");
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [editNameError, setEditNameError] = useState("");
   const [message, setMessage] = useState("");
   const editingItem = items.find((item) => item.id === editingId);
 
@@ -1860,19 +2298,34 @@ function TaxonomyManager({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    const cleanName = name.trim();
+    if (cleanName.length < 2) {
+      setNameError("Informe um nome com pelo menos 2 caracteres.");
+      return;
+    }
+    setNameError("");
     try {
-      await create.mutateAsync({ data: { kind, type, name: name.trim() } });
+      await create.mutateAsync({ data: { type, name: cleanName } });
       setName("");
       setMessage("Opção cadastrada e disponível para novas publicações.");
       onDirtyChange(false);
       await refreshCatalog();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível cadastrar esta opção.");
+      setMessage(getApiResponseError(error) ?? (error instanceof Error ? error.message : "Não foi possível cadastrar esta opção."));
     }
   }
 
   async function deleteItem(item: TaxonomyItem) {
-    if (!window.confirm(`Excluir ${item.type === "category" ? "a categoria" : "o marcador"} “${item.name}”?`)) return;
+    const confirmed = await confirmAction({
+      title: "Confirmar exclusão",
+      description: translateText(item.type === "category"
+        ? 'Excluir a categoria “{{name}}”?'
+        : 'Excluir o marcador “{{name}}”?').replace("{{name}}", item.name),
+      confirmLabel: item.type === "category" ? "Excluir categoria" : "Excluir marcador",
+      cancelLabel: "Cancelar",
+      destructive: true,
+    });
+    if (!confirmed) return;
     setMessage("");
     try {
       await remove.mutateAsync({ taxonomyId: item.id });
@@ -1889,62 +2342,56 @@ function TaxonomyManager({
   async function saveEdit(event: React.FormEvent<HTMLFormElement>, item: TaxonomyItem) {
     event.preventDefault();
     setMessage("");
+    const cleanName = editName.trim();
+    if (cleanName.length < 2) {
+      setEditNameError("Informe um nome com pelo menos 2 caracteres.");
+      return;
+    }
+    setEditNameError("");
     try {
-      await update.mutateAsync({ taxonomyId: item.id, data: { name: editName.trim() } });
+      await update.mutateAsync({ taxonomyId: item.id, data: { name: cleanName } });
       setEditingId(null);
       setEditName("");
       setMessage("Nome atualizado nas publicações existentes e no catálogo.");
       onDirtyChange(false);
       await refreshCatalog(true);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível editar esta opção.");
+      setMessage(getApiResponseError(error) ?? (error instanceof Error ? error.message : "Não foi possível editar esta opção."));
     }
   }
 
-  const kindLabel: Record<PostKind, string> = {
-    blog: "Conteúdos",
-    forum: "Comunidade",
-    news: "Novidades",
-    help: "Central de Ajuda",
-  };
-
   return (
     <div className="space-y-5 p-4 sm:p-6">
+      {confirmationDialog}
       <header>
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Organização do conteúdo")}</p>
-        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Categorias")}</h2>
+        <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Categorias e marcadores")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {translateText("Cadastre as opções que autores e membros poderão escolher. Ao editar o nome, as publicações existentes também serão atualizadas; a exclusão continua bloqueada enquanto a opção estiver em uso.")}
+          {translateText("Cadastre categorias e marcadores compartilhados por todas as áreas. Ao editar um nome, todas as publicações existentes que o utilizam também serão atualizadas.")}
         </p>
       </header>
 
-      <form className="grid gap-3 rounded-xl bg-[#f6f7f9] p-4 sm:grid-cols-[1fr_1fr_1.4fr_auto] sm:items-end" onSubmit={submit}>
-        <label className="block text-sm font-semibold text-[#012140]">
-          {translateText("Área")}
-          <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => setKind(event.target.value as PostKind)} value={kind}>
-            <option value="blog">{translateText("Conteúdos")}</option>
-            <option value="forum">{translateText("Comunidade")}</option>
-            <option value="news">{translateText("Novidades")}</option>
-            <option value="help">{translateText("Central de Ajuda")}</option>
-          </select>
-        </label>
+      <form className="grid gap-3 rounded-xl bg-[#f6f7f9] p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end" noValidate onSubmit={submit}>
         <label className="block text-sm font-semibold text-[#012140]">
           {translateText("Tipo")}
-          <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => setType(event.target.value as "category" | "tag")} value={type}>
+          <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => { setType(event.target.value as "category" | "tag"); setNameError(""); }} value={type}>
             <option value="category">{translateText("Categoria")}</option>
-            <option value="tag">{translateText("Subcategoria")}</option>
+            <option value="tag">{translateText("Marcador")}</option>
           </select>
         </label>
         <label className="block text-sm font-semibold text-[#012140]">
           {translateText("Nome")}
           <input
+            aria-describedby={nameError ? "taxonomy-name-error" : undefined}
+            aria-invalid={Boolean(nameError)}
             className={`${inputClass} mt-1.5 w-full`}
             maxLength={type === "tag" ? 40 : 100}
             minLength={2}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => { setName(event.target.value); if (event.target.value.trim().length >= 2) setNameError(""); }}
             required
             value={name}
           />
+          {nameError && <span className="mt-1 block text-xs font-normal text-red-700" id="taxonomy-name-error" role="alert">{translateText(nameError)}</span>}
         </label>
         <button className="auth-header-primary" disabled={create.isPending} type="submit">
           {translateText(create.isPending ? "Salvando…" : "Adicionar")}
@@ -1953,36 +2400,36 @@ function TaxonomyManager({
       {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
 
       {isLoading ? <LoadingState rows={3} /> : isError ? (
-        <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as categorias e subcategorias.")}</p>
+        <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar categorias e marcadores.")}</p>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {(["blog", "forum", "news", "help"] as const).map((area) => (
-            <section className="rounded-xl border border-[#233a59]/15 p-4" key={area}>
-              <h3 className="font-semibold text-[#012140]">{kindLabel[area]}</h3>
-              {(["category", "tag"] as const).map((itemType) => {
-                const group = items.filter((item) => item.kind === area && item.type === itemType);
-                return (
-                  <div className="mt-3" key={itemType}>
-                    <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                      {translateText(itemType === "category" ? "Categorias" : "Subcategorias")}
-                    </h4>
+          {(["category", "tag"] as const).map((itemType) => {
+            const group = items.filter((item) => item.type === itemType);
+            return (
+              <section className="rounded-xl border border-[#233a59]/15 p-4" key={itemType}>
+                <h3 className="font-semibold text-[#012140]">
+                  {translateText(itemType === "category" ? "Categorias" : "Marcadores")}
+                </h3>
                     {group.length ? (
                       <ul className="mt-2 flex flex-wrap gap-2">
                         {group.map((item) => (
                           <li className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#e8e8e8] px-3 py-1.5 text-sm text-[#012140]" key={item.id}>
                             {editingId === item.id ? (
-                              <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => void saveEdit(event, item)}>
+                              <form className="flex flex-wrap items-center gap-2" noValidate onSubmit={(event) => void saveEdit(event, item)}>
                                 <label className="sr-only" htmlFor={`taxonomy-edit-${item.id}`}>{translateText("Editar")} {item.name}</label>
                                 <input
+                                  aria-describedby={editNameError ? `taxonomy-edit-error-${item.id}` : undefined}
+                                  aria-invalid={Boolean(editNameError)}
                                   autoFocus
                                   className="min-w-0 rounded-md border border-[#233a59]/20 bg-white px-2 py-1 text-sm"
                                   id={`taxonomy-edit-${item.id}`}
                                   maxLength={item.type === "tag" ? 40 : 100}
                                   minLength={2}
-                                  onChange={(event) => setEditName(event.target.value)}
+                                  onChange={(event) => { setEditName(event.target.value); if (event.target.value.trim().length >= 2) setEditNameError(""); }}
                                   required
                                   value={editName}
                                 />
+                                {editNameError && <span className="basis-full text-xs text-red-700" id={`taxonomy-edit-error-${item.id}`} role="alert">{translateText(editNameError)}</span>}
                                 <button className="font-semibold text-[#012140] hover:underline disabled:opacity-50" disabled={update.isPending} type="submit">
                                   {translateText(update.isPending ? "Salvando…" : "Salvar")}
                                 </button>
@@ -1991,6 +2438,7 @@ function TaxonomyManager({
                                   onClick={() => {
                                     setEditingId(null);
                                     setEditName("");
+                                    setEditNameError("");
                                   }}
                                   type="button"
                                 >
@@ -2007,6 +2455,7 @@ function TaxonomyManager({
                                   onClick={() => {
                                     setEditingId(item.id);
                                     setEditName(item.name);
+                                    setEditNameError("");
                                     setMessage("");
                                   }}
                                   title={`Editar ${item.name}`}
@@ -2029,11 +2478,9 @@ function TaxonomyManager({
                         ))}
                       </ul>
                     ) : <p className="mt-1 text-sm text-muted-foreground">{translateText("Nenhuma opção cadastrada.")}</p>}
-                  </div>
-                );
-              })}
-            </section>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
@@ -2046,10 +2493,25 @@ function AdminPollManagement() {
     defaultValues: { question: "", details: "" },
   });
   const [message, setMessage] = useState("");
+  const [messageKind, setMessageKind] = useState<"success" | "error">("success");
+  const [refreshMessage, setRefreshMessage] = useState("");
+  const [refreshError, setRefreshError] = useState("");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
   const polls = useListAdminPolls({ query: { queryKey: getListAdminPollsQueryKey() } });
   const active = useGetActivePoll({ query: { queryKey: getGetActivePollQueryKey() } });
   const create = useCreateAdminPoll();
   const close = useCloseAdminPoll();
+  const pageSize = 10;
+  const orderedPolls = [...(polls.data ?? [])].sort((left, right) => {
+    const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return sortOrder === "oldest"
+      ? difference || left.id - right.id
+      : -difference || right.id - left.id;
+  });
+  const pageCount = Math.max(1, Math.ceil(orderedPolls.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visiblePolls = orderedPolls.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function refreshPolls() {
     await Promise.all([
@@ -2063,9 +2525,12 @@ function AdminPollManagement() {
     try {
       await create.mutateAsync({ data: { question: values.question.trim(), details: values.details.trim() || undefined } });
       form.reset();
+      setPage(1);
+      setMessageKind("success");
       setMessage("Enquete publicada. A anterior, se ativa, foi encerrada.");
       await refreshPolls();
     } catch (error) {
+      setMessageKind("error");
       setMessage(error instanceof Error ? error.message : "Não foi possível criar a enquete.");
     }
   }
@@ -2075,10 +2540,26 @@ function AdminPollManagement() {
     setMessage("");
     try {
       await close.mutateAsync({ pollId });
+      setMessageKind("success");
       setMessage("Enquete encerrada.");
       await refreshPolls();
     } catch (error) {
+      setMessageKind("error");
       setMessage(error instanceof Error ? error.message : "Não foi possível encerrar a enquete.");
+    }
+  }
+
+  async function refreshPollResults() {
+    setRefreshMessage("");
+    setRefreshError("");
+    try {
+      const [pollResult, activeResult] = await Promise.all([polls.refetch(), active.refetch()]);
+      if (pollResult.isError || activeResult.isError) {
+        throw new Error("Não foi possível atualizar os resultados. Tente novamente.");
+      }
+      setRefreshMessage(translateText("Resultados atualizados."));
+    } catch {
+      setRefreshError(translateText("Não foi possível atualizar os resultados. Tente novamente."));
     }
   }
 
@@ -2131,7 +2612,7 @@ function AdminPollManagement() {
               </FormItem>
             )}
           />
-          {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
+          {message && <p className={`text-sm ${messageKind === "success" ? "text-emerald-700" : "text-red-700"}`} role={messageKind === "success" ? "status" : "alert"}>{translateText(message)}</p>}
           <div>
             <button className="auth-header-primary" data-testid="button-poll-create" disabled={create.isPending || form.formState.isSubmitting} type="submit">
               {translateText(create.isPending ? "Publicando…" : "Publicar enquete")}
@@ -2140,10 +2621,24 @@ function AdminPollManagement() {
         </form>
       </Form>
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3"><h3 className="font-display text-lg font-semibold text-[#012140]">{translateText("Histórico e resultados")}</h3><button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" onClick={() => { void polls.refetch(); void active.refetch(); }} type="button">{translateText("Atualizar")}</button></div>
+        <div className="flex items-center justify-between gap-3"><h3 className="font-display text-lg font-semibold text-[#012140]">{translateText("Histórico e resultados")}</h3><button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" disabled={polls.isFetching || active.isFetching} onClick={() => void refreshPollResults()} type="button">{translateText(polls.isFetching || active.isFetching ? "Atualizando…" : "Atualizar")}</button></div>
+        {refreshMessage && <p className="text-sm text-emerald-700" role="status">{refreshMessage}</p>}
+        {refreshError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{refreshError}</p>}
+        <SortSelect
+          label="Ordenar por data de criação"
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value as typeof sortOrder);
+            setPage(1);
+          }}
+          options={[
+            { value: "newest", label: "Mais recentes primeiro" },
+            { value: "oldest", label: "Mais antigas primeiro" },
+          ]}
+        />
         {polls.isLoading ? <LoadingState rows={2} /> : polls.isError ? <p className="rounded-xl bg-[#e8e8e8] p-4 text-sm text-[#233a59]">{translateText("Não foi possível carregar as enquetes. Tente atualizar.")}</p> : (
           <div className="space-y-3">
-            {(polls.data ?? []).map((poll) => (
+            {visiblePolls.map((poll) => (
               <article className="rounded-xl border border-[#233a59]/15 bg-white p-4 sm:p-5" key={poll.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -2160,6 +2655,7 @@ function AdminPollManagement() {
               </article>
             ))}
             {!polls.data?.length && <p className="rounded-xl border border-dashed border-[#233a59]/25 p-6 text-center text-sm text-muted-foreground">{translateText("Nenhuma enquete publicada ainda.")}</p>}
+            <PaginationControls page={safePage} pageSize={pageSize} totalItems={orderedPolls.length} onPageChange={setPage} />
           </div>
         )}
       </div>
@@ -2177,9 +2673,8 @@ function EditPostForm({
   onDirtyChange: (dirty: boolean) => void;
 }) {
   const updatePost = useUpdatePost();
-  const taxonomyParams = { kind: post.kind };
-  const taxonomy = useListTaxonomy(taxonomyParams, {
-    query: { queryKey: getListTaxonomyQueryKey(taxonomyParams) },
+  const taxonomy = useListTaxonomy({
+    query: { queryKey: getListTaxonomyQueryKey() },
   });
   const [title, setTitle] = useState(post.title);
   const [category, setCategory] = useState(post.category);
@@ -2187,6 +2682,7 @@ function EditPostForm({
   const [body, setBody] = useState(post.body);
   const [imageUrl, setImageUrl] = useState(post.coverImageUrl ?? "");
   const [message, setMessage] = useState("");
+  const [titleError, setTitleError] = useState("");
   const categories = (taxonomy.data ?? []).filter((item) => item.type === "category");
   const tagOptions = (taxonomy.data ?? []).filter((item) => item.type === "tag");
 
@@ -2202,6 +2698,24 @@ function EditPostForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    const cleanTitle = title.trim();
+    if (cleanTitle.length < 4) {
+      setTitleError("Informe um título com pelo menos 4 caracteres.");
+      return;
+    }
+    setTitleError("");
+    if (cleanTitle.length > 220) {
+      setMessage("O título deve ter no máximo 220 caracteres.");
+      return;
+    }
+    if (!category.trim()) {
+      setMessage("Selecione uma categoria para a publicação.");
+      return;
+    }
+    if ((post.kind === "blog" || post.kind === "forum") && !imageUrl.trim()) {
+      setMessage("Adicione uma imagem de capa antes de salvar.");
+      return;
+    }
     const safeBody = normalizeRichContent(body);
     if (richContentToPlainText(safeBody).length < 10) {
       setMessage("O conteúdo precisa ter pelo menos 10 caracteres.");
@@ -2215,7 +2729,8 @@ function EditPostForm({
       await updatePost.mutateAsync({
         postId: post.id,
         data: {
-          title: title.trim(),
+          title: cleanTitle,
+          excerpt: richContentToPlainText(safeBody).slice(0, 220),
           category,
           tags,
           body: safeBody,
@@ -2231,10 +2746,11 @@ function EditPostForm({
   }
 
   return (
-    <form className="mt-4 space-y-3 rounded-xl bg-[#f6f7f9] p-4" onSubmit={submit}>
+    <form className="mt-4 space-y-3 rounded-xl bg-[#f6f7f9] p-4" noValidate onSubmit={submit}>
       <label className="block text-sm font-semibold text-[#012140]">
         {translateText("Título")}
-        <input className={`${inputClass} mt-1.5 w-full`} maxLength={220} minLength={4} onChange={(event) => setTitle(event.target.value)} required value={title} />
+        <input aria-describedby={titleError ? `edit-post-title-error-${post.id}` : undefined} aria-invalid={Boolean(titleError)} className={`${inputClass} mt-1.5 w-full`} data-testid={`input-edit-post-title-${post.id}`} maxLength={220} minLength={4} onChange={(event) => { setTitle(event.target.value); setMessage(""); if (event.target.value.trim().length >= 4) setTitleError(""); }} required value={title} />
+        {titleError && <span className="mt-1 block text-xs font-normal text-red-700" id={`edit-post-title-error-${post.id}`} role="alert">{translateText(titleError)}</span>}
       </label>
       <label className="block text-sm font-semibold text-[#012140]">
         {translateText("Categoria")}
@@ -2244,7 +2760,7 @@ function EditPostForm({
         </select>
       </label>
       <fieldset className="space-y-2">
-        <legend className="text-sm font-semibold text-[#012140]">{translateText("Subcategorias")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>
+        <legend className="text-sm font-semibold text-[#012140]">{translateText("Marcadores")} <span className="font-normal text-muted-foreground">{translateText("(opcional, até 8)")}</span></legend>
         <div className="flex flex-wrap gap-2">
           {tagOptions.map((item) => {
             const checked = tags.includes(item.name);
@@ -2265,11 +2781,11 @@ function EditPostForm({
       <div>
         <label className="block text-sm font-semibold text-[#012140]" htmlFor={`edit-post-content-${post.id}`}>{translateText("Conteúdo")}</label>
         <Suspense fallback={<div aria-busy="true" className={`${inputClass} mt-1.5 min-h-36 w-full`} />}>
-          <RichTextEditor id={`edit-post-content-${post.id}`} value={body} onChange={setBody} surfaceClassName={`${inputClass} mt-1.5 min-h-36 w-full resize-y`} />
+          <RichTextEditor id={`edit-post-content-${post.id}`} value={body} onChange={(value) => { setBody(value); setMessage(""); }} surfaceClassName={`${inputClass} mt-1.5 min-h-36 w-full resize-y`} />
         </Suspense>
       </div>
-      <ImageUploadField imageUrl={imageUrl} onImageUrlChange={setImageUrl} required={post.kind === "blog" || post.kind === "forum"} />
-      {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
+      <ImageUploadField imageUrl={imageUrl} onImageUrlChange={(value) => { setImageUrl(value); setMessage(""); }} required={post.kind === "blog" || post.kind === "forum"} />
+      {message && <p className="text-sm text-[#233a59]" role="alert">{translateText(message)}</p>}
       <button className="auth-header-primary" disabled={updatePost.isPending} type="submit">
         {translateText(updatePost.isPending ? "Salvando…" : "Salvar alterações")}
       </button>
@@ -2294,6 +2810,26 @@ function UsersTable({
 }) {
   const queryClient = useQueryClient();
   const updateUser = useUpdateAdminUser();
+  const [statusFilter, setStatusFilter] = useState<"all" | UserStatus>("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const filteredUsers = users
+    .filter((user) =>
+      (statusFilter === "all" || user.status === statusFilter)
+      && (roleFilter === "all" || user.role === roleFilter),
+    )
+    .sort((left, right) => {
+      const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      return sortOrder === "oldest"
+        ? difference || left.id - right.id
+        : -difference || right.id - left.id;
+    });
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function saveUserField(user: UserProfile, field: "role" | "status") {
     const key = `user:${user.id}:${field}`;
@@ -2314,11 +2850,47 @@ function UsersTable({
 
   return (
     <div className="space-y-3">
-      {users.map((user) => (
+      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-3">
+        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por status")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setStatusFilter(event.target.value as "all" | UserStatus);
+            setPage(1);
+          }} value={statusFilter}>
+            <option value="all">{translateText("Todas as contas")}</option>
+            <option value="active">{translateText("Ativa")}</option>
+            <option value="suspended">{translateText("Suspensa")}</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por papel")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setRoleFilter(event.target.value as "all" | UserRole);
+            setPage(1);
+          }} value={roleFilter}>
+            <option value="all">{translateText("Todos os papéis")}</option>
+            <option value="member">{translateText("Membro")}</option>
+            <option value="admin">{translateText("Administrador")}</option>
+          </select>
+        </label>
+        <SortSelect
+          label="Data de criação"
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value as typeof sortOrder);
+            setPage(1);
+          }}
+          options={[
+            { value: "newest", label: "Mais recentes primeiro" },
+            { value: "oldest", label: "Mais antigas primeiro" },
+          ]}
+        />
+      </div>
+      {visibleUsers.map((user) => (
         <article className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-[minmax(0,1fr)_150px_150px]" key={user.id}>
           <div className="min-w-0">
             <p className="truncate font-semibold text-[#012140]">{user.displayName}</p>
-            <p className="mt-1 truncate text-xs text-muted-foreground">{user.email} {translateText("· entrou em")} {formatDate(user.createdAt)}</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">{user.email} · {translateText("conta criada em")} {formatDate(user.createdAt)}</p>
           </div>
           <label className="text-xs font-semibold text-[#233a59]">
             {translateText("Papel")}
@@ -2366,7 +2938,8 @@ function UsersTable({
           </label>
         </article>
       ))}
-      {!users.length && <p className="text-sm text-muted-foreground">{translateText("Nenhuma conta cadastrada ainda.")}</p>}
+      {!filteredUsers.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && roleFilter === "all" ? "Nenhuma conta cadastrada ainda." : "Nenhuma conta corresponde aos filtros.")}</p>}
+      <PaginationControls page={safePage} pageSize={pageSize} totalItems={filteredUsers.length} onPageChange={setPage} />
     </div>
   );
 }
@@ -2378,6 +2951,7 @@ function SuggestionsTable({
   clearDraft,
   feedback,
   reportChange,
+  emptyMessage = "Nenhuma sugestão cadastrada.",
 }: {
   suggestions: Suggestion[];
   drafts: Record<string, string>;
@@ -2385,9 +2959,31 @@ function SuggestionsTable({
   clearDraft: (key: string) => void;
   feedback: Record<string, string>;
   reportChange: (key: string, message: string) => void;
+  emptyMessage?: string;
 }) {
   const queryClient = useQueryClient();
   const updateSuggestion = useUpdateAdminSuggestion();
+  const [statusFilter, setStatusFilter] = useState<"all" | SuggestionStatus>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const categories = [...new Set(suggestions.map((suggestion) => suggestion.category))]
+    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const filteredSuggestions = suggestions
+    .filter((suggestion) =>
+      (statusFilter === "all" || suggestion.status === statusFilter)
+      && (categoryFilter === "all" || suggestion.category === categoryFilter),
+    )
+    .sort((left, right) => {
+      const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      return sortOrder === "oldest"
+        ? difference || left.id - right.id
+        : -difference || right.id - left.id;
+    });
+  const pageCount = Math.max(1, Math.ceil(filteredSuggestions.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleSuggestions = filteredSuggestions.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   async function saveSuggestion(suggestion: Suggestion) {
     const key = `suggestion:${suggestion.id}:status`;
@@ -2408,12 +3004,55 @@ function SuggestionsTable({
 
   return (
     <div className="space-y-3">
-      {suggestions.map((suggestion) => (
+      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por status")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setStatusFilter(event.target.value as "all" | SuggestionStatus);
+            setPage(1);
+          }} value={statusFilter}>
+            <option value="all">{translateText("Todos os status")}</option>
+            <option value="under_review">{translateText("Em análise")}</option>
+            <option value="planned">{translateText("Planejada")}</option>
+            <option value="in_progress">{translateText("Em andamento")}</option>
+            <option value="completed">{translateText("Concluída")}</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Filtrar por categoria")}</span>
+          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
+            setCategoryFilter(event.target.value);
+            setPage(1);
+          }} value={categoryFilter}>
+            <option value="all">{translateText("Todas as categorias")}</option>
+            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+        </label>
+        <SortSelect
+          label="Ordenar por data"
+          value={sortOrder}
+          onChange={(value) => {
+            setSortOrder(value as typeof sortOrder);
+            setPage(1);
+          }}
+          options={[
+            { value: "newest", label: "Mais recentes primeiro" },
+            { value: "oldest", label: "Mais antigas primeiro" },
+          ]}
+        />
+      </div>
+      {visibleSuggestions.map((suggestion) => (
         <article className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-[minmax(0,1fr)_190px]" key={suggestion.id}>
           <div>
-            <p className="font-semibold text-[#012140]">{suggestion.title}</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{suggestion.details}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{suggestion.authorName} · {suggestion.category}</p>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <p className="font-semibold text-[#012140]">{suggestion.title}</p>
+              <span className="text-xs text-muted-foreground">{formatDate(suggestion.createdAt)}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{suggestion.authorName} · {suggestion.category}</p>
+            <details className="mt-2">
+              <summary className="w-fit cursor-pointer text-xs font-semibold text-[#233a59] hover:underline">{translateText("Ver detalhes")}</summary>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{suggestion.details}</p>
+            </details>
           </div>
           <label className="text-xs font-semibold text-[#233a59]">
             {translateText("Andamento")}
@@ -2441,7 +3080,8 @@ function SuggestionsTable({
           </label>
         </article>
       ))}
-      {!suggestions.length && <p className="text-sm text-muted-foreground">{translateText("Nenhuma sugestão cadastrada.")}</p>}
+      {!filteredSuggestions.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && categoryFilter === "all" ? emptyMessage : "Nenhuma sugestão corresponde aos filtros.")}</p>}
+      <PaginationControls page={safePage} pageSize={pageSize} totalItems={filteredSuggestions.length} onPageChange={setPage} />
     </div>
   );
 }
@@ -2453,7 +3093,10 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
   const [postId, setPostId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState("");
   const [commentFilter, setCommentFilter] = useState<"all" | "comments" | "replies">("all");
+  const [commentSortOrder, setCommentSortOrder] = useState<"newest" | "oldest">("newest");
+  const [commentPage, setCommentPage] = useState(1);
   const [moderationError, setModerationError] = useState("");
+  const { confirm: confirmAction, dialog: confirmationDialog } = useUnsavedChangesConfirm();
   useEffect(() => {
     const currentPublishedPosts = posts
       .filter((post) => post.status === "published")
@@ -2473,7 +3116,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
   });
   const deleteComment = useDeleteComment();
   const selectedPost = publishedPosts.find((post) => post.id === postId);
-  const visibleComments = (comments.data ?? []).filter((comment) => {
+  const filteredComments = (comments.data ?? []).filter((comment) => {
     const isReply = comment.parentCommentId !== null;
     const matchesFilter =
       commentFilter === "all" ||
@@ -2486,11 +3129,25 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
       comment.body.toLocaleLowerCase("pt-BR").includes(query);
     return matchesFilter && matchesSearch;
   });
+  const visibleComments = [...filteredComments].sort((left, right) => {
+    const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return commentSortOrder === "oldest"
+      ? difference || left.id - right.id
+      : -difference || right.id - left.id;
+  });
+  const commentPageSize = 10;
+  const commentPageCount = Math.max(1, Math.ceil(visibleComments.length / commentPageSize));
+  const safeCommentPage = Math.min(commentPage, commentPageCount);
+  const visibleCommentPage = visibleComments.slice(
+    (safeCommentPage - 1) * commentPageSize,
+    safeCommentPage * commentPageSize,
+  );
   const replyCount = (comments.data ?? []).filter((comment) => comment.parentCommentId !== null).length;
   const topLevelCount = (comments.data ?? []).length - replyCount;
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
+      {confirmationDialog}
       <div>
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Revisão da comunidade")}</p>
         <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Moderação de comentários")}</h2>
@@ -2522,6 +3179,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                     setPostId(post.id);
                     setSearchText("");
                     setCommentFilter("all");
+                    setCommentPage(1);
                     setModerationError("");
                   }}
                   type="button"
@@ -2562,7 +3220,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                     className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#233a59]/20 px-3 py-2 text-xs font-semibold text-[#233a59] hover:bg-[#e8e8e8]"
                     href={`/${selectedPost.kind === "forum" ? "community" : selectedPost.kind}/${selectedPost.id}`}
                   >
-                    {translateText("Abrir conversa")} <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+                    {translateText(selectedPost.kind === "forum" ? "Abrir tópico" : "Abrir publicação")} <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
                   </a>
                 </div>
               </div>
@@ -2586,7 +3244,10 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                         className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${commentFilter === filter ? "bg-white text-[#012140] shadow-sm" : "text-[#233a59] hover:bg-white/70"}`}
                         data-testid={`comment-filter-${filter}`}
                         key={filter}
-                        onClick={() => setCommentFilter(filter)}
+                        onClick={() => {
+                          setCommentFilter(filter);
+                          setCommentPage(1);
+                        }}
                         type="button"
                       >
                         {translateText(label)} <span className="ml-1 tabular-nums opacity-70">{count}</span>
@@ -2601,12 +3262,30 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                   <input
                     className={`${inputClass} w-full pl-9`}
                     data-testid="comment-moderation-search"
-                    onChange={(event) => setSearchText(event.target.value)}
+                    onChange={(event) => {
+                      setSearchText(event.target.value);
+                      setCommentPage(1);
+                    }}
                     placeholder={translateText("Buscar por comentário ou autor")}
                     type="search"
                     value={searchText}
                   />
                 </label>
+
+                <div className="mt-3 max-w-xs">
+                  <SortSelect
+                    label="Ordenar por data"
+                    value={commentSortOrder}
+                    onChange={(value) => {
+                      setCommentSortOrder(value as typeof commentSortOrder);
+                      setCommentPage(1);
+                    }}
+                    options={[
+                      { value: "newest", label: "Mais recentes primeiro" },
+                      { value: "oldest", label: "Mais antigas primeiro" },
+                    ]}
+                  />
+                </div>
 
                 <div className="mt-3 space-y-2">
                   {postId === null ? <p className="text-sm text-muted-foreground">{translateText("Selecione uma publicação.")}</p> : comments.isLoading ? (
@@ -2614,7 +3293,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                   ) : comments.isError ? (
                     <p className="rounded-lg bg-[#e8e8e8] p-3 text-sm text-[#233a59]">{translateText("Não foi possível carregar os comentários desta publicação.")}</p>
                   ) : (
-                    visibleComments.map((comment) => (
+                    visibleCommentPage.map((comment) => (
                       <article className={`rounded-lg border border-[#233a59]/15 p-3 ${comment.parentCommentId ? "ml-4 border-l-4 border-l-[#233a59]/35 sm:ml-7" : ""}`} data-testid={`moderation-comment-${comment.id}`} key={comment.id}>
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -2629,7 +3308,14 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                             data-testid={`moderation-delete-comment-${comment.id}`}
                             disabled={deleteComment.isPending}
                             onClick={async () => {
-                              if (!window.confirm("Excluir este comentário e as respostas vinculadas?")) return;
+                              const confirmed = await confirmAction({
+                                title: "Confirmar exclusão",
+                                description: "Excluir este comentário e as respostas vinculadas?",
+                                confirmLabel: "Excluir comentário",
+                                cancelLabel: "Cancelar",
+                                destructive: true,
+                              });
+                              if (!confirmed) return;
                               setModerationError("");
                               try {
                                 await deleteComment.mutateAsync({ commentId: comment.id });
@@ -2656,6 +3342,9 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                   )}
                   {!comments.isLoading && !comments.isError && (comments.data?.length ?? 0) > 0 && visibleComments.length === 0 && (
                     <p className="rounded-lg bg-[#f8f9fb] px-4 py-8 text-center text-sm text-muted-foreground">{translateText("Nenhum comentário corresponde a esta busca.")}</p>
+                  )}
+                  {!comments.isLoading && !comments.isError && (
+                    <PaginationControls page={safeCommentPage} pageSize={commentPageSize} totalItems={visibleComments.length} onPageChange={setCommentPage} />
                   )}
                 </div>
               </div>

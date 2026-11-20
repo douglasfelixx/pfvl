@@ -106,17 +106,46 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /search:
+    get:
+      operationId: searchPortal
+      tags: [content]
+      summary: Busca conteúdo público e registros próprios autorizados
+      description: Pesquisa somente publicações e comentários publicados, itens aprovados do roadmap e registros privados vinculados à conta autenticada atual. Nunca retorna registros privados de outras contas.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 120
+        - name: area
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SearchArea"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+      responses:
+        "200":
+          description: Resultados agrupados por área; registros privados são limitados à conta autenticada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalSearch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /taxonomy:
     get:
       operationId: listTaxonomy
       tags: [content]
-      summary: Lista categorias e marcadores disponíveis para uma área
-      parameters:
-        - name: kind
-          in: query
-          required: true
-          schema:
-            $ref: "#/components/schemas/PostKind"
+      summary: Lista categorias e marcadores do catálogo compartilhado
       responses:
         "200":
           description: Categorias e marcadores disponíveis
@@ -438,7 +467,7 @@ paths:
       operationId: listPublicRoadmapSuggestions
       tags: [content]
       summary: Lista sugestões aprovadas para o roadmap público
-      description: Retorna somente título, categoria, descrição, status e data de aprovação, sem dados da conta que enviou.
+      description: Retorna somente o texto próprio aprovado para publicação, sua categoria, estágio e data de aprovação; nunca inclui mensagem original ou respostas privadas.
       responses:
         "200":
           description: Sugestões aprovadas em ordem crescente de aprovação
@@ -970,7 +999,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "409":
-          description: Já existe um item com esse nome nessa área
+          description: Já existe um item com esse nome e tipo
           content:
             application/json:
               schema:
@@ -1004,7 +1033,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: Já existe um item com esse nome nessa área
+          description: Já existe um item com esse nome e tipo
           content:
             application/json:
               schema:
@@ -1338,6 +1367,39 @@ components:
     PostKind:
       type: string
       enum: [blog, news, forum, help]
+    SearchArea:
+      type: string
+      enum: [content, community, news, tutorials, roadmap, private]
+    SearchResultType:
+      type: string
+      enum: [article, community_topic, community_comment, update, tutorial, roadmap_item, support_request, private_suggestion, private_update]
+    PortalSearchResult:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { $ref: "#/components/schemas/SearchResultType" }
+        title: { type: string }
+        excerpt: { type: string }
+        href: { type: string }
+      required: [id, type, title, excerpt, href]
+    PortalSearchGroup:
+      type: object
+      properties:
+        area: { $ref: "#/components/schemas/SearchArea" }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/PortalSearchResult" }
+        hasMore: { type: boolean }
+      required: [area, results, hasMore]
+    PortalSearch:
+      type: object
+      properties:
+        query: { type: string }
+        page: { type: integer }
+        groups:
+          type: array
+          items: { $ref: "#/components/schemas/PortalSearchGroup" }
+      required: [query, page, groups]
     TaxonomyType:
       type: string
       enum: [category, tag]
@@ -1345,18 +1407,16 @@ components:
       type: object
       properties:
         id: { type: integer }
-        kind: { $ref: "#/components/schemas/PostKind" }
         type: { $ref: "#/components/schemas/TaxonomyType" }
         name: { type: string }
         createdAt: { type: string, format: date-time }
-      required: [id, kind, type, name, createdAt]
+      required: [id, type, name, createdAt]
     TaxonomyInput:
       type: object
       properties:
-        kind: { $ref: "#/components/schemas/PostKind" }
         type: { $ref: "#/components/schemas/TaxonomyType" }
         name: { type: string, minLength: 2, maxLength: 100 }
-      required: [kind, type, name]
+      required: [type, name]
     TaxonomyUpdate:
       type: object
       properties:
@@ -1600,10 +1660,10 @@ components:
         id: { type: integer }
         title: { type: string }
         categoryName: { type: ["string", "null"] }
-        message: { type: string }
-        status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        description: { type: string }
+        status: { $ref: "#/components/schemas/RoadmapStatus" }
         approvedAt: { type: string, format: date-time }
-      required: [id, title, categoryName, message, status, approvedAt]
+      required: [id, title, categoryName, description, status, approvedAt]
     AdminSupportRequest:
       type: object
       properties:
@@ -1612,6 +1672,9 @@ components:
         requestType: { type: string, enum: [support, suggestion] }
         subjectName: { type: string }
         title: { type: ["string", "null"] }
+        roadmapTitle: { type: ["string", "null"] }
+        roadmapDescription: { type: ["string", "null"] }
+        roadmapStatus: { type: ["string", "null"], enum: [planned, in_progress, available, null] }
         categoryName: { type: ["string", "null"] }
         approvedAt: { type: ["string", "null"], format: date-time }
         requesterName: { type: string }
@@ -1623,7 +1686,7 @@ components:
           items: { $ref: "#/components/schemas/SupportRequestComment" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-      required: [id, protocol, requestType, subjectName, title, categoryName, approvedAt, requesterName, requesterEmail, message, status, comments, createdAt, updatedAt]
+      required: [id, protocol, requestType, subjectName, title, roadmapTitle, roadmapDescription, roadmapStatus, categoryName, approvedAt, requesterName, requesterEmail, message, status, comments, createdAt, updatedAt]
     SupportRequestCommentInput:
       type: object
       properties:
@@ -1636,15 +1699,24 @@ components:
       required: [status]
     SupportRequestRoadmapApprovalInput:
       type: object
+      minProperties: 1
       properties:
         approved: { type: boolean }
-      required: [approved]
+        roadmapTitle: { type: string, minLength: 4, maxLength: 220 }
+        roadmapDescription: { type: string, minLength: 10, maxLength: 5000 }
+        roadmapStatus: { $ref: "#/components/schemas/RoadmapStatus" }
     SupportRequestRoadmapApprovalResponse:
       type: object
       properties:
         id: { type: integer }
         approvedAt: { type: ["string", "null"], format: date-time }
-      required: [id, approvedAt]
+        roadmapTitle: { type: ["string", "null"] }
+        roadmapDescription: { type: ["string", "null"] }
+        roadmapStatus: { type: ["string", "null"], enum: [planned, in_progress, available, null] }
+      required: [id, approvedAt, roadmapTitle, roadmapDescription, roadmapStatus]
+    RoadmapStatus:
+      type: string
+      enum: [planned, in_progress, available]
     SupportRequestCounts:
       type: object
       properties:

@@ -1,11 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  getGetDashboardQueryKey,
-  getGetPostQueryKey,
-  getListAdminPostsQueryKey,
-  getListPostsQueryKey,
-  getListCommentsQueryKey,
   getListTaxonomyQueryKey,
   useCreateComment,
   useCreateImageUpload,
@@ -16,11 +11,21 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
+import { useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
 import { translateText } from "@/lib/i18n";
+import { refreshPostQueries } from "@/lib/post-query-refresh";
 
 const RichTextEditor = lazy(() => import("@/components/rich-text-editor").then((module) => ({ default: module.RichTextEditor })));
 const fieldClass = "mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10";
-const errorText = (error: unknown) => error instanceof Error ? error.message : "Não foi possível concluir a solicitação.";
+const errorText = (error: unknown, fallback = "Não foi possível concluir a solicitação.") => {
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = error.data;
+    if (typeof data === "object" && data !== null && "error" in data && typeof data.error === "string") {
+      return data.error;
+    }
+  }
+  return fallback;
+};
 
 function commentReturnTo(parentCommentId: number | null): string {
   const url = new URL(window.location.href);
@@ -53,11 +58,11 @@ export function ImageUploadField({ imageUrl, onImageUrlChange, required = false 
     try {
       const signed = await upload.mutateAsync({ data: { fileName: file.name, contentType: file.type as "image/jpeg" | "image/png" | "image/webp", sizeBytes: file.size } });
       const result = await fetch(signed.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!result.ok) throw new Error("O R2 recusou o envio.");
+      if (!result.ok) throw new Error("upload-failed");
       onImageUrlChange(signed.publicUrl);
-      setMessage("Imagem enviada ao R2.");
+      setMessage("Imagem enviada com sucesso.");
     } catch (error) {
-      setMessage(errorText(error));
+      setMessage(errorText(error, "Não foi possível enviar a imagem. Tente novamente."));
     }
   }
   return (
@@ -97,9 +102,9 @@ export function CreatePostForm({
   const [tags, setTags] = useState<string[]>([]);
   const [status, setStatus] = useState<PostStatus>("published");
   const [message, setMessage] = useState("");
-  const taxonomyParams = { kind };
-  const taxonomy = useListTaxonomy(taxonomyParams, {
-    query: { queryKey: getListTaxonomyQueryKey(taxonomyParams) },
+  const [titleError, setTitleError] = useState("");
+  const taxonomy = useListTaxonomy({
+    query: { queryKey: getListTaxonomyQueryKey() },
   });
   const categories = (taxonomy.data ?? []).filter((item) => item.type === "category");
   const tagOptions = (taxonomy.data ?? []).filter((item) => item.type === "tag");
@@ -116,37 +121,38 @@ export function CreatePostForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    if ((kind === "blog" || kind === "forum") && !image.trim()) return setMessage("Adicione uma imagem de capa.");
+    const cleanTitle = title.trim();
+    if (cleanTitle.length < 4) return setTitleError("Informe um título com pelo menos 4 caracteres.");
+    setTitleError("");
+    if (cleanTitle.length > 220) return setMessage("O título deve ter no máximo 220 caracteres.");
+    if (!category.trim()) return setMessage("Selecione uma categoria para a publicação.");
+    if ((kind === "blog" || kind === "forum") && !image.trim()) return setMessage("Adicione uma imagem de capa antes de publicar.");
     const safeBody = normalizeRichContent(body);
     if (richContentToPlainText(safeBody).length < 10) return setMessage("O conteúdo precisa ter pelo menos 10 caracteres.");
     if (safeBody.length > 20000) return setMessage("O conteúdo formatado ultrapassa o limite de 20.000 caracteres.");
     try {
-      await mutation.mutateAsync({ data: {
-        title: title.trim(), excerpt: richContentToPlainText(safeBody).slice(0, 220), body: safeBody,
+      const createdPost = await mutation.mutateAsync({ data: {
+        title: cleanTitle, excerpt: richContentToPlainText(safeBody).slice(0, 220), body: safeBody,
         kind, category, tags,
         coverImageUrl: image.trim() || null, videoUrl: null, status: mode === "admin" ? status : "published",
       } });
       setTitle(""); setCategory(""); setBody(""); setTags([]); setImage(""); setStatus("published");
       onDirtyChange?.(false);
       setMessage(status === "draft" ? "Rascunho salvo." : "Publicação criada.");
-      await Promise.all([
-        client.invalidateQueries({ queryKey: getListPostsQueryKey() }),
-        client.invalidateQueries({ queryKey: getGetDashboardQueryKey() }),
-        client.invalidateQueries({ queryKey: getListAdminPostsQueryKey() }),
-      ]);
+      await refreshPostQueries(client, createdPost.id);
       onCreated?.();
     } catch (error) { setMessage(errorText(error)); }
   }
   return (
     <AuthActionGate>
-      <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" onSubmit={submit}>
+      <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" noValidate onSubmit={submit}>
         <div><p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p><h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{mode === "community" ? "Compartilhe com a comunidade." : "Criar conteúdo"}</h2></div>
         {mode === "admin" && <div className={`grid gap-3 ${fixedKind ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
           {!fixedKind && <label className="block text-sm font-semibold text-[#012140]">{translateText("Área")}<select className={fieldClass} onChange={(event) => { setKind(event.target.value as PostKind); setCategory(""); setTags([]); }} value={kind}><option value="blog">{translateText("Conteúdos")}</option><option value="forum">{translateText("Comunidade")}</option><option value="news">{translateText("Novidades")}</option><option value="help">{translateText("Central de Ajuda")}</option></select></label>}
           <label className="block text-sm font-semibold text-[#012140]">{translateText("Situação")}<select className={fieldClass} onChange={(event) => setStatus(event.target.value as PostStatus)} value={status}><option value="published">{translateText("Publicado")}</option><option value="draft">{translateText("Rascunho")}</option><option value="hidden">{translateText("Oculto")}</option></select></label>
         </div>}
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm font-semibold text-[#012140]">{translateText("Título")}<input className={fieldClass} maxLength={220} minLength={4} onChange={(event) => setTitle(event.target.value)} required value={title} /></label>
+          <label className="block text-sm font-semibold text-[#012140]">{translateText("Título")}<input aria-describedby={titleError ? "post-title-error" : undefined} aria-invalid={Boolean(titleError)} className={fieldClass} data-testid="input-post-title" maxLength={220} minLength={4} onChange={(event) => { setTitle(event.target.value); setMessage(""); if (event.target.value.trim().length >= 4) setTitleError(""); }} required value={title} />{titleError && <span className="mt-1 block text-xs font-normal text-red-700" id="post-title-error" role="alert">{translateText(titleError)}</span>}</label>
           <label className="block text-sm font-semibold text-[#012140]">{translateText("Categoria")}
             <select className={fieldClass} disabled={taxonomy.isLoading || categories.length === 0} onChange={(event) => setCategory(event.target.value)} required value={category}>
               <option value="">{translateText(taxonomy.isLoading ? "Carregando opções…" : "Selecione uma categoria")}</option>
@@ -185,15 +191,93 @@ export function CreatePostForm({
           ) : <p className="text-sm text-muted-foreground">{translateText("Não há marcadores cadastrados para esta área.")}</p>}
         </fieldset>
         {message && <p className="text-sm text-[#233a59]" role="status">{translateText(message)}</p>}
-        <button className="auth-header-primary" disabled={mutation.isPending || !category || categories.length === 0 || taxonomy.isLoading || taxonomy.isError || ((kind === "blog" || kind === "forum") && !image.trim())} type="submit">{translateText(mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar")}</button>
+        <button className="auth-header-primary" disabled={mutation.isPending || !category || categories.length === 0 || taxonomy.isLoading || taxonomy.isError} type="submit">{translateText(mutation.isPending ? "Salvando…" : status === "draft" ? "Salvar rascunho" : "Publicar")}</button>
       </form>
     </AuthActionGate>
   );
 }
 
 export function CommunityCreatePanel() {
-  const [open, setOpen] = useState(false);
-  return open ? <div className="community-create-panel space-y-3"><button className="text-sm font-semibold text-[#233a59]" onClick={() => setOpen(false)} type="button">← {translateText("Fechar formulário")}</button><CreatePostForm mode="community" onCreated={() => setOpen(false)} /></div> : <section className="community-create-panel"><AuthActionGate><button className="auth-header-primary" onClick={() => setOpen(true)} type="button">{translateText("Criar tópico")}</button></AuthActionGate></section>;
+  const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).get("pfvlAction") === "create-topic");
+  const [dirty, setDirty] = useState(false);
+  const { confirm: confirmUnsavedChanges, dialog: unsavedChangesDialog } = useUnsavedChangesConfirm();
+
+  useEffect(() => {
+    if (!open) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("pfvlAction") !== "create-topic") return;
+    url.searchParams.delete("pfvlAction");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !dirty) return;
+    const currentUrl = window.location.href;
+    let allowUnload = false;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowUnload) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const confirmInternalNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.href === window.location.href) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void confirmUnsavedChanges().then((confirmed) => {
+        if (!confirmed) return;
+        allowUnload = true;
+        window.location.assign(destination.href);
+      });
+    };
+    const confirmHistoryNavigation = (event: PopStateEvent) => {
+      event.stopImmediatePropagation();
+      const destinationUrl = window.location.href;
+      window.history.pushState(window.history.state, "", currentUrl);
+      void confirmUnsavedChanges().then((confirmed) => {
+        if (!confirmed) return;
+        allowUnload = true;
+        window.location.assign(destinationUrl);
+      });
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    window.addEventListener("popstate", confirmHistoryNavigation, true);
+    document.addEventListener("click", confirmInternalNavigation, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      window.removeEventListener("popstate", confirmHistoryNavigation, true);
+      document.removeEventListener("click", confirmInternalNavigation, true);
+    };
+  }, [confirmUnsavedChanges, dirty, open]);
+
+  async function closeForm() {
+    if (dirty && !await confirmUnsavedChanges()) return;
+    setDirty(false);
+    setOpen(false);
+  }
+
+  return open ? (
+    <>
+      <div className="community-create-panel space-y-3">
+        <button className="text-sm font-semibold text-[#233a59]" onClick={() => void closeForm()} type="button">← {translateText("Fechar formulário")}</button>
+        <CreatePostForm mode="community" onDirtyChange={setDirty} onCreated={() => { setDirty(false); setOpen(false); }} />
+      </div>
+      {unsavedChangesDialog}
+    </>
+  ) : (
+    <>
+      <section className="community-create-panel">
+        <AuthActionGate returnTo="/community?pfvlAction=create-topic"><button className="auth-header-primary" onClick={() => setOpen(true)} type="button">{translateText("Criar tópico")}</button></AuthActionGate>
+      </section>
+      {unsavedChangesDialog}
+    </>
+  );
 }
 
 export function CommentComposer({ postId, parentCommentId = null, onCancel }: { postId: number; parentCommentId?: number | null; onCancel?: () => void }) {
@@ -211,7 +295,7 @@ function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId
       await mutation.mutateAsync({ postId, data: { body: body.trim(), parentCommentId } });
       setBody(""); setMessage("Sua resposta foi publicada.");
       if (parentCommentId !== null) clearReplyIntent(parentCommentId);
-      await Promise.all([client.invalidateQueries({ queryKey: getListCommentsQueryKey(postId) }), client.invalidateQueries({ queryKey: getGetPostQueryKey(postId) })]);
+      await refreshPostQueries(client, postId);
     } catch (error) { setMessage(errorText(error)); }
   }
   return <form className="space-y-3 rounded-2xl border border-[#233a59]/15 bg-white p-4" onSubmit={submit}>

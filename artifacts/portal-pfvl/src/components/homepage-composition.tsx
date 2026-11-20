@@ -223,9 +223,8 @@ export function HomeFeatureColumn() {
 }
 
 export function ProductAppLink({ className, label = 'Acessar o PFVL' }: { className: string; label?: string }) {
-  const appUrl = import.meta.env.VITE_PFVL_APP_URL?.trim();
   const content = <>{translateText(label)}<ArrowRight size={15} /></>;
-  return <a className={className} href={appUrl || '#'}>{content}</a>;
+  return <a className={className} href="#">{content}</a>;
 }
 
 export function HomeNewsColumn({ posts, isLoading, isError, retry }: { posts: Post[]; isLoading: boolean; isError: boolean; retry: () => void }) {
@@ -281,7 +280,6 @@ export function HomeBottomCta() {
       </div>
       <div className="cta-actions">
         <ProductAppLink className="cta-primary-link" />
-        <Link className="cta-secondary-link" href="/#recursos">{translateText('Conhecer os recursos')}</Link>
       </div>
     </section>
   );

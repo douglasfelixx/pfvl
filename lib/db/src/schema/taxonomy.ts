@@ -14,7 +14,6 @@ export const taxonomyTable = pgTable(
   "pfvl_taxonomy",
   {
     id: serial("id").primaryKey(),
-    kind: varchar("kind", { length: 24 }).notNull(),
     type: varchar("type", { length: 16 }).notNull(),
     name: varchar("name", { length: 100 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -23,15 +22,10 @@ export const taxonomyTable = pgTable(
   },
   (table) => [
     check(
-      "pfvl_taxonomy_kind_check",
-      sql`${table.kind} IN ('blog', 'news', 'forum', 'help')`,
-    ),
-    check(
       "pfvl_taxonomy_type_check",
       sql`${table.type} IN ('category', 'tag')`,
     ),
-    uniqueIndex("pfvl_taxonomy_kind_type_name_idx").on(
-      table.kind,
+    uniqueIndex("pfvl_taxonomy_type_name_idx").on(
       table.type,
       sql`lower(${table.name})`,
     ),

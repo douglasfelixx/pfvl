@@ -84,8 +84,8 @@ export function CommunityPoll() {
         </>
       ) : (
         <div className="community-poll-empty">
-          <h2 id="community-poll-title">{translateText("A comunidade está ouvindo.")}</h2>
-          <p>{translateText("Uma enquete da equipe aparecerá aqui quando estiver disponível.")}</p>
+          <h2 id="community-poll-title">{translateText("Nenhuma enquete ativa no momento.")}</h2>
+          <p>{translateText("Quando a equipe publicar uma nova enquete, você poderá participar por aqui.")}</p>
         </div>
       )}
     </aside>

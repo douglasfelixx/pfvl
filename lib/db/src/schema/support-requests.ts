@@ -87,7 +87,9 @@ export const supportRequestsTable = pgTable(
   "pfvl_support_requests",
   {
     id: serial("id").primaryKey(),
-    protocol: varchar("protocol", { length: 12 }).notNull().unique(),
+    protocol: varchar("protocol", { length: 12 })
+      .notNull()
+      .unique("pfvl_support_requests_protocol_key"),
     requestYear: integer("request_year").notNull(),
     requestSequence: integer("request_sequence").notNull(),
     requestType: varchar("request_type", { length: 24 }).notNull().default("support"),
@@ -97,6 +99,9 @@ export const supportRequestsTable = pgTable(
     ),
     subjectName: varchar("subject_name", { length: 120 }).notNull(),
     title: varchar("title", { length: 220 }),
+    roadmapTitle: varchar("roadmap_title", { length: 220 }),
+    roadmapDescription: text("roadmap_description"),
+    roadmapStatus: varchar("roadmap_status", { length: 24 }),
     categoryId: integer("category_id").references(
       () => supportRequestCategoriesTable.id,
       { onDelete: "restrict" },
@@ -126,6 +131,14 @@ export const supportRequestsTable = pgTable(
     check(
       "pfvl_support_requests_status_check",
       sql`${table.status} IN ('new', 'in_progress', 'completed')`,
+    ),
+    check(
+      "pfvl_support_requests_roadmap_status_check",
+      sql`${table.roadmapStatus} IS NULL OR ${table.roadmapStatus} IN ('planned', 'in_progress', 'available')`,
+    ),
+    check(
+      "pfvl_support_requests_public_roadmap_fields_check",
+      sql`${table.approvedAt} IS NULL OR (${table.requestType} = 'suggestion' AND ${table.roadmapTitle} IS NOT NULL AND length(btrim(${table.roadmapTitle})) > 0 AND ${table.roadmapDescription} IS NOT NULL AND length(btrim(${table.roadmapDescription})) > 0 AND ${table.roadmapStatus} IS NOT NULL)`,
     ),
     check(
       "pfvl_support_requests_sequence_check",

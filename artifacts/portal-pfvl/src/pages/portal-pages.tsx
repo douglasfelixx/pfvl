@@ -17,7 +17,7 @@ import {
   Star,
   SlidersHorizontal,
 } from 'lucide-react';
-import { RichTextContent } from '@/components/rich-text-content';
+import { RichTextContent, richContentToPlainText } from '@/components/rich-text-content';
 import {
   getGetCurrentUserQueryKey,
   getGetPostQueryKey,
@@ -50,8 +50,8 @@ import {
   type PublicRoadmapSuggestion,
   type SupportRequestStatus,
 } from '@workspace/api-client-react';
-import { Link, useParams, useSearch } from 'wouter';
-import { AuthActionGate } from '@/components/auth-ui';
+import { Link, useLocation, useParams, useSearch } from 'wouter';
+import { AuthActionGate, useSearchAccountId } from '@/components/auth-ui';
 import { getLocale, translateText } from '@/lib/i18n';
 import {
   CommentComposer,
@@ -153,7 +153,7 @@ export function HomePage() {
   const siteMedia = useGetSiteMedia({
     query: { queryKey: getGetSiteMediaQueryKey() },
   });
-  const news = useListPosts({ kind: 'news' }, { query: { queryKey: getListPostsQueryKey({ kind: 'news' }) } });
+  const news = useListPosts({ kind: 'news' }, { query: { queryKey: getListPostsQueryKey({ kind: 'news' }), refetchOnWindowFocus: true } });
   const testimonials = useListTestimonials({ query: { queryKey: getListTestimonialsQueryKey() } });
   const heroImageUrl = siteMedia.data?.homeImageUrl;
   return (
@@ -162,8 +162,8 @@ export function HomePage() {
         <div className="home-hero-inner">
           <div className="home-hero-copy">
             <p className="home-welcome"><span /> {translateText('Seja bem-vindo ao PFVL')}</p>
-            <h1>{translateText('Planeje hoje.')}<br /><span>{translateText('Realize')}</span>{translateText(' amanhã.')}</h1>
-            <p className="home-hero-description">{translateText('Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir. Com o PFVL, suas contas e objetivos fazem parte do mesmo plano.')}</p>
+            <h1><span>{translateText('Planeje.')}</span> <span>{translateText('Acompanhe.')}</span> <span>{translateText('Realize.')}</span></h1>
+            <p className="home-hero-description">{translateText('Organize suas finanças, acompanhe o que foi planejado e transforme seus objetivos em planos com valores, prazos e aportes.')}</p>
             <div className="home-hero-actions">
               <ProductAppLink className="home-cta-primary" />
               <Link className="home-cta-outline" href="/apresentacao">{translateText('Assistir à apresentação')} <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
@@ -184,13 +184,12 @@ export function HomePage() {
       </section>
 
       <HomeBottomCta />
-      {testimonials.isLoading && <section className="home-testimonials-loading" aria-label={translateText("Depoimentos da comunidade")}><div className="skeleton-line" /><div className="skeleton-line" /></section>}
-      {testimonials.isError && <div className="home-testimonials-error" role="status"><span>{translateText("Não foi possível carregar os depoimentos.")}</span><button onClick={() => void testimonials.refetch()} type="button">{translateText("Tentar novamente")}</button></div>}
-      {testimonials.data?.length ? (
+      {testimonials.isError && <div className="home-testimonials-error" role="status"><span>{translateText("Não foi possível carregar as avaliações.")}</span><button onClick={() => void testimonials.refetch()} type="button">{translateText("Tentar novamente")}</button></div>}
+      {testimonials.data && testimonials.data.length >= 3 ? (
         <section className="home-testimonials" aria-labelledby="home-testimonials-title">
           <div className="home-testimonials-heading">
             <div><p className="profile-eyebrow">{translateText("Vozes da comunidade")}</p><h2 id="home-testimonials-title">{translateText("Experiências compartilhadas.")}</h2></div>
-            <Link className="home-testimonials-link" href="/profile">{translateText("Compartilhe a sua")}</Link>
+            <Link className="home-testimonials-link" href="/profile">{translateText("Compartilhe sua experiência")}</Link>
           </div>
           <div className="home-testimonials-grid">
             {testimonials.data.map((item) => (
@@ -216,7 +215,7 @@ export function CommunityPage() {
   const locationSearch = useSearch();
   const selectedTag = readSelectedTag(locationSearch);
   const params = useMemo(() => ({ kind: 'forum' as PostKind, search: search.trim() || undefined }), [search]);
-  const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params) } });
+  const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params), refetchOnWindowFocus: true } });
   const categories = [...new Set((query.data ?? []).map((post) => post.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const posts = [...(query.data ?? [])]
     .filter((post) => category === 'all' || post.category === category)
@@ -228,13 +227,13 @@ export function CommunityPage() {
     <div className="page-enter community-page">
       <header className="community-heading">
         <div>
-          <p className="community-kicker">{translateText('Comunidade PFVL')} <span>·</span> {translateText('Fórum')}</p>
-          <h1>{translateText('Conversa de dinheiro,')}<br /><em>{translateText('sem complicação.')}</em></h1>
-          <p className="community-heading-copy">{translateText('Pergunte, conte o que funcionou e aprenda com quem está vivendo escolhas financeiras parecidas.')}</p>
+          <p className="community-kicker">{translateText('Comunidade PFVL')}</p>
+          <h1>{translateText('Compartilhe experiências.')}<br /><em>{translateText('Descubra possibilidades.')}</em></h1>
+          <p className="community-heading-copy">{translateText('Troque ideias sobre o uso do PFVL, compartilhe formas de organizar suas finanças e aprenda com as experiências de outras pessoas.')}</p>
         </div>
         <div className="community-heading-aside" aria-hidden="true">
           <MessageCircle size={27} strokeWidth={1.4} />
-          <span>{translateText('Uma dúvida real')}<br />{translateText('pode ajudar muita gente.')}</span>
+          <span>{translateText('Sua experiência pode ser o próximo aprendizado de alguém.')}</span>
         </div>
       </header>
 
@@ -296,7 +295,7 @@ export function CommunityPage() {
                   <div className="topic-main">
                     <div className="topic-meta"><span className="topic-category">{post.category}</span><span>{formatDate(post.createdAt)}</span></div>
                     <Link className="topic-title" href={`/community/${post.id}`}>{post.title}</Link>
-                    <p className="topic-excerpt">{post.excerpt || post.body}</p>
+                    <p className="topic-excerpt">{post.excerpt || richContentToPlainText(post.body)}</p>
                     <div className="topic-footer"><span>{translateText('Iniciado por')} <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <Link className="tag-pill tag-pill-link" href={postTagHref('forum', tag)} key={tag}>{tag}</Link>)}</span></div>
                   </div>
                   <Link aria-label={`${post.commentCount} respostas em ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
@@ -307,14 +306,17 @@ export function CommunityPage() {
                 </article>
               ))}
             </div>
-          ) : <EmptyState title={search || category !== 'all' || selectedTag ? 'Nenhuma conversa encontrada' : 'O fórum está começando'} description={search || category !== 'all' || selectedTag ? 'Ajuste a busca ou escolha outra categoria ou tag.' : 'Abra um tópico para compartilhar sua dúvida ou experiência com a comunidade.'} />}
+          ) : <EmptyState
+            title={search || category !== 'all' || selectedTag ? 'Nenhuma conversa encontrada' : 'O fórum está começando'}
+            description={selectedTag && search
+              ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados. Tente outra palavra ou remova um dos filtros.'
+              : search || category !== 'all' || selectedTag
+                ? 'Ajuste a busca ou escolha outra categoria ou tag.'
+                : 'Abra um tópico para compartilhar sua dúvida ou experiência com a comunidade.'}
+          />}
         </main>
         <aside className="community-rail">
           <CommunityPoll />
-          <div className="community-guideline">
-            <span className="guideline-index">01</span>
-            <div><strong>{translateText('Prática antes de perfeita.')}</strong><p>{translateText('Contexto real e respeito ajudam mais do que respostas prontas.')}</p></div>
-          </div>
           <p className="community-editorial-note">{translateText('Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite')} <Link href="/blog">{translateText('Conteúdos PFVL')}</Link>.</p>
         </aside>
       </div>
@@ -323,40 +325,49 @@ export function CommunityPage() {
 }
 
 export function PostDetailPage() {
+  const [location] = useLocation();
   const params = useParams<{ postId?: string }>();
   const postId = Number(params.postId);
   const validId = Number.isFinite(postId) && postId > 0;
-  const post = useGetPost(postId, { query: { enabled: validId, queryKey: getGetPostQueryKey(postId) } });
-  const comments = useListComments(postId, { query: { enabled: validId, queryKey: getListCommentsQueryKey(postId) } });
+  const route = window.location.pathname;
+  const postKind: PostKind = route.startsWith('/blog/')
+    ? 'blog'
+    : route.startsWith('/news/')
+      ? 'news'
+      : route.startsWith('/help/')
+        ? 'help'
+        : 'forum';
+  const backHref = postListHref(postKind);
+  const post = useGetPost(postId, { query: { enabled: validId, queryKey: getGetPostQueryKey(postId), refetchOnWindowFocus: true, retry: false } });
+  const comments = useListComments(postId, { query: { enabled: validId, queryKey: getListCommentsQueryKey(postId), refetchOnWindowFocus: true, retry: false } });
+  const [commentUnavailable, setCommentUnavailable] = useState(false);
   useEffect(() => {
-    const targetId = window.location.hash.slice(1);
-    if (!comments.data || (targetId !== "comments" && !/^comment-\d+$/.test(targetId))) return;
+    if (!post.data || !comments.data) return;
+    const url = new URL(window.location.href);
+    const requestedComment = url.searchParams.get('pfvlComment');
+    const hashComment = url.hash.match(/^#comment-(\d+)$/)?.[1];
+    const requestedCommentId = Number(requestedComment ?? hashComment);
+    const targetId = requestedComment ? `comment-${requestedComment}` : url.hash.slice(1);
+    if (Number.isFinite(requestedCommentId) && requestedCommentId > 0) {
+      const exists = comments.data.some((comment) => comment.id === requestedCommentId);
+      setCommentUnavailable(!exists);
+      url.searchParams.delete('pfvlComment');
+      if (!exists) url.hash = 'comments';
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+      if (!exists) {
+        window.requestAnimationFrame(() => {
+          document.getElementById('comments')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
+        return;
+      }
+    } else {
+      setCommentUnavailable(false);
+    }
+    if (targetId !== 'comments' && !/^comment-\d+$/.test(targetId)) return;
     window.requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
-  }, [comments.data]);
-  useEffect(() => {
-    if (!post.data) return;
-    const title = `${post.data.title} | PFVL`;
-    const description = (post.data.excerpt || post.data.body).replace(/\s+/g, ' ').slice(0, 157);
-    document.title = title;
-    const setMetaContent = (selector: string, content: string) => {
-      const element = document.head.querySelector<HTMLMetaElement>(selector);
-      if (element) element.content = content;
-    };
-    setMetaContent('meta[name="description"]', description);
-    setMetaContent('meta[property="og:title"]', title);
-    setMetaContent('meta[property="og:description"]', description);
-    setMetaContent('meta[name="twitter:title"]', title);
-    setMetaContent('meta[name="twitter:description"]', description);
-    const siteUrl = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '');
-    if (siteUrl) {
-      const canonicalUrl = `${siteUrl}${window.location.pathname}`;
-      setMetaContent('meta[property="og:url"]', canonicalUrl);
-      const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-      if (canonical) canonical.href = canonicalUrl;
-    }
-  }, [post.data]);
+  }, [comments.data, location, post.data]);
   const roots = (comments.data ?? []).filter((comment) => !comment.parentCommentId);
   const children = (comments.data ?? []).filter((comment) => comment.parentCommentId);
   const isForum = post.data?.kind === 'forum';
@@ -364,12 +375,19 @@ export function PostDetailPage() {
     post.data &&
       new Date(post.data.updatedAt).getTime() > new Date(post.data.createdAt).getTime(),
   );
-  const backHref = post.data?.kind === 'forum' ? '/community' : `/${post.data?.kind ?? 'community'}`;
   const coverImageUrl = post.data ? getPostCoverImage(post.data) : null;
+  const postStatus = (post.error as { status?: number } | null)?.status;
+  const isUnavailable = !validId || (post.isError && (postStatus === 403 || postStatus === 404));
   return (
     <div className="page-enter mx-auto max-w-[900px]">
       <Link href={backHref} className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-primary">← {translateText('Voltar')}</Link>
-      {post.isLoading ? <LoadingState rows={1} /> : post.isError || !post.data ? (
+      {post.isLoading ? <LoadingState rows={1} /> : isUnavailable ? (
+        <Surface className="p-6 sm:p-8">
+          <h1 className="font-display text-2xl font-semibold text-[#012140]">{translateText('Este conteúdo não está disponível.')}</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{translateText('O conteúdo pode ter sido removido, ocultado ou não estar disponível para consulta.')}</p>
+          <Link className="auth-header-primary mt-5 inline-flex" href={backHref}>{translateText('Voltar')}</Link>
+        </Surface>
+      ) : post.isError || !post.data ? (
         <QueryError retry={() => void post.refetch()} />
       ) : (
         <>
@@ -392,7 +410,7 @@ export function PostDetailPage() {
               </div>
             </div>
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
-            {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText('respostas')}</span></div>}
+            {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText(post.data.commentCount === 1 ? 'resposta' : 'respostas')}</span></div>}
             {coverImageUrl && post.data.kind !== 'blog' && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
             {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
             {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
@@ -403,6 +421,14 @@ export function PostDetailPage() {
             </div>
           </article>
           <section className="mt-8 scroll-mt-6" id="comments">
+            {commentUnavailable && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+                <p>{translateText('Esse comentário não está mais disponível.')}</p>
+                <Link className="mt-2 inline-flex font-semibold underline underline-offset-2" href={`${window.location.pathname}#comments`}>
+                  {translateText('Abrir publicação de origem')}
+                </Link>
+              </div>
+            )}
             <SectionHeading title={isForum ? `Respostas (${comments.data?.length ?? post.data.commentCount})` : `Comentários (${comments.data?.length ?? post.data.commentCount})`} />
             {isForum && <p className="mb-4 text-sm leading-6 text-muted-foreground">{translateText('Compartilhe uma resposta útil, uma pergunta complementar ou o que funcionou na sua realidade.')}</p>}
             <CommentComposer postId={postId} />
@@ -417,7 +443,7 @@ export function PostDetailPage() {
                       </div>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{comment.body}</p>
                       {children.filter((reply) => reply.parentCommentId === comment.id).map((reply) => (
-                        <div className="ml-3 mt-4 border-l-2 border-[#233a59] pl-4 sm:ml-7" key={reply.id}>
+                        <div className="ml-3 mt-4 scroll-mt-6 border-l-2 border-[#233a59] pl-4 sm:ml-7" id={`comment-${reply.id}`} key={reply.id}>
                           <div className="flex items-center justify-between gap-3">
                             <strong className="text-xs">{reply.authorName}</strong>
                             <span className="text-[10px] text-muted-foreground">{formatDate(reply.createdAt)}</span>
@@ -430,7 +456,10 @@ export function PostDetailPage() {
                   </div>
                 ))}
               </div>
-            ) : <div className="mt-4"><EmptyState title="Sem comentários por enquanto" description="Quando houver respostas publicadas, elas poderão ser consultadas nesta seção." /></div>}
+            ) : <div className="mt-4"><EmptyState
+              title={isForum ? 'Sem respostas por enquanto' : 'Sem comentários por enquanto'}
+              description={isForum ? 'As respostas publicadas aparecerão aqui.' : 'Os comentários publicados aparecerão aqui.'}
+            /></div>}
           </section>
         </>
       )}
@@ -444,7 +473,7 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
   const locationSearch = useSearch();
   const selectedTag = readSelectedTag(locationSearch);
   const params = useMemo(() => ({ kind, search: search.trim() || undefined }), [kind, search]);
-  const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params) } });
+  const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params), refetchOnWindowFocus: true } });
   const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
   const shouldPaginate = kind === 'blog';
   const pageSize = 6;
@@ -520,35 +549,50 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
             </nav>
           )}
         </>
-      ) : <EmptyState title={selectedTag ? 'Nenhuma publicação encontrada para esta tag' : search ? 'Nada encontrado com esse termo' : 'Estamos preparando novos conteúdos'} description={selectedTag ? 'Nenhuma publicação desta seção usa esta tag.' : search ? 'Tente outra palavra ou remova a busca.' : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'} />}
+      ) : <EmptyState
+        title={kind === 'news' && !search && !selectedTag
+          ? 'Nenhuma novidade publicada ainda.'
+          : selectedTag
+            ? 'Nenhuma publicação encontrada para esta tag'
+            : search
+              ? 'Nada encontrado com esse termo'
+              : 'Estamos preparando novos conteúdos'}
+        description={selectedTag && search
+          ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados. Tente outra palavra ou remova um dos filtros.'
+          : selectedTag
+            ? 'Nenhuma publicação desta seção usa esta tag.'
+            : search
+              ? 'Tente outra palavra ou remova a busca.'
+              : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'}
+      />}
     </div>
   );
 }
 
 export function BlogPage() {
-  return <PostsListingPage kind="blog" eyebrow="Conteúdos PFVL" title="Guias e artigos." description="Publicações da equipe sobre planejamento, organização, objetivos, indicadores e formas de usar o PFVL no dia a dia." />;
+  return <PostsListingPage kind="blog" eyebrow="Conteúdos PFVL" title="Conheça as possibilidades do PFVL." description="Entenda os conceitos por trás dos recursos e descubra formas de usar o PFVL para organizar suas finanças, acompanhar seus planos e cuidar dos seus objetivos." />;
 }
 
 export function NewsPage() {
-  return <PostsListingPage kind="news" eyebrow="O que há de novo" title="Novidades do PFVL." description="Acompanhe atualizações, novos recursos e notícias importantes do portal." />;
+  return <PostsListingPage kind="news" eyebrow="Evolução do PFVL" title="Acompanhe cada novidade." description="Conheça os novos recursos, as melhorias e as atualizações do site e da aplicação PFVL." />;
 }
 
 export function HelpPage() {
   const locationSearch = useSearch();
   const selectedTag = readSelectedTag(locationSearch);
-  const query = useListPosts({ kind: 'help' }, { query: { queryKey: getListPostsQueryKey({ kind: 'help' }) } });
+  const query = useListPosts({ kind: 'help' }, { query: { queryKey: getListPostsQueryKey({ kind: 'help' }), refetchOnWindowFocus: true } });
   const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
   return (
     <div className="page-enter">
-      <PageHeading eyebrow="Central de ajuda" title="Aprenda a usar o PFVL." description="Tutoriais práticos, organizados por assunto, para configurar contas, planejamentos, objetivos e outros recursos do sistema." />
+      <PageHeading eyebrow="Central de ajuda" title="Encontre o caminho para o que precisa." description="Consulte tutoriais, encontre respostas e veja como utilizar os recursos do PFVL. Se precisar de atendimento, registre uma solicitação e acompanhe as respostas da equipe." />
       <section className="my-6 grid gap-4 rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-6">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#eef3f6] text-[#233a59] sm:h-12 sm:w-12">
               <LifeBuoy aria-hidden="true" size={21} />
           </span>
           <div className="min-w-0">
-            <h2 className="font-display text-lg font-semibold text-[#012140]">{translateText("Precisa de ajuda da equipe?")}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{translateText("Registre uma solicitação para acompanhar o atendimento pelo seu protocolo.")}</p>
+            <h2 className="font-display text-lg font-semibold text-[#012140]">{translateText("Precisa de ajuda da nossa equipe?")}</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{translateText("Registre sua dúvida ou dificuldade e acompanhe o atendimento em Minhas solicitações.")}</p>
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -557,7 +601,7 @@ export function HelpPage() {
           </Link>
           <Link className="auth-header-link inline-flex w-full items-center justify-center gap-2 !border-[#233a59]/20 !bg-[#f4f6f8] !text-[#233a59] hover:!bg-[#e8eef4] sm:w-auto" href="/help/requests" data-testid="link-help-track-requests">
               <ClipboardList aria-hidden="true" size={16} />
-              {translateText("Acompanhar solicitações")}
+              {translateText("Minhas solicitações")}
           </Link>
         </div>
       </section>
@@ -578,14 +622,18 @@ export function HelpRequestPage() {
   return (
     <div className="page-enter">
       <PageHeading
-        eyebrow="Central de Ajuda"
-        title="Fale com a equipe do PFVL."
-        description="Tem uma dúvida, encontrou alguma dificuldade ou quer conversar sobre outro assunto? Envie sua mensagem para a equipe da Orbefin Sistemas Financeiros."
+        eyebrow="Atendimento PFVL"
+        title="Como podemos ajudar?"
+        description="Envie sua dúvida ou relate uma dificuldade. Sua solicitação ficará registrada para que você acompanhe o andamento e as respostas da equipe da Orbefin Sistemas Financeiros."
       />
       <p className="mb-6 text-sm text-muted-foreground">
-        {translateText("Sua mensagem ficará registrada para acompanhamento pela nossa equipe.")}
+        {translateText("Conte o que você precisa. Se encontrou um problema, explique o que estava tentando fazer e o que aconteceu.")}
       </p>
-      <AuthActionGate returnTo="/help/request">
+      <AuthActionGate
+        returnTo="/help/request"
+        signedOutTitle="Entre para registrar sua solicitação."
+        signedOutDescription="Depois do envio, acompanhe o atendimento em Minhas solicitações."
+      >
         <HelpRequestForm />
       </AuthActionGate>
     </div>
@@ -638,16 +686,13 @@ function HelpRequestForm() {
     return (
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8" role="status">
         <p className="text-xs font-bold uppercase tracking-[.14em] text-emerald-800">{translateText("Atendimento PFVL")}</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold text-[#012140]">{translateText("Mensagem registrada com sucesso.")}</h2>
+        <h2 className="mt-2 font-display text-2xl font-semibold text-[#012140]">{translateText("Solicitação registrada com sucesso.")}</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#233a59]">
-          {translateText("Nossa equipe poderá acompanhar sua solicitação. Guarde o protocolo de atendimento:")}
-        </p>
-        <p className="mt-4 inline-flex rounded-xl bg-white px-4 py-3 font-mono text-lg font-bold tracking-[.08em] text-[#012140]" data-testid="text-support-protocol">
-          {protocol}
+          {translateText("Seu protocolo é")} <span className="font-mono font-bold" data-testid="text-support-protocol">{protocol}</span>. {translateText("Acompanhe o andamento e as respostas da equipe em Minhas solicitações.")}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link className="auth-header-primary" href="/help/requests" data-testid="link-view-support-requests">
-            {translateText("Ver andamento")}
+            {translateText("Ver minha solicitação")}
           </Link>
           <button
             className="auth-header-link !border-[#233a59]/20 !text-[#233a59]"
@@ -746,7 +791,7 @@ function HelpRequestForm() {
       )}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
       <button className="auth-header-primary" disabled={!canSubmit} type="submit">
-        {translateText(createRequest.isPending ? "Registrando…" : "Registrar mensagem")}
+        {translateText(createRequest.isPending ? "Registrando…" : "Registrar solicitação")}
       </button>
     </form>
   );
@@ -779,9 +824,9 @@ export function SuggestionsPage() {
   return (
     <div className="page-enter">
       <PageHeading
-        eyebrow="Sugestões"
-        title="Envie e acompanhe suas ideias."
-        description="Registre uma sugestão para a equipe PFVL e acompanhe em privado o status e os comentários da equipe."
+        eyebrow="Suas ideias no PFVL"
+        title="Ajude a construir os próximos passos."
+        description="Compartilhe ideias para melhorar o PFVL e acompanhe, em um espaço privado, as respostas da equipe e o andamento das suas sugestões."
       />
       <div className="mt-6">
         <AuthActionGate
@@ -799,10 +844,10 @@ export function SuggestionsPage() {
   );
 }
 
-const roadmapStatusLabel: Record<SupportRequestStatus, string> = {
-  new: "Aprovada",
-  in_progress: "Em andamento",
-  completed: "Concluída",
+const roadmapStatusLabel: Record<PublicRoadmapSuggestion["status"], string> = {
+  planned: "Planejada",
+  in_progress: "Em desenvolvimento",
+  available: "Disponível",
 };
 
 function PublicSuggestionRoadmap() {
@@ -812,13 +857,20 @@ function PublicSuggestionRoadmap() {
       refetchInterval: 60_000,
     },
   });
+  useEffect(() => {
+    const targetId = window.location.hash.slice(1);
+    if (!suggestions.data || !/^roadmap-\d+$/.test(targetId)) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [suggestions.data]);
 
   return (
     <section aria-labelledby="public-roadmap-heading" className="rounded-2xl border border-dashed border-[#233a59]/20 bg-white/50 p-5 sm:p-6">
       <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Roadmap público")}</p>
-        <h2 className="mt-1 font-display text-2xl font-semibold text-[#012140]" id="public-roadmap-heading">{translateText("Ideias no horizonte.")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as sugestões aprovadas pela equipe PFVL.")}</p>
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Evolução do PFVL")}</p>
+        <h2 className="mt-1 font-display text-2xl font-semibold text-[#012140]" id="public-roadmap-heading">{translateText("Próximos passos.")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as melhorias planejadas, em desenvolvimento e já disponibilizadas no PFVL.")}</p>
       </div>
       {suggestions.isLoading ? (
         <LoadingState rows={2} />
@@ -832,8 +884,8 @@ function PublicSuggestionRoadmap() {
         </div>
       ) : (
         <EmptyState
-          title="O roadmap está começando"
-          description="As sugestões aprovadas pela equipe aparecerão aqui, em ordem de aprovação."
+          title="Ainda não há melhorias publicadas neste espaço."
+          description="As próximas melhorias aparecerão aqui quando forem compartilhadas pela equipe. Você já pode enviar suas ideias pelo formulário de sugestões."
         />
       )}
     </section>
@@ -842,14 +894,14 @@ function PublicSuggestionRoadmap() {
 
 function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion }) {
   const statusTone =
-    suggestion.status === "completed"
+    suggestion.status === "available"
       ? "bg-emerald-50 text-emerald-800"
       : suggestion.status === "in_progress"
         ? "bg-blue-50 text-blue-800"
         : "bg-amber-50 text-amber-800";
 
   return (
-    <article className="rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm sm:p-5">
+    <article id={`roadmap-${suggestion.id}`} className="rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm scroll-mt-24 sm:p-5" data-testid={`card-public-roadmap-${suggestion.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -864,7 +916,7 @@ function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion
           {translateText(roadmapStatusLabel[suggestion.status])}
         </span>
       </div>
-      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.message}</p>
+      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.description}</p>
     </article>
   );
 }
@@ -877,29 +929,44 @@ const suggestionRequestStatusLabel: Record<SupportRequestStatus, string> = {
 
 function SuggestionWorkspace() {
   const queryClient = useQueryClient();
+  const userId = useSearchAccountId();
   const categories = useListSuggestionCategories({
     query: { queryKey: getListSuggestionCategoriesQueryKey() },
   });
   const suggestions = useListMySuggestions({
     query: {
-      queryKey: getListMySuggestionsQueryKey(),
+      queryKey: [...getListMySuggestionsQueryKey(), userId ?? "anonymous"],
       refetchInterval: 30_000,
     },
   });
+  useEffect(() => {
+    const targetId = window.location.hash.slice(1);
+    if (!suggestions.data || !/^suggestion-\d+$/.test(targetId)) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [suggestions.data]);
   const mutation = useCreateMySuggestion();
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [protocol, setProtocol] = useState('');
   const [error, setError] = useState('');
+  const [titleError, setTitleError] = useState('');
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+    const cleanTitle = title.trim();
+    if (cleanTitle.length < 4) {
+      setTitleError("Informe um título com pelo menos 4 caracteres.");
+      return;
+    }
+    setTitleError('');
     try {
       const result = await mutation.mutateAsync({
         data: {
-          title: title.trim(),
+          title: cleanTitle,
           categoryId: Number(categoryId),
           message: details.trim(),
         },
@@ -928,9 +995,9 @@ function SuggestionWorkspace() {
         onSubmit={(event) => void submit(event)}
       >
         <div className="mb-5">
-          <p className="eyebrow-pill">{translateText("Registro de mensagem")}</p>
-          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{translateText("O que você gostaria de ver no PFVL?")}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("A sugestão será enviada em privado à equipe. Você poderá acompanhar as atualizações nesta página.")}</p>
+          <p className="eyebrow-pill">{translateText("Nova sugestão")}</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{translateText("O que podemos melhorar no PFVL?")}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Conte o que você gostaria de fazer e como essa melhoria ajudaria no seu dia a dia.")}</p>
         </div>
         {protocol && (
           <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
@@ -938,53 +1005,46 @@ function SuggestionWorkspace() {
             <span>{translateText("Protocolo de acompanhamento")}: <span className="font-mono font-bold">{protocol}</span></span>
           </div>
         )}
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_240px]">
-          <label className="block text-sm font-semibold text-[#012140]">
-            {translateText("Título da sugestão")}
-            <input
-              className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
-              maxLength={220}
-              minLength={4}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder={translateText("Ex.: permitir exportar os relatórios")}
-              required
-              value={title}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-1">
-            <label className="block text-sm font-semibold text-[#012140]">
-              {translateText("Assunto")}
-              <input
-                aria-readonly="true"
-                className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-[#f7f8fa] px-3.5 py-3 text-sm text-[#1d1d1b]"
-                readOnly
-                value={translateText("Sugestão")}
-              />
-            </label>
-            <label className="block text-sm font-semibold text-[#012140]">
-              {translateText("Categoria")}
-              <select
-                className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
-                disabled={categories.isLoading || categories.isError || !categories.data?.length}
-                onChange={(event) => setCategoryId(event.target.value)}
-                required
-                value={categoryId}
-              >
-                <option value="">{translateText("Selecione uma categoria")}</option>
-                {(categories.data ?? []).map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
+        <label className="block text-sm font-semibold text-[#012140]">
+          {translateText("Categoria")}
+          <select
+            className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+            disabled={categories.isLoading || categories.isError || !categories.data?.length}
+            onChange={(event) => setCategoryId(event.target.value)}
+            required
+            value={categoryId}
+          >
+            <option value="">{translateText("Selecione uma categoria")}</option>
+            {(categories.data ?? []).map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="mt-3 block text-sm font-semibold text-[#012140]">
+          {translateText("Título da sugestão")}
+          <input
+            className="mt-1.5 w-full rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
+            maxLength={220}
+            minLength={4}
+            aria-describedby={titleError ? 'suggestion-title-error' : undefined}
+            aria-invalid={Boolean(titleError)}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              if (event.target.value.trim().length >= 4) setTitleError('');
+            }}
+            placeholder={translateText("Ex.: Comparar o planejamento de diferentes períodos")}
+            required
+            value={title}
+          />
+        </label>
+        {titleError && <p className="mt-1 text-xs text-red-700" id="suggestion-title-error" role="alert">{translateText(titleError)}</p>}
         {categories.isLoading && <p className="mt-2 text-sm text-muted-foreground">{translateText("Carregando categorias…")}</p>}
         {categories.isError && <p className="mt-2 text-sm text-red-700">{translateText("Não foi possível carregar as categorias. Atualize a página e tente novamente.")}</p>}
         {!categories.isLoading && !categories.isError && !categories.data?.length && (
-          <p className="mt-3 rounded-xl bg-[#f7f8fa] p-3 text-sm text-[#233a59]">{translateText("O assunto Sugestão está temporariamente indisponível.")}</p>
+          <p className="mt-3 rounded-xl bg-[#f7f8fa] p-3 text-sm text-[#233a59]">{translateText("Não há categorias de sugestão disponíveis no momento.")}</p>
         )}
         <label className="mt-3 block text-sm font-semibold text-[#012140]">
-          {translateText("Como essa ideia ajudaria?")}
+          {translateText("Descreva sua ideia")}
           <textarea
             className="mt-1.5 min-h-32 w-full resize-y rounded-xl border border-[#233a59]/15 bg-white px-3.5 py-3 text-sm text-[#1d1d1b] outline-none focus:border-[#233a59] focus:ring-2 focus:ring-[#233a59]/10"
             maxLength={5000}
@@ -996,7 +1056,7 @@ function SuggestionWorkspace() {
           />
         </label>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>{translateText("Não informe senhas ou dados financeiros sensíveis.")}</p>
+          <p>{translateText("Explique a situação, o que você propõe e como isso ajudaria. Não informe senhas, códigos de acesso ou dados financeiros sensíveis.")}</p>
           <span>{details.length}/5000</span>
         </div>
         {details.trim().length > 0 && details.trim().length < 20 && (
@@ -1017,7 +1077,7 @@ function SuggestionWorkspace() {
         <div className="mb-3">
           <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Área privada")}</p>
           <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]" id="my-suggestions-heading">{translateText("Minhas sugestões")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{translateText("Somente você e a equipe PFVL podem ver estas mensagens.")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{translateText("Consulte suas ideias, acompanhe o andamento e veja as respostas da equipe.")}</p>
         </div>
         {suggestions.isLoading ? <LoadingState rows={2} /> : suggestions.isError ? (
           <QueryError retry={() => void suggestions.refetch()} />
@@ -1028,7 +1088,7 @@ function SuggestionWorkspace() {
             ))}
           </div>
         ) : (
-          <EmptyState title="Você ainda não enviou sugestões" description="Depois de enviar uma ideia, o status e as respostas da equipe aparecerão aqui." />
+          <EmptyState title="Você ainda não enviou sugestões." description="Quando enviar sua primeira ideia, você poderá acompanhar o andamento e as respostas da equipe por aqui." />
         )}
       </section>
     </div>
@@ -1043,7 +1103,7 @@ function SuggestionRequestCard({ suggestion }: { suggestion: MySuggestion }) {
         ? "bg-blue-50 text-blue-800"
         : "bg-amber-50 text-amber-800";
   return (
-    <article className="rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5">
+    <article id={`suggestion-${suggestion.id}`} className="scroll-mt-24 rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5" data-testid={`card-my-suggestion-${suggestion.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] font-bold tracking-[.08em] text-[#233a59]">{translateText("Protocolo")}: {suggestion.protocol}</p>

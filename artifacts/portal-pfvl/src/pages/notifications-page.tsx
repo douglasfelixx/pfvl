@@ -43,7 +43,11 @@ export function NotificationsPage() {
         description="Acompanhe novidades, publicações, respostas e mudanças nas sugestões."
       />
       <div className="mt-6">
-        <AuthActionGate returnTo="/notifications">
+        <AuthActionGate
+          returnTo="/notifications"
+          signedOutTitle="Entre para consultar suas notificações."
+          signedOutDescription="Acesse sua conta para ver atualizações, publicações e respostas."
+        >
           <NotificationsList />
         </AuthActionGate>
       </div>
@@ -82,7 +86,23 @@ function NotificationsList() {
 
   async function openNotification(notification: Notification) {
     if (!notification.isRead && !(await markAsRead(notification.id))) return;
-    setLocation(notification.href);
+    try {
+      const destination = new URL(notification.href, window.location.origin);
+      if (destination.origin !== window.location.origin) {
+        setLocation("/notifications");
+        return;
+      }
+      const commentId = notification.type === "comment_reply"
+        ? destination.hash.match(/^#comment-(\d+)$/)?.[1]
+        : undefined;
+      if (commentId) {
+        destination.searchParams.set("pfvlComment", commentId);
+        destination.hash = "";
+      }
+      setLocation(`${destination.pathname}${destination.search}${destination.hash}`);
+    } catch {
+      setLocation("/notifications");
+    }
   }
 
   async function deleteNotification(notificationId: number) {

@@ -23,6 +23,53 @@ export const PostKind = {
   help: 'help',
 } as const;
 
+export type SearchArea = typeof SearchArea[keyof typeof SearchArea];
+
+
+export const SearchArea = {
+  content: 'content',
+  community: 'community',
+  news: 'news',
+  tutorials: 'tutorials',
+  roadmap: 'roadmap',
+  private: 'private',
+} as const;
+
+export type SearchResultType = typeof SearchResultType[keyof typeof SearchResultType];
+
+
+export const SearchResultType = {
+  article: 'article',
+  community_topic: 'community_topic',
+  community_comment: 'community_comment',
+  update: 'update',
+  tutorial: 'tutorial',
+  roadmap_item: 'roadmap_item',
+  support_request: 'support_request',
+  private_suggestion: 'private_suggestion',
+  private_update: 'private_update',
+} as const;
+
+export interface PortalSearchResult {
+  id: number;
+  type: SearchResultType;
+  title: string;
+  excerpt: string;
+  href: string;
+}
+
+export interface PortalSearchGroup {
+  area: SearchArea;
+  results: PortalSearchResult[];
+  hasMore: boolean;
+}
+
+export interface PortalSearch {
+  query: string;
+  page: number;
+  groups: PortalSearchGroup[];
+}
+
 export type TaxonomyType = typeof TaxonomyType[keyof typeof TaxonomyType];
 
 
@@ -33,14 +80,12 @@ export const TaxonomyType = {
 
 export interface TaxonomyItem {
   id: number;
-  kind: PostKind;
   type: TaxonomyType;
   name: string;
   createdAt: string;
 }
 
 export interface TaxonomyInput {
-  kind: PostKind;
   type: TaxonomyType;
   /**
      * @minLength 2
@@ -377,13 +422,22 @@ export interface MySupportRequest {
   updatedAt: string;
 }
 
+export type RoadmapStatus = typeof RoadmapStatus[keyof typeof RoadmapStatus];
+
+
+export const RoadmapStatus = {
+  planned: 'planned',
+  in_progress: 'in_progress',
+  available: 'available',
+} as const;
+
 export interface PublicRoadmapSuggestion {
   id: number;
   title: string;
   /** @nullable */
   categoryName: string | null;
-  message: string;
-  status: SupportRequestStatus;
+  description: string;
+  status: RoadmapStatus;
   approvedAt: string;
 }
 
@@ -395,6 +449,18 @@ export const AdminSupportRequestRequestType = {
   suggestion: 'suggestion',
 } as const;
 
+/**
+ * @nullable
+ */
+export type AdminSupportRequestRoadmapStatus = typeof AdminSupportRequestRoadmapStatus[keyof typeof AdminSupportRequestRoadmapStatus] | null;
+
+
+export const AdminSupportRequestRoadmapStatus = {
+  planned: 'planned',
+  in_progress: 'in_progress',
+  available: 'available',
+} as const;
+
 export interface AdminSupportRequest {
   id: number;
   /** @pattern ^[0-9]{12}$ */
@@ -403,6 +469,12 @@ export interface AdminSupportRequest {
   subjectName: string;
   /** @nullable */
   title: string | null;
+  /** @nullable */
+  roadmapTitle: string | null;
+  /** @nullable */
+  roadmapDescription: string | null;
+  /** @nullable */
+  roadmapStatus: AdminSupportRequestRoadmapStatus;
   /** @nullable */
   categoryName: string | null;
   /** @nullable */
@@ -429,13 +501,42 @@ export interface SupportRequestStatusUpdate {
 }
 
 export interface SupportRequestRoadmapApprovalInput {
-  approved: boolean;
+  approved?: boolean;
+  /**
+     * @minLength 4
+     * @maxLength 220
+     */
+  roadmapTitle?: string;
+  /**
+     * @minLength 10
+     * @maxLength 5000
+     */
+  roadmapDescription?: string;
+  roadmapStatus?: RoadmapStatus;
 }
+
+/**
+ * @nullable
+ */
+export type SupportRequestRoadmapApprovalResponseRoadmapStatus = typeof SupportRequestRoadmapApprovalResponseRoadmapStatus[keyof typeof SupportRequestRoadmapApprovalResponseRoadmapStatus] | null;
+
+
+export const SupportRequestRoadmapApprovalResponseRoadmapStatus = {
+  planned: 'planned',
+  in_progress: 'in_progress',
+  available: 'available',
+} as const;
 
 export interface SupportRequestRoadmapApprovalResponse {
   id: number;
   /** @nullable */
   approvedAt: string | null;
+  /** @nullable */
+  roadmapTitle: string | null;
+  /** @nullable */
+  roadmapDescription: string | null;
+  /** @nullable */
+  roadmapStatus: SupportRequestRoadmapApprovalResponseRoadmapStatus;
 }
 
 export interface SupportRequestCounts {
@@ -700,7 +801,17 @@ kind?: PostKind;
 search?: string;
 };
 
-export type ListTaxonomyParams = {
-kind: PostKind;
+export type SearchPortalParams = {
+/**
+ * @minLength 2
+ * @maxLength 120
+ */
+q: string;
+area?: SearchArea;
+/**
+ * @minimum 1
+ * @maximum 1000
+ */
+page?: number;
 };
 

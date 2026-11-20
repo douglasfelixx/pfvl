@@ -43,7 +43,7 @@ export const termsOfUseSections = [
     title: "5. Cancelamento e direito de arrependimento",
     paragraphs: [
       "O usuário poderá solicitar o cancelamento pelos canais disponibilizados pelo PFVL.",
-      "As condições e os efeitos do cancelamento serão apresentados antes da contratação, incluindo o encerramento de cobranças futuras e a duração do acesso ao período já contratado, quando aplicável.",
+      "As condições e os efeitos do cancelamento serão apresentados antes da contratação, incluindo o encerramento de cobranças futuras e o acesso durante o período já contratado, quando aplicável.",
       "Nas contratações realizadas pela internet, será respeitado o direito de arrependimento previsto no artigo 49 do Código de Defesa do Consumidor, no prazo legal de sete dias, contado conforme a hipótese aplicável.",
       "Quando exercido esse direito, os valores pagos serão restituídos nos termos da legislação.",
       "Estas condições não afastam outros direitos de cancelamento, restituição ou reparação previstos em lei.",

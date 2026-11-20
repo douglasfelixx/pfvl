@@ -5,14 +5,14 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { SupportRequestStatus } from './supportRequestStatus';
+import type { RoadmapStatus } from './roadmapStatus';
 
 export interface PublicRoadmapSuggestion {
   id: number;
   title: string;
   /** @nullable */
   categoryName: string | null;
-  message: string;
-  status: SupportRequestStatus;
+  description: string;
+  status: RoadmapStatus;
   approvedAt: Date;
 }

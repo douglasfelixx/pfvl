@@ -27,7 +27,11 @@ function ProfileContent() {
     query: { enabled: isSignedIn === true, queryKey: getGetCurrentUserQueryKey() },
   });
   const posts = useListMyCommunityPosts({
-    query: { enabled: isSignedIn === true, queryKey: getListMyCommunityPostsQueryKey() },
+    query: {
+      enabled: isSignedIn === true,
+      queryKey: getListMyCommunityPostsQueryKey(),
+      refetchOnWindowFocus: true,
+    },
   });
   const testimonial = useGetMyTestimonial({
     query: { enabled: isSignedIn === true, queryKey: getGetMyTestimonialQueryKey() },
@@ -76,9 +80,9 @@ function ProfileContent() {
         queryClient.invalidateQueries({ queryKey: getGetMyTestimonialQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListTestimonialsQueryKey() }),
       ]);
-      setTestimonialMessage(translateText("Depoimento enviado para revisão."));
+      setTestimonialMessage(translateText("Avaliação enviada para revisão."));
     } catch {
-      setTestimonialError(translateText("Não foi possível enviar seu depoimento. Tente novamente."));
+      setTestimonialError(translateText("Não foi possível enviar sua avaliação. Tente novamente."));
     }
   }
 
@@ -89,9 +93,9 @@ function ProfileContent() {
   const memberPosts = posts.data ?? [];
   const currentTestimonial = testimonial.data?.testimonial;
   const statusText = currentTestimonial?.status === "approved"
-    ? "Aprovado"
+    ? "Aprovada"
     : currentTestimonial?.status === "rejected"
-      ? "Não aprovado"
+      ? "Recusada"
       : currentTestimonial ? "Em análise" : "";
 
   return (
@@ -142,7 +146,7 @@ function ProfileContent() {
                     <div className="profile-post-meta"><span>{post.category}</span><time>{formatDate(post.createdAt)}</time></div>
                     <Link href={`/community/${post.id}`} className="profile-post-title">{post.title}</Link>
                     {post.excerpt && <p>{post.excerpt}</p>}
-                    <span className="profile-post-comments"><MessageCircle size={14} />{post.commentCount} {translateText("respostas")}</span>
+                    <span className="profile-post-comments"><MessageCircle size={14} />{post.commentCount} {translateText(post.commentCount === 1 ? "resposta" : "respostas")}</span>
                   </article>
                 ))}
               </div>
@@ -172,14 +176,14 @@ function ProfileContent() {
 
           <section className="profile-panel testimonial-form-panel">
             <p className="profile-eyebrow">{translateText("Sua experiência")}</p>
-            <h2>{translateText("Conte como o PFVL ajuda.")}</h2>
-            <p className="profile-muted">{translateText("Seu depoimento será analisado antes de aparecer na página inicial.")}</p>
+            <h2>{translateText("Como foi sua experiência com o PFVL?")}</h2>
+            <p className="profile-muted">{translateText("Sua avaliação será analisada antes de aparecer na página inicial.")}</p>
             {testimonial.isLoading ? <LoadingState rows={1} /> : testimonial.isError ? <QueryError retry={() => void testimonial.refetch()} /> : (
               <>
                 {currentTestimonial && (
                   <div className={`testimonial-status status-${currentTestimonial.status}`} data-testid="status-my-testimonial">
                     <span>{translateText(statusText)}</span>
-                    <p>{currentTestimonial.status === "pending" ? translateText("A equipe está revisando seu depoimento.") : currentTestimonial.status === "approved" ? translateText("Seu depoimento está publicado na página inicial.") : translateText("Você pode atualizar o texto e reenviar para revisão.")}</p>
+                    <p>{currentTestimonial.status === "pending" ? translateText("A equipe está revisando sua avaliação.") : currentTestimonial.status === "approved" ? translateText("Sua avaliação está publicada na página inicial.") : translateText("Você pode atualizar o texto e reenviar para revisão.")}</p>
                   </div>
                 )}
                 <form onSubmit={(event) => void submitTestimonial(event)} className="testimonial-form">
@@ -206,9 +210,10 @@ function ProfileContent() {
                       ))}
                     </div>
                   </fieldset>
-                  <label htmlFor="testimonial-body">{translateText("Seu depoimento")}</label>
-                  <textarea id="testimonial-body" data-testid="input-testimonial-body" value={body} onChange={(event) => setBody(event.target.value)} minLength={10} maxLength={1500} required rows={5} placeholder={translateText("Compartilhe sua experiência com suas próprias palavras.")} />
-                  <div className="testimonial-form-foot"><span>{body.length}/1500</span><button className="auth-header-primary" type="submit" data-testid="button-submit-testimonial" disabled={upsertTestimonial.isPending || rating < 1 || body.trim().length < 10}>{upsertTestimonial.isPending ? translateText("Enviando…") : translateText(currentTestimonial ? "Atualizar depoimento" : "Enviar depoimento")}</button></div>
+                  <label htmlFor="testimonial-body">{translateText("Sua avaliação")}</label>
+                  <p className="mt-1 text-xs text-muted-foreground" id="testimonial-body-guidance">{translateText("Escreva entre 10 e 1.500 caracteres.")}</p>
+                  <textarea aria-describedby="testimonial-body-guidance" id="testimonial-body" data-testid="input-testimonial-body" value={body} onChange={(event) => setBody(event.target.value)} minLength={10} maxLength={1500} required rows={5} placeholder={translateText("Compartilhe sua experiência com suas próprias palavras.")} />
+                  <div className="testimonial-form-foot"><span>{body.length}/1500</span><button className="auth-header-primary" type="submit" data-testid="button-submit-testimonial" disabled={upsertTestimonial.isPending || rating < 1 || body.trim().length < 10}>{upsertTestimonial.isPending ? translateText("Enviando…") : translateText(currentTestimonial ? "Atualizar avaliação" : "Enviar avaliação")}</button></div>
                 </form>
               </>
             )}
@@ -222,5 +227,13 @@ function ProfileContent() {
 }
 
 export function ProfilePage({ returnTo = "/profile" }: { returnTo?: string }) {
-  return <AuthActionGate returnTo={returnTo}><ProfileContent /></AuthActionGate>;
+  return (
+    <AuthActionGate
+      returnTo={returnTo}
+      signedOutTitle="Entre para acessar seu perfil."
+      signedOutDescription="Entre na sua conta para consultar seu perfil e suas publicações."
+    >
+      <ProfileContent />
+    </AuthActionGate>
+  );
 }

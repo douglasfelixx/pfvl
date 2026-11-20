@@ -5,7 +5,6 @@ import { Link } from 'wouter';
 import { AuthActionGate } from '@/components/auth-ui';
 import { ProductAppLink } from '@/components/homepage-composition';
 import { PageHeading, Surface } from '@/components/portal-ui';
-import { termsOfUseSections } from '@/content/terms-of-use';
 import { translateText } from '@/lib/i18n';
 
 export function PresentationPage() {
@@ -198,40 +197,12 @@ function TermsOfUsePage() {
       <PageHeading
         eyebrow={translateText("Informações legais")}
         title={translateText("Termos de Uso.")}
-        description={translateText("Conheça as condições para utilizar o site e a aplicação PFVL.")}
+        description={translateText("O conteúdo oficial será disponibilizado após aprovação da redação jurídica, da identificação empresarial e das datas de versão.")}
       />
-      <Surface className="terms-update-card mt-6">
-        <p>
-          <strong>{translateText("Última atualização:")}</strong>{" "}
-          {translateText("A definir após aprovação dos Termos de Uso.")}
-        </p>
+      <Surface className="institutional-notice mt-6">
+        <h2>{translateText("Documento em preparação.")}</h2>
+        <p>{translateText("O texto oficial será publicado após revisão e confirmação dos dados da Orbefin Sistemas Financeiros. Não estamos exibindo uma política ou termos provisórios como se fossem documentos válidos.")}</p>
       </Surface>
-
-      <div className="terms-document-layout mt-4">
-        <Surface className="terms-index">
-          <nav aria-label={translateText("Índice dos Termos de Uso")}>
-            <h2>{translateText("Índice")}</h2>
-            <ol>
-              {termsOfUseSections.map((section) => (
-                <li key={section.id}>
-                  <a href={`#${section.id}`}>{section.title}</a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        </Surface>
-
-        <article className="terms-document">
-          {termsOfUseSections.map((section) => (
-            <section className="terms-section" id={section.id} key={section.id}>
-              <h2>{section.title}</h2>
-              {section.paragraphs.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </section>
-          ))}
-        </article>
-      </div>
     </div>
   );
 }
@@ -240,81 +211,14 @@ function PrivacyPolicyPage() {
   return (
     <div className="page-enter institutional-page">
       <PageHeading
-        eyebrow="Informações legais"
+        eyebrow={translateText("Informações legais")}
         title={translateText("Política de Privacidade")}
-        description={translateText("Entenda como a Orbefin Sistemas Financeiros trata seus dados pessoais no site e na aplicação PFVL, por que essas informações são utilizadas e como exercer seus direitos.")}
+        description={translateText("O conteúdo oficial será disponibilizado após aprovação da redação jurídica, da identificação empresarial e das datas de versão.")}
       />
-
-      <div className="mt-6 space-y-4">
-        <Surface className="privacy-summary-card border-[#233a59]/20">
-          <h2 className="font-display text-xl font-bold text-[#012140]">
-            {translateText("Dúvidas sobre seus dados pessoais?")}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-[#536272]">
-            {translateText("Entre em contato pelo e-mail")}{" "}
-            <a className="font-semibold text-[#233a59] underline underline-offset-2" href="mailto:privacidade@orbefin.com.br">
-              privacidade@orbefin.com.br
-            </a>.
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[#536272]">
-            {translateText("Você não precisa estar conectado à sua conta para utilizar esse canal.")}
-          </p>
-          <p className="mt-5 border-t border-[#233a59]/10 pt-3 text-xs text-[#687687]">
-            <strong>{translateText("Última atualização:")}</strong>{" "}
-            {translateText("A definir após aprovação da política completa.")}
-          </p>
-        </Surface>
-
-        <Surface className="privacy-tech-card">
-          <h2 className="font-display text-xl font-bold text-[#012140]">
-            {translateText("Tecnologias utilizadas, finalidades, duração e opções de gerenciamento")}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-[#536272]">
-            {translateText("Este resumo descreve as tecnologias identificadas no código do portal. Os prazos exatos de retenção ainda precisam ser confirmados nas configurações e condições de cada fornecedor antes da aprovação da política completa.")}
-          </p>
-
-          <dl className="privacy-tech-list mt-5">
-            <div>
-              <dt>{translateText("Autenticação — Clerk")}</dt>
-              <dd>{translateText("Usada para criar e validar contas e sessões. O perfil PFVL recebe o identificador da conta e, na criação, o e-mail verificado e o nome de exibição.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Banco de dados — Neon")}</dt>
-              <dd>{translateText("Armazena o perfil da conta, preferência de idioma e dados que a pessoa publica ou envia no portal, como publicações, comentários, solicitações de atendimento, sugestões privadas, votos, depoimentos e notificações.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Imagens e vídeos — Cloudflare R2")}</dt>
-              <dd>{translateText("Armazena arquivos enviados para publicações e mídias do site. Mídias vinculadas a conteúdo publicado podem ser exibidas publicamente no portal.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Hospedagem da aplicação — Vercel")}</dt>
-              <dd>{translateText("Hospeda a aplicação pública e a API. Os registros técnicos do aplicativo incluem identificador da requisição, método, caminho sem parâmetros e código de resposta; cookies e cabeçalhos de autorização são ocultados pelo logger da aplicação.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Fontes — Google Fonts")}</dt>
-              <dd>{translateText("O navegador solicita arquivos de fonte aos domínios do Google Fonts. Essa conexão pode incluir dados técnicos normais da requisição, como endereço IP e informações do navegador; a função de tradução não envia dados para o Google.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Tradução da interface — dicionário local do aplicativo")}</dt>
-              <dd>{translateText("Os textos fixos da interface em português e inglês usam um dicionário incluído no próprio aplicativo, processado no navegador; não há plugin ou serviço externo de tradução. A escolha de idioma fica no armazenamento local do navegador e, quando salva no perfil, também é vinculada à conta no banco. Publicações e comentários não são traduzidos.")}</dd>
-            </div>
-            <div>
-              <dt>{translateText("Cookies, e-mail, análise e preferências")}</dt>
-              <dd>{translateText("Os links de contato abrem o aplicativo de e-mail da pessoa; não há serviço de envio de e-mail nem ferramenta de análise ou publicidade no código. O Clerk usa cookies necessários para autenticação. O menu lateral do painel administrativo pode gravar um cookie próprio de preferência por até sete dias somente após a pessoa aceitar cookies. A escolha feita no aviso e o idioma ficam no armazenamento local do navegador. O aviso permite aceitar os cookies disponíveis ou continuar somente com os necessários; no momento, não há cookies opcionais de análise ou publicidade.")}</dd>
-            </div>
-          </dl>
-
-          <div className="privacy-retention-note mt-5">
-            <h3>{translateText("Retenção e gerenciamento")}</h3>
-            <p>{translateText("O código não define exclusão automática por prazo. A duração dos dados da conta, cópias de segurança e registros das plataformas precisa ser confirmada com cada fornecedor. A pessoa pode alterar o idioma no perfil, sair da conta, limpar os dados do navegador e solicitar informações ou providências pelo canal de privacidade, sem fazer login.")}</p>
-          </div>
-        </Surface>
-
-        <Surface className="institutional-notice">
-          <h2>{translateText("Política completa")}</h2>
-          <p>{translateText("O índice e as seções completas serão publicados depois que o texto final for revisado e aprovado.")}</p>
-        </Surface>
-      </div>
+      <Surface className="institutional-notice mt-6">
+        <h2>{translateText("Documento em preparação.")}</h2>
+        <p>{translateText("O texto oficial será publicado após revisão e confirmação dos dados da Orbefin Sistemas Financeiros. Não estamos exibindo uma política ou termos provisórios como se fossem documentos válidos.")}</p>
+      </Surface>
     </div>
   );
 }

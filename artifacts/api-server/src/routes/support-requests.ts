@@ -329,10 +329,10 @@ router.get(
     const suggestions = await db
       .select({
         id: supportRequestsTable.id,
-        title: supportRequestsTable.title,
+        title: supportRequestsTable.roadmapTitle,
         categoryName: supportRequestsTable.categoryName,
-        message: supportRequestsTable.message,
-        status: supportRequestsTable.status,
+        description: supportRequestsTable.roadmapDescription,
+        status: supportRequestsTable.roadmapStatus,
         approvedAt: supportRequestsTable.approvedAt,
       })
       .from(supportRequestsTable)
@@ -340,6 +340,9 @@ router.get(
         and(
           eq(supportRequestsTable.requestType, "suggestion"),
           isNotNull(supportRequestsTable.approvedAt),
+          isNotNull(supportRequestsTable.roadmapTitle),
+          isNotNull(supportRequestsTable.roadmapDescription),
+          isNotNull(supportRequestsTable.roadmapStatus),
         ),
       )
       .orderBy(asc(supportRequestsTable.approvedAt), asc(supportRequestsTable.id));
@@ -381,6 +384,11 @@ router.post(
   "/my/suggestions",
   requirePfvlUser,
   async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const rawTitle = (req.body as { title?: unknown } | null)?.title;
+    if (typeof rawTitle !== "string" || rawTitle.trim().length < 4) {
+      res.status(400).json({ error: "Informe um título com pelo menos 4 caracteres." });
+      return;
+    }
     const parsed = CreateMySuggestionBody.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
@@ -535,16 +543,25 @@ router.patch(
     }
     if (parsed.data.active !== undefined) changes.active = parsed.data.active;
     try {
-      const [updated] = await db
-        .update(supportRequestCategoriesTable)
-        .set(changes)
-        .where(
-          and(
-            eq(supportRequestCategoriesTable.id, params.data.categoryId),
-            eq(supportRequestCategoriesTable.subjectId, subject.id),
-          ),
-        )
-        .returning();
+      const updated = await db.transaction(async (tx) => {
+        const [renamed] = await tx
+          .update(supportRequestCategoriesTable)
+          .set(changes)
+          .where(
+            and(
+              eq(supportRequestCategoriesTable.id, params.data.categoryId),
+              eq(supportRequestCategoriesTable.subjectId, subject.id),
+            ),
+          )
+          .returning();
+        if (renamed && changes.name) {
+          await tx
+            .update(supportRequestsTable)
+            .set({ categoryName: changes.name })
+            .where(eq(supportRequestsTable.categoryId, renamed.id));
+        }
+        return renamed;
+      });
       if (!updated) {
         res.status(404).json({ error: "Categoria não encontrada" });
         return;
@@ -680,6 +697,9 @@ router.get(
         requestType: supportRequestsTable.requestType,
           subjectName: supportRequestsTable.subjectName,
         title: supportRequestsTable.title,
+          roadmapTitle: supportRequestsTable.roadmapTitle,
+          roadmapDescription: supportRequestsTable.roadmapDescription,
+          roadmapStatus: supportRequestsTable.roadmapStatus,
         categoryName: supportRequestsTable.categoryName,
           approvedAt: supportRequestsTable.approvedAt,
           requesterName: supportRequestsTable.requesterName,
@@ -754,6 +774,9 @@ router.patch(
           requestType: supportRequestsTable.requestType,
           subjectName: supportRequestsTable.subjectName,
           title: supportRequestsTable.title,
+          roadmapTitle: supportRequestsTable.roadmapTitle,
+          roadmapDescription: supportRequestsTable.roadmapDescription,
+          roadmapStatus: supportRequestsTable.roadmapStatus,
           categoryName: supportRequestsTable.categoryName,
           approvedAt: supportRequestsTable.approvedAt,
           requesterName: supportRequestsTable.requesterName,
@@ -821,6 +844,9 @@ router.patch(
           id: supportRequestsTable.id,
           requestType: supportRequestsTable.requestType,
           title: supportRequestsTable.title,
+          roadmapTitle: supportRequestsTable.roadmapTitle,
+          roadmapDescription: supportRequestsTable.roadmapDescription,
+          roadmapStatus: supportRequestsTable.roadmapStatus,
           requesterUserId: supportRequestsTable.requesterUserId,
           approvedAt: supportRequestsTable.approvedAt,
         })
@@ -830,21 +856,53 @@ router.patch(
       if (!existing || existing.requestType !== "suggestion") return null;
 
       const wasApproved = existing.approvedAt !== null;
-      if (wasApproved === parsed.data.approved) {
-        return { id: existing.id, approvedAt: existing.approvedAt };
+      const roadmapTitle = parsed.data.roadmapTitle?.trim() ?? existing.roadmapTitle;
+      const roadmapDescription =
+        parsed.data.roadmapDescription?.trim() ?? existing.roadmapDescription;
+      const roadmapStatus =
+        parsed.data.roadmapStatus ?? existing.roadmapStatus ?? "planned";
+      const isApproved = parsed.data.approved ?? wasApproved;
+      if (
+        isApproved &&
+        (!roadmapTitle || !roadmapDescription || !roadmapStatus)
+      ) {
+        return { kind: "missing_public_copy" as const };
+      }
+      if (
+        parsed.data.roadmapTitle !== undefined &&
+        (roadmapTitle?.length ?? 0) < 4
+      ) {
+        return { kind: "invalid_title" as const };
+      }
+      if (
+        parsed.data.roadmapDescription !== undefined &&
+        (roadmapDescription?.length ?? 0) < 10
+      ) {
+        return { kind: "invalid_description" as const };
       }
 
-      const approvedAt = parsed.data.approved ? new Date() : null;
+      const approvedAt = isApproved
+        ? existing.approvedAt ?? new Date()
+        : null;
       const [updated] = await tx
         .update(supportRequestsTable)
-        .set({ approvedAt, updatedAt: new Date() })
+        .set({
+          roadmapTitle,
+          roadmapDescription,
+          roadmapStatus,
+          approvedAt,
+          updatedAt: new Date(),
+        })
         .where(eq(supportRequestsTable.id, existing.id))
         .returning({
           id: supportRequestsTable.id,
           approvedAt: supportRequestsTable.approvedAt,
+          roadmapTitle: supportRequestsTable.roadmapTitle,
+          roadmapDescription: supportRequestsTable.roadmapDescription,
+          roadmapStatus: supportRequestsTable.roadmapStatus,
         });
 
-      if (existing.requesterUserId !== null) {
+      if (existing.requesterUserId !== null && wasApproved !== isApproved) {
         await tx
           .insert(notificationsTable)
           .values({
@@ -860,14 +918,26 @@ router.patch(
           })
           .onConflictDoNothing();
       }
-      return updated ?? null;
+      return updated ? { kind: "updated" as const, result: updated } : null;
     });
 
     if (!result) {
       res.status(404).json({ error: "Sugestão não encontrada" });
       return;
     }
-    res.json(UpdateAdminSupportRequestRoadmapResponse.parse(result));
+    if (result.kind === "missing_public_copy") {
+      res.status(400).json({ error: "Preencha o título, a descrição pública e o estágio antes de publicar." });
+      return;
+    }
+    if (result.kind === "invalid_title") {
+      res.status(400).json({ error: "O título público deve ter pelo menos 4 caracteres." });
+      return;
+    }
+    if (result.kind === "invalid_description") {
+      res.status(400).json({ error: "A descrição pública deve ter pelo menos 10 caracteres." });
+      return;
+    }
+    res.json(UpdateAdminSupportRequestRoadmapResponse.parse(result.result));
   },
 );
 

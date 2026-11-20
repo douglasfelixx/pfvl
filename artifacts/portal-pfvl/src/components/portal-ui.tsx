@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { ArrowRight, CircleHelp, RefreshCw, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
 import { getLocale, translateText } from '@/lib/i18n';
+import { richContentToPlainText } from '@/components/rich-text-content';
 import type { Post } from '@workspace/api-client-react';
 import planningCover from '../assets/posts/pfvl-cover-planning.jpg';
 import investingCover from '../assets/posts/pfvl-cover-investing.jpg';
@@ -115,6 +116,7 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
   const detailHref = `${detailRoot}/${post.id}`;
   const coverImageUrl = getPostCoverImage(post);
   const wasEdited = new Date(post.updatedAt).getTime() > new Date(post.createdAt).getTime();
+  const excerpt = post.excerpt || richContentToPlainText(post.body);
   return (
     <article className="post-card group">
       {coverImageUrl && !compact && (
@@ -141,11 +143,13 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
           {post.title}
         </h3>
       </Link>
-      <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-muted-foreground">{post.excerpt || post.body}</p>
+      <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-muted-foreground">{excerpt}</p>
       <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-3">
          <span className="text-[11px] text-muted-foreground">{translateText('Por')} <strong className="text-foreground">{post.authorName}</strong></span>
         <Link href={detailHref} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary">
-           {post.kind === 'forum' ? `${post.commentCount} ${translateText('comentários')}` : translateText('Ler conteúdo')}
+            {post.kind === 'forum'
+              ? `${post.commentCount} ${translateText(post.commentCount === 1 ? 'comentário' : 'comentários')}`
+              : translateText('Ler conteúdo')}
           <ArrowRight size={13} />
         </Link>
       </div>

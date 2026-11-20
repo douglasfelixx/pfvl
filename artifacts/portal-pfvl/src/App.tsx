@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { getGetPostQueryKey, useGetPost } from '@workspace/api-client-react';
 import {
   BarChart3,
   BookOpen,
@@ -9,6 +10,7 @@ import {
   Menu,
   MessageCircle,
   Newspaper,
+  Search,
   X,
 } from 'lucide-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
@@ -38,7 +40,9 @@ import {
 import { NotificationsPage } from '@/pages/notifications-page';
 import { MySupportRequestsPage } from '@/pages/my-support-requests-page';
 import { ProfilePage } from '@/pages/profile-page';
+import { SearchPage } from '@/pages/search-page';
 import { I18nProvider, translateText, useI18n, type Locale } from '@/lib/i18n';
+import { richContentToPlainText } from '@/components/rich-text-content';
 import {
   AboutPage,
   ContactPage,
@@ -67,31 +71,35 @@ const navigation = [
 const pageMetadata = [
   {
     match: /^\/$/,
-    title: 'PFVL | Planejamento financeiro para a vida real',
-    description:
-      'Entenda seu presente, organize suas finanças e planeje o futuro que você quer construir com o PFVL.',
+    title: 'PFVL | Planejamento Financeiro de Vida Longa',
+    description: 'Organize suas finanças, acompanhe o que foi planejado e transforme seus objetivos em planos com valores, prazos e aportes.',
+  },
+  {
+    match: /^\/search$/,
+    title: 'Busca geral | PFVL',
+    description: 'Encontre conteúdos, conversas da comunidade, tutoriais e registros da sua conta no portal PFVL.',
   },
   {
     match: /^\/community(?:\/\d+)?$/,
-    title: 'Comunidade PFVL | Conversas sobre finanças',
+    title: 'Comunidade | PFVL',
     description:
       'Leia dúvidas e experiências sobre planejamento financeiro, investimentos, Open Finance e metas.',
   },
   {
     match: /^\/blog(?:\/\d+)?$/,
-    title: 'Guias e artigos | PFVL',
+    title: 'Conteúdos | PFVL',
     description:
       'Conteúdos da equipe PFVL sobre planejamento, organização, objetivos, indicadores e recursos do sistema.',
   },
   {
     match: /^\/news(?:\/\d+)?$/,
-    title: 'Novidades PFVL | Atualizações do portal',
+    title: 'Novidades | PFVL',
     description:
       'Acompanhe atualizações, novos recursos e notícias importantes do portal PFVL.',
   },
   {
     match: /^\/indicators$/,
-    title: 'Indicadores econômicos | PFVL',
+    title: 'Indicadores | PFVL',
     description:
       'Consulte referências econômicas como CDI, Selic, IPCA e INPC com fonte e data de atualização.',
   },
@@ -112,63 +120,111 @@ const pageMetadata = [
     description: 'Acompanhe os protocolos, status e atualizações da equipe sobre suas solicitações de suporte.',
   },
   {
-    match: /^\/help(?:\/request|\/\d+)?$/,
+    match: /^\/help(?:\/\d+)?$/,
     title: 'Central de Ajuda | PFVL',
     description: 'Encontre tutoriais e orientações práticas para usar o sistema PFVL.',
   },
   {
     match: /^\/apresentacao$/,
-    title: 'Apresentação do PFVL | Orbefin',
+    title: 'Apresentação | PFVL',
     description: 'Conheça o PFVL e veja como o produto conecta contas, compromissos e objetivos.',
   },
   {
     match: /^\/sobre$/,
-    title: 'Conheça o PFVL | Orbefin',
+    title: 'Sobre | PFVL',
     description: 'Organização para o presente, planejamento para o futuro. Conheça o PFVL e a Orbefin Sistemas Financeiros, empresa responsável pelo produto.',
   },
   {
     match: /^\/contato$/,
-    title: 'Contato | Orbefin Sistemas Financeiros',
+    title: 'Contato | PFVL',
     description: 'Informações de contato oficiais da Orbefin Sistemas Financeiros.',
   },
   {
     match: /^\/privacidade$/,
-    title: 'Privacidade | PFVL',
+    title: 'Política de Privacidade | PFVL',
     description: 'Informações sobre privacidade no PFVL.',
   },
   {
     match: /^\/termos$/,
-    title: 'Termos de uso | PFVL',
+    title: 'Termos de Uso | PFVL',
     description: 'Condições de uso do PFVL.',
+  },
+  {
+    match: /^\/help\/request$/,
+    title: 'Registrar solicitação | PFVL',
+    description: 'Envie sua dúvida ou relate uma dificuldade e acompanhe o andamento e as respostas da equipe.',
+  },
+  {
+    match: /^\/suggestions$/,
+    title: 'Sugestões | PFVL',
+    description: 'Compartilhe ideias para melhorar o PFVL e acompanhe, em um espaço privado, as respostas da equipe e o andamento das suas sugestões.',
+  },
+  {
+    match: /^\/notifications$/,
+    title: 'Notificações | PFVL',
+    description: 'Acompanhe novidades, publicações, respostas e mudanças nas sugestões do PFVL.',
+  },
+  {
+    match: /^\/profile$/,
+    title: 'Meu perfil | PFVL',
+    description: 'Acesse seus dados, publicações, preferências e avaliações.',
+  },
+  {
+    match: /^\/admin(?:\/.*)?$/,
+    title: 'Painel | PFVL',
+    description: 'Área administrativa do portal PFVL.',
+  },
+  {
+    match: /^\/sign-in(?:\/.*)?$/,
+    title: 'Entrar | PFVL',
+    description: 'Acesse sua conta para participar da comunidade e acompanhar suas solicitações e sugestões.',
+  },
+  {
+    match: /^\/sign-up(?:\/.*)?$/,
+    title: 'Criar conta | PFVL',
+    description: 'Acesse sua conta para participar da comunidade e acompanhar suas solicitações e sugestões.',
   },
 ];
 
 function SeoManager() {
   const [location] = useLocation();
   const { locale } = useI18n();
+  const route = location.split('?')[0] || '/';
+  const detailId = route.match(/^\/(?:community|blog|news|help)\/(\d+)$/)?.[1];
+  const postId = detailId ? Number(detailId) : 0;
+  const post = useGetPost(postId, {
+    query: {
+      enabled: Boolean(detailId && Number.isFinite(postId) && postId > 0),
+      queryKey: getGetPostQueryKey(postId),
+      retry: false,
+    },
+  });
 
   useEffect(() => {
-    const route = location.split('?')[0] || '/';
     const metadata = pageMetadata.find((page) => page.match.test(route)) ?? {
       title: 'Página não encontrada | PFVL',
       description: 'A página solicitada não foi encontrada no portal PFVL.',
     };
 
+    const title = post.data ? `${post.data.title} | PFVL` : metadata.title;
+    const description = post.data
+      ? (post.data.excerpt || richContentToPlainText(post.data.body)).replace(/\s+/g, ' ').slice(0, 157)
+      : metadata.description;
     document.documentElement.lang = locale;
-    document.title = translateText(metadata.title, locale);
+    document.title = translateText(title, locale);
 
     const setMetaContent = (selector: string, content: string) => {
       const element = document.head.querySelector<HTMLMetaElement>(selector);
       if (element) element.content = content;
     };
 
-    const title = translateText(metadata.title, locale);
-    const description = translateText(metadata.description, locale);
-    setMetaContent('meta[name="description"]', description);
-    setMetaContent('meta[property="og:title"]', title);
-    setMetaContent('meta[property="og:description"]', description);
-    setMetaContent('meta[name="twitter:title"]', title);
-    setMetaContent('meta[name="twitter:description"]', description);
+    const translatedTitle = translateText(title, locale);
+    const translatedDescription = translateText(description, locale);
+    setMetaContent('meta[name="description"]', translatedDescription);
+    setMetaContent('meta[property="og:title"]', translatedTitle);
+    setMetaContent('meta[property="og:description"]', translatedDescription);
+    setMetaContent('meta[name="twitter:title"]', translatedTitle);
+    setMetaContent('meta[name="twitter:description"]', translatedDescription);
 
     const siteUrl = import.meta.env.VITE_SITE_URL?.replace(/\/$/, '');
     const canonical = document.head.querySelector<HTMLLinkElement>(
@@ -188,7 +244,7 @@ function SeoManager() {
     } else if (canonical) {
       canonical.remove();
     }
-  }, [location, locale]);
+  }, [location, locale, post.data, route]);
 
   return null;
 }
@@ -200,6 +256,7 @@ function PortalShell({ children }: { children: ReactNode }) {
   const { locale, setLocale } = useI18n();
   const mobileLanguagePickerRef = useRef<HTMLDivElement>(null);
   const mobileLanguageTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const languageOptions = [
     { locale: 'pt-BR', country: 'BR', label: 'Português (Brasil)' },
     { locale: 'en-US', country: 'US', label: 'English (United States)' },
@@ -226,6 +283,28 @@ function PortalShell({ children }: { children: ReactNode }) {
     };
   }, [mobileLanguageOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMobileOpen(false);
+      menuTriggerRef.current?.focus();
+    };
+    const closeWhenWide = () => {
+      if (window.innerWidth > 1120) setMobileOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', closeWhenWide);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', closeWhenWide);
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
+
   return (
     <CookieConsentManager>
     <div className="app-shell">
@@ -240,6 +319,16 @@ function PortalShell({ children }: { children: ReactNode }) {
             />
           </Link>
           <div className="header-menu-controls">
+            <Link
+              aria-label={translateText('Buscar no PFVL')}
+              className={`header-search-link ${location === '/search' ? 'header-search-link-active' : ''}`}
+              data-testid="link-global-search"
+              href="/search"
+              title={translateText('Buscar no PFVL')}
+            >
+              <Search aria-hidden="true" size={18} />
+              <span>{translateText('Buscar')}</span>
+            </Link>
             <ul aria-label={translateText('Idioma')} className="language-switch">
               {languageOptions.map((option) => (
                 <li className="language-switch-item" key={option.locale}>
@@ -296,15 +385,17 @@ function PortalShell({ children }: { children: ReactNode }) {
             <AuthHeaderActions />
           </div>
           <button
+            aria-controls="primary-navigation"
             aria-expanded={mobileOpen}
             aria-label={translateText(mobileOpen ? 'Fechar menu' : 'Abrir menu')}
             className="menu-button"
             onClick={() => setMobileOpen((open) => !open)}
+            ref={menuTriggerRef}
             type="button"
           >
             {mobileOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
-          <nav aria-label={translateText('Navegação principal')} className={`primary-navigation ${mobileOpen ? 'primary-navigation-open' : ''}`}>
+          <nav aria-label={translateText('Navegação principal')} className={`primary-navigation ${mobileOpen ? 'primary-navigation-open' : ''}`} id="primary-navigation">
             {navigation.map((item) => {
               const active = item.href === '/' ? location === '/' : location.startsWith(item.href);
               const Icon = item.icon;
@@ -357,6 +448,7 @@ function RoutedContent() {
       <SeoManager />
       <Switch>
         <Route path="/" component={HomePage} />
+        <Route path="/search" component={SearchPage} />
         <Route path="/community/:postId" component={PostDetailPage} />
         <Route path="/community" component={CommunityPage} />
         <Route path="/blog/:postId" component={PostDetailPage} />
