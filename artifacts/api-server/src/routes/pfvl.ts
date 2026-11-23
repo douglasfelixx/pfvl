@@ -8,6 +8,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getAuth } from "@clerk/express";
 import { Router } from "express";
+import type { SQLWrapper } from "drizzle-orm";
 import {
   CloseAdminPollParams,
   CloseAdminPollResponse,
@@ -88,7 +89,6 @@ import {
   desc,
   db,
   eq,
-  ilike,
   inArray,
   notificationsTable,
   or,
@@ -207,7 +207,7 @@ async function activeNotificationRecipients(): Promise<number[]> {
 }
 
 function postHref(kind: string, postId: number): string {
-  if (kind === "blog") return `/blog/${postId}`;
+  if (kind === "blog") return `/content/${postId}`;
   if (kind === "news") return `/news/${postId}`;
   if (kind === "help") return `/help/${postId}`;
   return `/community/${postId}`;
@@ -256,6 +256,7 @@ function postResponse(post: PublicPostRow) {
   }
   return {
     ...post,
+    excerpt: postExcerptFromBody(post.body),
     coverImageUrl,
     videoUrl: post.videoUrl ?? null,
     tags: post.tags ?? [],
@@ -438,6 +439,20 @@ router.get("/site-media", async (_req: ExpressRequest, res: ExpressResponse): Pr
   );
 });
 
+const postSearchAccents = "áàâãäéèêëíìîïóòôõöúùûüç";
+const postSearchPlainLetters = "aaaaaeeeeiiiiooooouuuuc";
+
+function normalizePostSearch(value: string): string {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR");
+}
+
+function postSearchMatches(value: SQLWrapper, searchTerm: string) {
+  return sql`strpos(
+    translate(lower(coalesce(${value}, '')), ${postSearchAccents}, ${postSearchPlainLetters}),
+    ${searchTerm}
+  ) > 0`;
+}
+
 router.get("/posts", async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
   const parsed = ListPostsQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -450,13 +465,21 @@ router.get("/posts", async (req: ExpressRequest, res: ExpressResponse): Promise<
     conditions.push(eq(postsTable.kind, parsed.data.kind));
   }
   if (parsed.data.search?.trim()) {
-    const searchTerm = `%${parsed.data.search.trim()}%`;
+    const searchTerm = normalizePostSearch(parsed.data.search.trim());
+    const matchingTag = sql`EXISTS (
+      SELECT 1
+      FROM unnest(${postsTable.tags}) AS tag_value
+      WHERE strpos(
+        translate(lower(coalesce(${sql.raw("tag_value")}, '')), ${postSearchAccents}, ${postSearchPlainLetters}),
+        ${searchTerm}
+      ) > 0
+    )`;
     conditions.push(
       or(
-        ilike(postsTable.title, searchTerm),
-        ilike(postsTable.excerpt, searchTerm),
-        ilike(postsTable.body, searchTerm),
-        ilike(postsTable.category, searchTerm),
+        postSearchMatches(postsTable.title, searchTerm),
+        postSearchMatches(postsTable.body, searchTerm),
+        postSearchMatches(postsTable.category, searchTerm),
+        matchingTag,
       )!,
     );
   }

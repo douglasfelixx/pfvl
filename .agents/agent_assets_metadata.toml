@@ -294,3 +294,31 @@ mtime_ms = 1795209145102
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/46471d81-46fa-4325-99b8-ebfcc03231d6/4c552447-7d76-48eb-97b0-c7ac5740a273"
 storage_version_token = "1795209156146582"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "2L0QgSLvHjTcy2bjxvy73"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-20-atualizado.zip"
+type = "unspecified"
+title = "ZIP completo atualizado para GitHub"
+description = "Repositório completo com 349 arquivos rastreados, incluindo a migração do roadmap. Sem .git, node_modules, builds ou .env real."
+logical_id = "3350cab6-957e-402e-9192-02681d04f888"
+content_hash = "sha256:b754e465cd0b4264331e15297d7ad08507c2575c212ae819b7085f72156e09c4"
+size = 1144755
+mtime_ms = 1795210755909
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/3350cab6-957e-402e-9192-02681d04f888/6c35d005-587b-4b80-93b7-7d66a7129c19"
+storage_version_token = "1795210767325269"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "i6kZ0t3hE9rLNHJLDMwMY"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-23.zip"
+type = "unspecified"
+title = "Código completo do PFVL para GitHub"
+description = "ZIP do repositório atual pronto para extrair e enviar manualmente ao GitHub. Inclui o código e os arquivos rastreados; não inclui .git, dependências, builds nem arquivos pessoais anexados."
+logical_id = "1cbca63a-5037-451c-a7fd-224e61c189b3"
+content_hash = "sha256:8e76deb708a8d49a621df56c0f3276b1d2fe26f3988a07fd0dbfa8095e595670"
+size = 1166346
+mtime_ms = 1795395897244
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/1cbca63a-5037-451c-a7fd-224e61c189b3/b65ccf4f-bb9e-4aa8-a119-978a8674218c"
+storage_version_token = "1795395917657137"
+content_type = "application/octet-stream"

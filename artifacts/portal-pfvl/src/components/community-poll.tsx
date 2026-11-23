@@ -11,6 +11,14 @@ import { AuthActionGate } from "@/components/auth-ui";
 import { formatDate, LoadingState } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
 
+function voteLabel(count: number, vote: "positive" | "negative") {
+  const plural = count !== 1;
+  const word = vote === "positive"
+    ? plural ? "votos positivos" : "voto positivo"
+    : plural ? "votos negativos" : "voto negativo";
+  return `${count} ${translateText(word)}`;
+}
+
 export function CommunityPoll() {
   const client = useQueryClient();
   const query = useGetActivePoll({ query: { queryKey: getGetActivePollQueryKey() } });
@@ -50,14 +58,14 @@ export function CommunityPoll() {
         <>
           <h2 id="community-poll-title">{poll.question}</h2>
           {poll.details && <p className="community-poll-details">{poll.details}</p>}
-          <div className="community-poll-votes" aria-label={`${poll.likeCount} ${translateText("curtidas")} ${translateText("e")} ${poll.dislikeCount} ${translateText("não curtidas")}`}>
-            <span><ThumbsUp size={15} /> {poll.likeCount} <small>{translateText("curtidas")}</small></span>
-            <span><ThumbsDown size={15} /> {poll.dislikeCount} <small>{translateText("não curtidas")}</small></span>
+          <div className="community-poll-votes" aria-label={`${voteLabel(poll.likeCount, "positive")} ${translateText("e")} ${voteLabel(poll.dislikeCount, "negative")}`}>
+            <span><ThumbsUp size={15} /> <small>{voteLabel(poll.likeCount, "positive")}</small></span>
+            <span><ThumbsDown size={15} /> <small>{voteLabel(poll.dislikeCount, "negative")}</small></span>
           </div>
           <AuthActionGate
             returnTo="/community"
             signedOutTitle="Entre para votar na enquete."
-            signedOutDescription="Entre ou crie uma conta para registrar sua avaliação."
+            signedOutDescription="Entre ou crie uma conta para registrar seu voto."
           >
             <div className="community-poll-actions">
               <button
@@ -67,7 +75,7 @@ export function CommunityPoll() {
                 disabled={vote.isPending}
                 onClick={() => void castVote("like")}
                 type="button"
-              ><ThumbsUp size={16} /> {poll.userVote === "like" ? "Você curtiu" : "Curtir"}</button>
+              ><ThumbsUp size={16} /> {poll.userVote === "like" ? "Você votou a favor" : "Votar a favor"}</button>
               <button
                 aria-pressed={poll.userVote === "dislike"}
                 className={poll.userVote === "dislike" ? "community-vote-button selected" : "community-vote-button"}
@@ -75,7 +83,7 @@ export function CommunityPoll() {
                 disabled={vote.isPending}
                 onClick={() => void castVote("dislike")}
                 type="button"
-              ><ThumbsDown size={16} /> {poll.userVote === "dislike" ? "Você não curtiu" : "Não curtir"}</button>
+              ><ThumbsDown size={16} /> {poll.userVote === "dislike" ? "Você votou contra" : "Votar contra"}</button>
             </div>
           </AuthActionGate>
           {voteMessage && <p className="community-poll-message" role="alert">{voteMessage}</p>}

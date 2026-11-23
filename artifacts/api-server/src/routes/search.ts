@@ -106,7 +106,7 @@ function excerptAround(value: string, query: string): string {
 }
 
 function postPath(kind: string, postId: number): string {
-  if (kind === "blog") return `/blog/${postId}`;
+  if (kind === "blog") return `/content/${postId}`;
   if (kind === "news") return `/news/${postId}`;
   if (kind === "help") return `/help/${postId}`;
   return `/community/${postId}`;
@@ -130,7 +130,6 @@ function postSearchCondition(searchTerm: string) {
   )`;
   return or(
     fieldMatches(postsTable.title, searchTerm),
-    fieldMatches(postsTable.excerpt, searchTerm),
     fieldMatches(cleanBody, searchTerm),
     fieldMatches(postsTable.category, searchTerm),
     matchingTag,
@@ -148,7 +147,6 @@ async function searchPosts(
     .select({
       id: postsTable.id,
       title: postsTable.title,
-      excerpt: postsTable.excerpt,
       body: postsTable.body,
       category: postsTable.category,
       tags: postsTable.tags,
@@ -169,7 +167,7 @@ async function searchPosts(
 
   return rows.map((row) => {
     const tagText = row.tags.join(", ");
-    const matchedText = [row.excerpt, row.body, row.title, row.category, tagText]
+    const matchedText = [row.body, row.title, row.category, tagText]
       .find((value) => normalizeSearchText(stripMarkup(value)).includes(searchTerm)) ?? row.category;
     return {
       id: row.id,

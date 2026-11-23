@@ -4,19 +4,9 @@ import { Link } from 'wouter';
 import { getLocale, translateText } from '@/lib/i18n';
 import { richContentToPlainText } from '@/components/rich-text-content';
 import type { Post } from '@workspace/api-client-react';
-import planningCover from '../assets/posts/pfvl-cover-planning.jpg';
-import investingCover from '../assets/posts/pfvl-cover-investing.jpg';
-import communityCover from '../assets/posts/pfvl-cover-community.jpg';
 
-export function getPostCoverImage(post: Pick<Post, 'kind' | 'category' | 'coverImageUrl'>): string | null {
-  if (post.coverImageUrl) return post.coverImageUrl;
-  if (post.kind === 'forum') return communityCover;
-  if (post.kind === 'blog') {
-    return post.category.toLocaleLowerCase('pt-BR').includes('invest')
-      ? investingCover
-      : planningCover;
-  }
-  return null;
+export function getPostCoverImage(post: Pick<Post, 'coverImageUrl'>): string | null {
+  return post.coverImageUrl || null;
 }
 
 export function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
@@ -112,7 +102,7 @@ const postLabels: Record<string, string> = {
 };
 
 export function PostCard({ post, compact = false }: { post: Post; compact?: boolean }) {
-  const detailRoot = post.kind === 'forum' ? '/community' : `/${post.kind}`;
+  const detailRoot = post.kind === 'forum' ? '/community' : post.kind === 'blog' ? '/content' : `/${post.kind}`;
   const detailHref = `${detailRoot}/${post.id}`;
   const coverImageUrl = getPostCoverImage(post);
   const wasEdited = new Date(post.updatedAt).getTime() > new Date(post.createdAt).getTime();
@@ -125,7 +115,7 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
           className="post-cover-link mb-5 block overflow-hidden rounded-xl"
           href={detailHref}
         >
-          <img className="aspect-video w-full object-cover" src={coverImageUrl} alt="" width="1200" height="675" loading="lazy" />
+          <img className="aspect-video w-full bg-[#e8e8e8] object-contain" src={coverImageUrl} alt="" width="1200" height="675" loading="lazy" />
         </Link>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -146,8 +136,8 @@ export function PostCard({ post, compact = false }: { post: Post; compact?: bool
       <p className="mt-2 line-clamp-3 text-[13px] leading-6 text-muted-foreground">{excerpt}</p>
       <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-3">
          <span className="text-[11px] text-muted-foreground">{translateText('Por')} <strong className="text-foreground">{post.authorName}</strong></span>
-        <Link href={detailHref} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary">
-            {post.kind === 'forum'
+        <Link href={post.kind === 'blog' ? `${detailHref}#comments` : detailHref} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary">
+            {post.kind === 'forum' || post.kind === 'blog'
               ? `${post.commentCount} ${translateText(post.commentCount === 1 ? 'comentário' : 'comentários')}`
               : translateText('Ler conteúdo')}
           <ArrowRight size={13} />

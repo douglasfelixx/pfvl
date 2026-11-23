@@ -16,7 +16,7 @@ const areaLabels: Record<SearchAreaType, string> = {
   community: 'Comunidade',
   news: 'Novidades',
   tutorials: 'Tutoriais',
-  roadmap: 'Roadmap público',
+  roadmap: 'Próximos passos',
   private: 'Meus registros',
 };
 
@@ -137,10 +137,8 @@ export function SearchPage() {
 
       {queryText.length < 2 ? (
         <div className="search-prompt" data-testid="empty-search-prompt">
-          <span className="search-prompt-index">01 / PFVL</span>
           <div>
-            <h2>{translateText('Uma busca para cada próximo passo.')}</h2>
-            <p>{translateText('Digite pelo menos duas letras para encontrar orientações, conversas e atualizações relevantes.')}</p>
+            <p>{translateText('Digite pelo menos duas letras para iniciar a busca.')}</p>
           </div>
         </div>
       ) : results.isLoading ? (

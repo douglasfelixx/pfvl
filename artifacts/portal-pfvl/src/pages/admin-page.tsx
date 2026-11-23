@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type FormEvent } from "react";
+import { Fragment, lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link } from "wouter";
@@ -194,6 +194,10 @@ const adminNavigation: {
 
 function statusLabel(status: PostStatus) {
   return translateText(status === "published" ? "Publicado" : status === "draft" ? "Rascunho" : "Oculto");
+}
+
+function normalizeFilterText(value: string) {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR");
 }
 
 function PaginationControls({
@@ -785,7 +789,7 @@ function AdminConsole() {
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 gap-3">
                           {post.coverImageUrl ? (
-                            <img alt="" className="h-16 w-24 shrink-0 rounded-lg object-cover" src={post.coverImageUrl} />
+                            <img alt="" className="h-16 w-24 shrink-0 rounded-lg bg-[#e8e8e8] object-contain" src={post.coverImageUrl} />
                           ) : (
                             <div className="grid h-16 w-24 shrink-0 place-items-center rounded-lg bg-[#e8e8e8] text-[#233a59]">
                               <FileText aria-hidden="true" className="h-5 w-5" />
@@ -835,9 +839,18 @@ function AdminConsole() {
                         <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" data-testid={`admin-post-delete-${post.id}`} disabled={deletePost.isPending} onClick={() => void removePost(post)} type="button">
                           {translateText("Excluir")}
                         </button>
-                        <a className="inline-flex items-center gap-1 self-center text-sm font-semibold text-[#233a59] hover:underline" href={`/${post.kind === "forum" ? "community" : post.kind}/${post.id}`}>
-                          Abrir <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
-                        </a>
+                        {post.status === "published" ? (
+                          <a
+                            className="inline-flex items-center gap-1 self-center text-sm font-semibold text-[#233a59] hover:underline"
+                            href={`/${post.kind === "forum" ? "community" : post.kind === "blog" ? "content" : post.kind}/${post.id}`}
+                          >
+                            {translateText("Abrir")} <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+                          </a>
+                        ) : (
+                          <span className="self-center text-xs text-muted-foreground">
+                            {translateText(post.status === "draft" ? "Disponível ao público após a publicação." : "Esta publicação está oculta para o público.")}
+                          </span>
+                        )}
                       </div>
                       {changeFeedback[`post:${post.id}:status`] && (
                         <p className={`mt-2 text-sm ${changeFeedback[`post:${post.id}:status`] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">
@@ -917,7 +930,6 @@ function AdminConsole() {
           {tab === "requests" && (
             <SupportRequestsManager
               requests={supportRequests.data?.requests ?? []}
-              counts={supportRequests.data?.counts ?? { new: 0, inProgress: 0, completed: 0 }}
               subjects={supportSubjects.data ?? []}
               isLoading={supportRequests.isLoading || supportSubjects.isLoading}
               isError={supportRequests.isError || supportSubjects.isError}
@@ -1008,14 +1020,12 @@ const supportStatusLabel: Record<SupportRequestStatus, string> = {
 
 function SupportRequestsManager({
   requests,
-  counts,
   subjects,
   isLoading,
   isError,
   retry,
 }: {
   requests: AdminSupportRequest[];
-  counts: { new: number; inProgress: number; completed: number };
   subjects: SupportRequestSubject[];
   isLoading: boolean;
   isError: boolean;
@@ -1023,6 +1033,16 @@ function SupportRequestsManager({
 }) {
   const [activeTab, setActiveTab] = useState<"requests" | "subjects">("requests");
   const [requestsPage, setRequestsPage] = useState(1);
+  const visibleRequests = requests.filter((request) => request.requestType === "support");
+  const visibleCounts = visibleRequests.reduce(
+    (total, request) => {
+      if (request.status === "new") total.new += 1;
+      if (request.status === "in_progress") total.inProgress += 1;
+      if (request.status === "completed") total.completed += 1;
+      return total;
+    },
+    { new: 0, inProgress: 0, completed: 0 },
+  );
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div>
@@ -1052,8 +1072,10 @@ function SupportRequestsManager({
       </div>
       {activeTab === "requests" ? (
         <SupportInbox
-          requests={requests}
-          counts={counts}
+          requests={visibleRequests}
+          counts={visibleCounts}
+          classificationOptions={subjects.map((subject) => subject.name)}
+          filterBy="subject"
           isLoading={isLoading}
           isError={isError}
           retry={retry}
@@ -1148,6 +1170,8 @@ function AdminSuggestionsManager({
         <SupportInbox
           requests={requests}
           counts={suggestionCounts}
+          classificationOptions={categories.map((category) => category.name)}
+          filterBy="category"
           isLoading={requestsLoading}
           isError={requestsError}
           retry={retryRequests}
@@ -1190,6 +1214,8 @@ function AdminSuggestionsManager({
 function SupportInbox({
   requests,
   counts,
+  classificationOptions,
+  filterBy,
   isLoading,
   isError,
   retry,
@@ -1199,6 +1225,8 @@ function SupportInbox({
 }: {
   requests: AdminSupportRequest[];
   counts: { new: number; inProgress: number; completed: number };
+  classificationOptions: string[];
+  filterBy: "subject" | "category";
   isLoading: boolean;
   isError: boolean;
   retry: () => void;
@@ -1211,7 +1239,7 @@ function SupportInbox({
   const updateRoadmap = useUpdateAdminSupportRequestRoadmap();
   const createComment = useCreateAdminSupportRequestComment();
   const [statusFilter, setStatusFilter] = useState<"all" | SupportRequestStatus>("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [classificationFilter, setClassificationFilter] = useState("all");
   const [dateField, setDateField] = useState<"createdAt" | "updatedAt">("createdAt");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const pageSize = 10;
@@ -1220,6 +1248,7 @@ function SupportInbox({
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [commentFeedback, setCommentFeedback] = useState<Record<number, string>>({});
   const [roadmapFeedback, setRoadmapFeedback] = useState<Record<number, string>>({});
+  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(null);
   const [roadmapDrafts, setRoadmapDrafts] = useState<Record<number, {
     title: string;
     description: string;
@@ -1229,8 +1258,8 @@ function SupportInbox({
   const visibleRequests = requests
     .filter((request) =>
       (statusFilter === "all" || request.status === statusFilter)
-      && (categoryFilter === "all"
-        || (categoryFilter === "uncategorized" ? request.categoryName === null : request.categoryName === categoryFilter)),
+       && (classificationFilter === "all"
+         || (filterBy === "subject" ? request.subjectName : request.categoryName ?? "") === classificationFilter),
     )
     .sort((left, right) => {
       const difference = new Date(left[dateField]).getTime() - new Date(right[dateField]).getTime();
@@ -1238,8 +1267,10 @@ function SupportInbox({
         ? difference || left.id - right.id
         : -difference || right.id - left.id;
     });
-  const requestCategories = [...new Set(requests.map((request) => request.categoryName).filter((name): name is string => Boolean(name)))]
-    .sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const availableClassifications = [...new Set([
+    ...classificationOptions,
+    ...requests.map((request) => filterBy === "subject" ? request.subjectName : request.categoryName).filter((name): name is string => Boolean(name)),
+  ])].sort((left, right) => left.localeCompare(right, "pt-BR"));
   const pageCount = Math.max(1, Math.ceil(visibleRequests.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRequestPage = visibleRequests.slice((safePage - 1) * pageSize, safePage * pageSize);
@@ -1262,7 +1293,7 @@ function SupportInbox({
         queryKey: getListAdminSupportRequestsQueryKey(),
       });
     } catch {
-      setFeedback((current) => ({ ...current, [request.id]: "Não foi possível salvar." }));
+      setFeedback((current) => ({ ...current, [request.id]: "Não foi possível salvar as alterações. Tente novamente." }));
     }
   }
 
@@ -1406,14 +1437,13 @@ function SupportInbox({
           </select>
         </label>
         <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
-          <span>{translateText("Filtrar por categoria")}</span>
+          <span>{translateText(filterBy === "subject" ? "Filtrar por assunto" : "Filtrar por categoria")}</span>
           <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
-            setCategoryFilter(event.target.value);
+            setClassificationFilter(event.target.value);
             onPageChange?.(1);
-          }} value={categoryFilter}>
-            <option value="all">{translateText("Todas as categorias")}</option>
-            {requestCategories.map((category) => <option key={category} value={category}>{category}</option>)}
-            {requests.some((request) => request.categoryName === null) && <option value="uncategorized">{translateText("Sem categoria")}</option>}
+          }} value={classificationFilter}>
+            <option value="all">{translateText(filterBy === "subject" ? "Todos os assuntos" : "Todas as categorias")}</option>
+            {availableClassifications.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
         <SortSelect
@@ -1442,24 +1472,48 @@ function SupportInbox({
         />
       </div>
 
-      <div className="space-y-3">
+      <div className="overflow-x-auto rounded-xl border border-[#233a59]/15">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm" data-testid={`table-${filterBy === "subject" ? "support-requests" : "suggestion-inbox"}`}>
+          <thead className="bg-[#f7f8fa] text-xs uppercase tracking-wide text-[#233a59]/75">
+            <tr>
+              <th className="px-4 py-3">{translateText("Protocolo")}</th>
+              <th className="px-4 py-3">{translateText("Título")}</th>
+              <th className="px-4 py-3">{translateText(filterBy === "subject" ? "Assunto" : "Categoria")}</th>
+              <th className="px-4 py-3">{translateText(filterBy === "subject" ? "Status" : "Status da sugestão")}</th>
+              <th className="px-4 py-3">{translateText("Ação")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#233a59]/10">
         {visibleRequestPage.map((request) => {
           const selectedStatus = drafts[request.id] ?? request.status;
           const statusKey = `request:${request.id}`;
           return (
-            <details className="support-request-card" data-testid={`support-request-${request.id}`} key={request.id}>
-              <summary className="support-request-summary">
-                <div className="min-w-0">
-                  <p className="support-request-protocol">{translateText("Protocolo:")} <span>{request.protocol}</span></p>
-                  <h3>{request.title || request.subjectName}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{request.categoryName ?? request.subjectName}</p>
-                </div>
-                <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
-                  {translateText("Status:")} {translateText(supportStatusLabel[request.status])}
-                </span>
-                <span className="support-request-chevron" aria-hidden="true" />
-              </summary>
-              <div className="support-request-details">
+            <Fragment key={request.id}>
+              <tr data-testid={`support-request-${request.id}`}>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-[#233a59]">{request.protocol}</td>
+                <td className="max-w-[320px] px-4 py-3 font-semibold text-[#012140]">{request.title || request.subjectName}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{filterBy === "subject" ? request.subjectName : request.categoryName ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
+                    {translateText(supportStatusLabel[request.status])}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    aria-controls={`support-request-detail-${request.id}`}
+                    aria-expanded={expandedRequestId === request.id}
+                    className="rounded-lg px-2 py-1 font-semibold text-[#233a59] underline underline-offset-2 hover:bg-[#f7f8fa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#315571]"
+                    onClick={() => setExpandedRequestId((current) => current === request.id ? null : request.id)}
+                    type="button"
+                  >
+                    {translateText(expandedRequestId === request.id ? "Fechar" : "Abrir")}
+                  </button>
+                </td>
+              </tr>
+              {expandedRequestId === request.id && (
+              <tr>
+                <td className="bg-[#fcfcfd] px-4 py-4" colSpan={5}>
+              <div className="support-request-details" id={`support-request-detail-${request.id}`} data-testid={`support-request-details-${request.id}`}>
                 <p className="text-xs text-muted-foreground">
                   {request.subjectName}{request.categoryName ? ` · ${request.categoryName}` : ""} · {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
                 </p>
@@ -1498,7 +1552,7 @@ function SupportInbox({
                           />
                         </label>
                         <label className="block text-xs font-semibold text-[#233a59]">
-                          {translateText("Estágio")}
+                          {translateText("Estágio público")}
                           <select
                             className={`${inputClass} mt-1 block w-full sm:w-auto`}
                             onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
@@ -1620,14 +1674,23 @@ function SupportInbox({
               </div>
               <span className="sr-only" data-testid={`${statusKey}-status`}>{request.status}</span>
               </div>
-            </details>
+                </td>
+              </tr>
+              )}
+            </Fragment>
           );
         })}
         {!visibleRequests.length && (
-          <div className="rounded-xl border border-dashed border-[#233a59]/20 p-8 text-center text-sm text-muted-foreground">
-            {translateText(statusFilter === "all" ? emptyMessage : "Não há solicitações com este status.")}
-          </div>
+          <tr><td className="px-4 py-8 text-center text-sm text-muted-foreground" colSpan={5}>
+            {translateText(statusFilter === "all" && classificationFilter === "all"
+              ? emptyMessage
+              : filterBy === "subject"
+                ? "Nenhuma solicitação encontrada com os filtros selecionados."
+                : "Nenhuma sugestão encontrada com os filtros selecionados.")}
+          </td></tr>
         )}
+          </tbody>
+        </table>
         {onPageChange && (
           <PaginationControls page={safePage} pageSize={pageSize} totalItems={visibleRequests.length} onPageChange={onPageChange} />
         )}
@@ -2567,7 +2630,7 @@ function AdminPollManagement() {
     <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h2 className="font-display text-xl font-semibold text-[#012140]">{translateText("Enquetes da comunidade")}</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Publique uma pergunta para receber avaliações positivas ou negativas. Apenas uma enquete pode ficar ativa por vez.")}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Publique uma pergunta para receber votos. Apenas uma enquete pode ficar ativa por vez.")}</p>
       </div>
       <Form {...form}>
         <form className="grid gap-3 rounded-xl border border-[#233a59]/15 bg-[#f6f7f9] p-4 sm:p-5" onSubmit={form.handleSubmit(submit)}>
@@ -2649,8 +2712,8 @@ function AdminPollManagement() {
                   {poll.status === "active" && <button className="rounded-lg border border-[#233a59]/25 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#e8e8e8]" disabled={close.isPending} onClick={() => void closePoll(poll.id)} type="button">{translateText(close.isPending ? "Encerrando…" : "Encerrar enquete")}</button>}
                 </div>
                 <div className="mt-4 grid max-w-sm grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-[#e8e8e8] p-3"><span className="block text-xs text-[#233a59]">{translateText("Curtidas")}</span><strong className="mt-1 block text-xl text-[#012140]">{poll.likeCount}</strong></div>
-                  <div className="rounded-lg bg-[#e8e8e8] p-3"><span className="block text-xs text-[#233a59]">{translateText("Não curtidas")}</span><strong className="mt-1 block text-xl text-[#012140]">{poll.dislikeCount}</strong></div>
+                  <div className="rounded-lg bg-[#e8e8e8] p-3"><span className="block text-xs text-[#233a59]">{poll.likeCount} {translateText(poll.likeCount === 1 ? "voto positivo" : "votos positivos")}</span></div>
+                  <div className="rounded-lg bg-[#e8e8e8] p-3"><span className="block text-xs text-[#233a59]">{poll.dislikeCount} {translateText(poll.dislikeCount === 1 ? "voto negativo" : "votos negativos")}</span></div>
                 </div>
               </article>
             ))}
@@ -2812,6 +2875,7 @@ function UsersTable({
   const updateUser = useUpdateAdminUser();
   const [statusFilter, setStatusFilter] = useState<"all" | UserStatus>("all");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -2819,7 +2883,10 @@ function UsersTable({
   const filteredUsers = users
     .filter((user) =>
       (statusFilter === "all" || user.status === statusFilter)
-      && (roleFilter === "all" || user.role === roleFilter),
+      && (roleFilter === "all" || user.role === roleFilter)
+      && (!search.trim()
+        || normalizeFilterText(user.displayName).includes(normalizeFilterText(search.trim()))
+        || normalizeFilterText(user.email).includes(normalizeFilterText(search.trim()))),
     )
     .sort((left, right) => {
       const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
@@ -2850,7 +2917,21 @@ function UsersTable({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-3">
+      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
+          <span>{translateText("Buscar por nome de usuário ou e-mail")}</span>
+          <input
+            className={`${inputClass} min-h-10 w-full`}
+            data-testid="admin-users-search"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder={translateText("Digite um nome ou e-mail")}
+            type="search"
+            value={search}
+          />
+        </label>
         <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
           <span>{translateText("Filtrar por status")}</span>
           <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
@@ -2938,7 +3019,7 @@ function UsersTable({
           </label>
         </article>
       ))}
-      {!filteredUsers.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && roleFilter === "all" ? "Nenhuma conta cadastrada ainda." : "Nenhuma conta corresponde aos filtros.")}</p>}
+      {!filteredUsers.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && roleFilter === "all" && !search.trim() ? "Nenhuma conta cadastrada ainda." : "Nenhuma conta corresponde aos filtros.")}</p>}
       <PaginationControls page={safePage} pageSize={pageSize} totalItems={filteredUsers.length} onPageChange={setPage} />
     </div>
   );
@@ -3218,7 +3299,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                   </div>
                   <a
                     className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#233a59]/20 px-3 py-2 text-xs font-semibold text-[#233a59] hover:bg-[#e8e8e8]"
-                    href={`/${selectedPost.kind === "forum" ? "community" : selectedPost.kind}/${selectedPost.id}`}
+                    href={`/${selectedPost.kind === "forum" ? "community" : selectedPost.kind === "blog" ? "content" : selectedPost.kind}/${selectedPost.id}`}
                   >
                     {translateText(selectedPost.kind === "forum" ? "Abrir tópico" : "Abrir publicação")} <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
                   </a>
@@ -3230,7 +3311,7 @@ function AdminCommentModeration({ posts }: { posts: Post[] }) {
                   <div>
                     <h3 className="font-semibold text-[#012140]">{translateText("Comentários")}</h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {comments.data?.length ?? 0} {translateText("no total ·")} {topLevelCount} {translateText("comentários")} · {replyCount} {translateText("respostas")}
+                      {comments.data?.length ?? 0} {translateText("no total ·")} {topLevelCount} {translateText(topLevelCount === 1 ? "comentário" : "comentários")} · {replyCount} {translateText(replyCount === 1 ? "resposta" : "respostas")}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 rounded-lg bg-[#e8e8e8] p-1" aria-label={translateText("Filtrar comentários")}>

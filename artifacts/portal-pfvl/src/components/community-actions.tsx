@@ -146,7 +146,20 @@ export function CreatePostForm({
   return (
     <AuthActionGate>
       <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" noValidate onSubmit={submit}>
-        <div><p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p><h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">{mode === "community" ? "Compartilhe com a comunidade." : "Criar conteúdo"}</h2></div>
+        <div>
+          <p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">
+            {mode === "community"
+              ? "Compartilhe com a comunidade."
+              : kind === "blog"
+                ? "Criar conteúdo"
+                : kind === "forum"
+                  ? "Criar tópico"
+                  : kind === "news"
+                    ? "Criar novidade"
+                    : "Criar tutorial"}
+          </h2>
+        </div>
         {mode === "admin" && <div className={`grid gap-3 ${fixedKind ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>
           {!fixedKind && <label className="block text-sm font-semibold text-[#012140]">{translateText("Área")}<select className={fieldClass} onChange={(event) => { setKind(event.target.value as PostKind); setCategory(""); setTags([]); }} value={kind}><option value="blog">{translateText("Conteúdos")}</option><option value="forum">{translateText("Comunidade")}</option><option value="news">{translateText("Novidades")}</option><option value="help">{translateText("Central de Ajuda")}</option></select></label>}
           <label className="block text-sm font-semibold text-[#012140]">{translateText("Situação")}<select className={fieldClass} onChange={(event) => setStatus(event.target.value as PostStatus)} value={status}><option value="published">{translateText("Publicado")}</option><option value="draft">{translateText("Rascunho")}</option><option value="hidden">{translateText("Oculto")}</option></select></label>

@@ -13,7 +13,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { Link, Route, Switch, useLocation } from 'wouter';
+import { Link, Redirect, Route, Switch, useLocation, useParams } from 'wouter';
 import { SiInstagram } from 'react-icons/si';
 import {
   AuthContextProvider,
@@ -61,7 +61,7 @@ const queryClient = new QueryClient({
 
 const navigation = [
   { href: '/', label: 'Início', icon: BarChart3 },
-  { href: '/blog', label: 'Conteúdos', icon: BookOpen },
+  { href: '/content', label: 'Conteúdos', icon: BookOpen },
   { href: '/community', label: 'Comunidade', icon: MessageCircle },
   { href: '/news', label: 'Novidades', icon: Newspaper },
   { href: '/help', label: 'Central de Ajuda', icon: CircleHelp },
@@ -86,7 +86,7 @@ const pageMetadata = [
       'Leia dúvidas e experiências sobre planejamento financeiro, investimentos, Open Finance e metas.',
   },
   {
-    match: /^\/blog(?:\/\d+)?$/,
+    match: /^\/(?:content|blog)(?:\/\d+)?$/,
     title: 'Conteúdos | PFVL',
     description:
       'Conteúdos da equipe PFVL sobre planejamento, organização, objetivos, indicadores e recursos do sistema.',
@@ -190,7 +190,7 @@ function SeoManager() {
   const [location] = useLocation();
   const { locale } = useI18n();
   const route = location.split('?')[0] || '/';
-  const detailId = route.match(/^\/(?:community|blog|news|help)\/(\d+)$/)?.[1];
+  const detailId = route.match(/^\/(?:community|content|blog|news|help)\/(\d+)$/)?.[1];
   const postId = detailId ? Number(detailId) : 0;
   const post = useGetPost(postId, {
     query: {
@@ -417,7 +417,6 @@ function PortalShell({ children }: { children: ReactNode }) {
       <main className="main-area">
         <div className="page-container">{children}</div>
         <footer className="portal-footer">
-          <span>{translateText('PFVL é um produto da Orbefin Sistemas Financeiros.')}</span>
           <div className="footer-links">
             <Link href="/sobre">{translateText('Sobre')}</Link>
             <Link href="/contato">{translateText('Contato')}</Link>
@@ -451,8 +450,10 @@ function RoutedContent() {
         <Route path="/search" component={SearchPage} />
         <Route path="/community/:postId" component={PostDetailPage} />
         <Route path="/community" component={CommunityPage} />
-        <Route path="/blog/:postId" component={PostDetailPage} />
-        <Route path="/blog" component={BlogPage} />
+        <Route path="/content/:postId" component={PostDetailPage} />
+        <Route path="/content" component={BlogPage} />
+        <Route path="/blog/:postId" component={LegacyBlogDetailRedirect} />
+        <Route path="/blog" component={() => <Redirect to="/content" />} />
         <Route path="/news/:postId" component={PostDetailPage} />
         <Route path="/news" component={NewsPage} />
         <Route path="/apresentacao" component={PresentationPage} />
@@ -475,6 +476,11 @@ function RoutedContent() {
       </Switch>
     </PortalShell>
   );
+}
+
+function LegacyBlogDetailRedirect() {
+  const params = useParams<{ postId?: string }>();
+  return <Redirect to={`/content/${params.postId ?? ''}`} />;
 }
 
 function AppContent() {

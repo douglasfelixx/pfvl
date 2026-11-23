@@ -127,7 +127,8 @@ function readSelectedTag(search: string): string {
 }
 
 function postListHref(kind: PostKind): string {
-  return kind === 'forum' ? '/community' : `/${kind}`;
+  if (kind === 'forum') return '/community';
+  return kind === 'blog' ? '/content' : `/${kind}`;
 }
 
 function postTagHref(kind: PostKind, tag: string): string {
@@ -143,7 +144,7 @@ function postHasTag(post: { tags?: string[] }, selectedTag: string): boolean {
 function ActiveTagFilter({ tag, clearHref }: { tag: string; clearHref: string }) {
   return (
     <div className="active-tag-filter">
-      <span>{translateText('Filtrando pela tag')}: <strong>{tag}</strong></span>
+      <span>{translateText('Filtrando pelo marcador')}: <strong>{tag}</strong></span>
       <Link href={clearHref}>{translateText('Limpar filtro')}</Link>
     </div>
   );
@@ -242,7 +243,7 @@ export function CommunityPage() {
           <div className="community-toolbar">
             <div className="community-toolbar-title">
               <div><span className="community-live-dot" /> {translateText('Espaço de conversa')}</div>
-              <span>{translateText('Experiências da comunidade, não artigos editoriais.')}</span>
+              <span>{translateText('Converse sobre suas experiências e tire dúvidas com a comunidade.')}</span>
             </div>
             <CommunityCreatePanel />
           </div>
@@ -298,7 +299,7 @@ export function CommunityPage() {
                     <p className="topic-excerpt">{post.excerpt || richContentToPlainText(post.body)}</p>
                     <div className="topic-footer"><span>{translateText('Iniciado por')} <strong>{post.authorName}</strong></span><span className="topic-tags">{post.tags?.slice(0, 2).map((tag) => <Link className="tag-pill tag-pill-link" href={postTagHref('forum', tag)} key={tag}>{tag}</Link>)}</span></div>
                   </div>
-                  <Link aria-label={`${post.commentCount} respostas em ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
+                  <Link aria-label={`${post.commentCount} ${translateText(post.commentCount === 1 ? 'resposta' : 'respostas')} ${translateText('em')} ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
                     <MessageCircle size={17} />
                     <strong>{post.commentCount}</strong>
                     <span>{post.commentCount === 1 ? 'resposta' : 'respostas'}</span>
@@ -307,17 +308,21 @@ export function CommunityPage() {
               ))}
             </div>
           ) : <EmptyState
-            title={search || category !== 'all' || selectedTag ? 'Nenhuma conversa encontrada' : 'O fórum está começando'}
-            description={selectedTag && search
-              ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados. Tente outra palavra ou remova um dos filtros.'
+            title={selectedTag && search
+              ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados.'
               : search || category !== 'all' || selectedTag
-                ? 'Ajuste a busca ou escolha outra categoria ou tag.'
+                ? 'Nenhuma conversa encontrada'
+                : 'O fórum está começando'}
+            description={selectedTag && search
+              ? 'Tente outra palavra ou remova um dos filtros.'
+              : search || category !== 'all' || selectedTag
+                ? 'Ajuste a busca ou remova um dos filtros.'
                 : 'Abra um tópico para compartilhar sua dúvida ou experiência com a comunidade.'}
           />}
         </main>
         <aside className="community-rail">
           <CommunityPoll />
-          <p className="community-editorial-note">{translateText('Este espaço é feito de perguntas e respostas. Para guias e análises da equipe, visite')} <Link href="/blog">{translateText('Conteúdos PFVL')}</Link>.</p>
+          <p className="community-editorial-note">{translateText('Converse sobre suas experiências e tire dúvidas com a comunidade.')} <Link href="/content">{translateText('Conteúdos PFVL')}</Link>.</p>
         </aside>
       </div>
     </div>
@@ -330,7 +335,7 @@ export function PostDetailPage() {
   const postId = Number(params.postId);
   const validId = Number.isFinite(postId) && postId > 0;
   const route = window.location.pathname;
-  const postKind: PostKind = route.startsWith('/blog/')
+  const postKind: PostKind = route.startsWith('/content/') || route.startsWith('/blog/')
     ? 'blog'
     : route.startsWith('/news/')
       ? 'news'
@@ -411,7 +416,11 @@ export function PostDetailPage() {
             </div>
             <h1 className="mt-4 font-display text-[34px] font-semibold leading-[1.12] tracking-[-.04em] sm:text-[46px]">{post.data.title}</h1>
             {isForum && <div className="forum-author-line"><span className="topic-avatar" aria-hidden="true">{post.data.authorName.trim().slice(0, 1).toLocaleUpperCase('pt-BR')}</span><span>{translateText('Publicado por')} <strong>{post.data.authorName}</strong></span><span>·</span><span>{post.data.commentCount} {translateText(post.data.commentCount === 1 ? 'resposta' : 'respostas')}</span></div>}
-            {coverImageUrl && post.data.kind !== 'blog' && <img className="mt-6 max-h-[440px] w-full rounded-2xl object-cover" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />}
+            {coverImageUrl && (
+              <div className="mt-6 flex max-h-[440px] w-full items-center justify-center overflow-hidden rounded-2xl bg-[#e8e8e8]">
+                <img className="max-h-[440px] w-full object-contain" src={coverImageUrl} alt={post.data.title} width="1200" height="675" />
+              </div>
+            )}
             {post.data.videoUrl && <a className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary underline" href={post.data.videoUrl} target="_blank" rel="noopener noreferrer">{translateText('Assistir vídeo relacionado')} <ArrowRight size={15} /></a>}
             {isForum && <div className="forum-post-label"><MessageCircle size={15} /> {translateText('Publicação original')}</div>}
             <RichTextContent className={`prose-content text-sm leading-8 text-[#1d1d1b] ${isForum ? 'mt-3 forum-post-body' : 'mt-7'}`} value={post.data.body} />
@@ -550,17 +559,19 @@ function PostsListingPage({ kind, eyebrow, title, description }: { kind: PostKin
           )}
         </>
       ) : <EmptyState
-        title={kind === 'news' && !search && !selectedTag
-          ? 'Nenhuma novidade publicada ainda.'
-          : selectedTag
-            ? 'Nenhuma publicação encontrada para esta tag'
+        title={selectedTag && search
+          ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados.'
+          : kind === 'news' && !search && !selectedTag
+            ? 'Nenhuma novidade publicada ainda.'
+            : selectedTag
+              ? 'Nenhuma publicação encontrada para este marcador.'
             : search
               ? 'Nada encontrado com esse termo'
               : 'Estamos preparando novos conteúdos'}
         description={selectedTag && search
-          ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados. Tente outra palavra ou remova um dos filtros.'
+          ? 'Tente outra palavra ou remova um dos filtros.'
           : selectedTag
-            ? 'Nenhuma publicação desta seção usa esta tag.'
+            ? 'Remova o filtro ou escolha outro marcador.'
             : search
               ? 'Tente outra palavra ou remova a busca.'
               : 'As publicações serão exibidas aqui assim que estiverem disponíveis.'}
@@ -578,9 +589,11 @@ export function NewsPage() {
 }
 
 export function HelpPage() {
+  const [search, setSearch] = useState('');
   const locationSearch = useSearch();
   const selectedTag = readSelectedTag(locationSearch);
-  const query = useListPosts({ kind: 'help' }, { query: { queryKey: getListPostsQueryKey({ kind: 'help' }), refetchOnWindowFocus: true } });
+  const params = useMemo(() => ({ kind: 'help' as PostKind, search: search.trim() || undefined }), [search]);
+  const query = useListPosts(params, { query: { queryKey: getListPostsQueryKey(params), refetchOnWindowFocus: true } });
   const posts = (query.data ?? []).filter((post) => postHasTag(post, selectedTag));
   return (
     <div className="page-enter">
@@ -607,11 +620,30 @@ export function HelpPage() {
       </section>
       <section className="mt-8">
         <SectionHeading title="Tutoriais e orientações" />
+        <label className="search-field mb-5">
+          <Search aria-hidden="true" size={17} />
+          <input data-testid="input-help-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={translateText('Buscar neste espaço')} type="search" />
+        </label>
         {selectedTag && <ActiveTagFilter tag={selectedTag} clearHref="/help" />}
         {query.isLoading ? <LoadingState rows={3} /> : query.isError ? <QueryError retry={() => void query.refetch()} /> : posts.length ? (
           <div className="grid gap-3 md:grid-cols-2">{posts.map((post) => <PostCard key={post.id} post={post} />)}</div>
         ) : (
-          <EmptyState title={selectedTag ? 'Nenhuma publicação encontrada para esta tag' : 'Tutoriais do PFVL em preparação'} description={selectedTag ? 'Nenhuma publicação desta seção usa esta tag.' : 'Os guias de uso serão publicados por assunto, com instruções, imagens e vídeos quando os recursos do sistema estiverem disponíveis.'} />
+          <EmptyState
+            title={selectedTag && search
+              ? 'Nenhum conteúdo corresponde à busca e ao marcador selecionados.'
+              : selectedTag
+                ? 'Nenhuma publicação encontrada para este marcador.'
+                : search
+                  ? 'Nada encontrado com esse termo'
+                  : 'Tutoriais do PFVL em preparação'}
+            description={selectedTag && search
+              ? 'Tente outra palavra ou remova um dos filtros.'
+              : selectedTag
+                ? 'Remova o filtro ou escolha outro marcador.'
+                : search
+                  ? 'Tente outra palavra ou remova a busca.'
+                  : 'Os guias de uso serão publicados por assunto, com instruções, imagens e vídeos quando os recursos do sistema estiverem disponíveis.'}
+          />
         )}
       </section>
     </div>
@@ -870,7 +902,7 @@ function PublicSuggestionRoadmap() {
       <div className="mb-5">
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Evolução do PFVL")}</p>
         <h2 className="mt-1 font-display text-2xl font-semibold text-[#012140]" id="public-roadmap-heading">{translateText("Próximos passos.")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as melhorias planejadas, em desenvolvimento e já disponibilizadas no PFVL.")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{translateText("Acompanhe as melhorias planejadas e as novidades já disponíveis no PFVL.")}</p>
       </div>
       {suggestions.isLoading ? (
         <LoadingState rows={2} />

@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
+import "./rich-text-content.css";
 
 const allowedTags = [
   "p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li",
