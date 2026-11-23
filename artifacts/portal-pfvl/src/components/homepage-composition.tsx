@@ -230,8 +230,8 @@ export function ProductAppLink({ className, label = 'Acessar o PFVL' }: { classN
       aria-disabled={!appUrl}
       className={className}
       href={appUrl || undefined}
-      rel={appUrl ? 'noopener' : undefined}
-      target={appUrl ? '_blank' : undefined}
+      rel="noopener noreferrer"
+      target="_blank"
       title={!appUrl ? translateText('O acesso ao PFVL ainda não está configurado.') : undefined}
     >
       {content}

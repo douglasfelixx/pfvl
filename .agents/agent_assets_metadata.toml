@@ -322,3 +322,17 @@ mtime_ms = 1795395897244
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/1cbca63a-5037-451c-a7fd-224e61c189b3/b65ccf4f-bb9e-4aa8-a119-978a8674218c"
 storage_version_token = "1795395917657137"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "g8UWgptDxUlg95RYEPr4U"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-23-atualizado.zip"
+type = "unspecified"
+title = "ZIP atualizado do PFVL para GitHub"
+description = "Pacote completo atualizado com as páginas de Termos e Privacidade, pronto para extração e envio manual ao GitHub. Inclui 352 arquivos e não contém dependências, builds, histórico Git ou segredos."
+logical_id = "6c832633-f27c-4e92-87dd-b770ab4b62ed"
+content_hash = "sha256:eb11520b783e3bea65e1fe2d28358f3ba408136b1ad0d87983cae86290d01bb7"
+size = 1157603
+mtime_ms = 1795410562532
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/6c832633-f27c-4e92-87dd-b770ab4b62ed/3e92d53c-9a85-4791-b783-a7e79248d511"
+storage_version_token = "1795410572975280"
+content_type = "application/octet-stream"

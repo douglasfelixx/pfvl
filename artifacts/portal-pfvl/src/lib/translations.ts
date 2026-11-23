@@ -333,7 +333,7 @@ export const englishTranslations: Record<string, string> = {
   'O acesso do Clerk precisa ser configurado para liberar contas e publicações.': 'Clerk must be configured to enable accounts and posts.',
   'Login ainda não conectado.': 'Sign-in is not connected yet.',
   'Configure as chaves do Clerk no ambiente do portal para liberar contas, publicações e respostas.': 'Configure the Clerk keys for this portal to enable accounts, posts, and replies.',
-  'Voltar ao início': 'Back to home',
+  'Voltar ao índice': 'Back to contents',
   'Imagem de capa': 'Cover image',
   'Endereço HTTPS ou caminho da imagem': 'HTTPS URL or image path',
   'JPG, PNG ou WebP até 5 MB. Também é possível informar um endereço HTTPS.': 'JPG, PNG, or WebP up to 5 MB. You can also enter an HTTPS URL.',

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ArrowRight, Handshake, LifeBuoy, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ArrowUp, Handshake, LifeBuoy, Mail, ShieldCheck } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { SiInstagram } from 'react-icons/si';
 import { getGetSiteMediaQueryKey, useGetSiteMedia } from '@workspace/api-client-react';
@@ -232,6 +232,17 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
           __html: DOMPurify.sanitize(documentHtml, { USE_PROFILES: { html: true } }),
         }}
       />
+      <div className="legal-index-footer">
+        <a
+          aria-label={translateText("Voltar ao índice")}
+          className="legal-index-link"
+          href="#legal-index"
+          title={translateText("Voltar ao índice")}
+        >
+          <ArrowUp aria-hidden="true" size={17} />
+          {translateText("Voltar ao índice")}
+        </a>
+      </div>
     </div>
   );
 }
