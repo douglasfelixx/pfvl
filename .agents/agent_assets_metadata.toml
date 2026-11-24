@@ -336,3 +336,17 @@ mtime_ms = 1795410562532
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/6c832633-f27c-4e92-87dd-b770ab4b62ed/3e92d53c-9a85-4791-b783-a7e79248d511"
 storage_version_token = "1795410572975280"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "KMl56inv_WvaKeEjoL68Q"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-23-final.zip"
+type = "unspecified"
+title = "ZIP completo do PFVL para GitHub"
+description = "Projeto completo atualizado, incluindo o botão de retorno ao índice reposicionado no fim das páginas legais; 352 arquivos, sem dependências, builds ou arquivos secretos."
+logical_id = "55bd0be9-4a2f-4330-a981-94095a8f231e"
+content_hash = "sha256:f5ed52743cc5f266ac1e7bd13136fd24bdab8aefe76aa006f5d917841e012403"
+size = 1188801
+mtime_ms = 1795445026934
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/55bd0be9-4a2f-4330-a981-94095a8f231e/9dddf6f8-0ebb-4e5c-88f3-374433110080"
+storage_version_token = "1795445039016398"
+content_type = "application/octet-stream"

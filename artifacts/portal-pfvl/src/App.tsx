@@ -125,27 +125,27 @@ const pageMetadata = [
     description: 'Encontre tutoriais e orientações práticas para usar o sistema PFVL.',
   },
   {
-    match: /^\/apresentacao$/,
+    match: /^\/(?:overview|apresentacao)$/,
     title: 'Apresentação | PFVL',
     description: 'Conheça o PFVL e veja como o produto conecta contas, compromissos e objetivos.',
   },
   {
-    match: /^\/sobre$/,
+    match: /^\/(?:about|sobre)$/,
     title: 'Sobre | PFVL',
     description: 'Organização para o presente, planejamento para o futuro. Conheça o PFVL e a Orbefin Sistemas Financeiros, empresa responsável pelo produto.',
   },
   {
-    match: /^\/contato$/,
+    match: /^\/(?:contact|contato)$/,
     title: 'Contato | PFVL',
     description: 'Informações de contato oficiais da Orbefin Sistemas Financeiros.',
   },
   {
-    match: /^\/privacidade$/,
+    match: /^\/(?:privacy|privacidade)$/,
     title: 'Política de Privacidade | PFVL',
     description: 'Informações sobre privacidade no PFVL.',
   },
   {
-    match: /^\/termos$/,
+    match: /^\/(?:terms|termos)$/,
     title: 'Termos de Uso | PFVL',
     description: 'Condições de uso do PFVL.',
   },
@@ -417,11 +417,14 @@ function PortalShell({ children }: { children: ReactNode }) {
       <main className="main-area">
         <div className="page-container">{children}</div>
         <footer className="portal-footer">
+          <span className="portal-footer-brand">
+            {translateText("PFVL é um produto da Orbefin Sistemas Financeiros.")}
+          </span>
           <div className="footer-links">
-            <Link href="/sobre">{translateText('Sobre')}</Link>
-            <Link href="/contato">{translateText('Contato')}</Link>
-            <Link href="/privacidade">{translateText('Privacidade')}</Link>
-            <Link href="/termos">{translateText('Termos')}</Link>
+            <Link href="/about">{translateText('Sobre')}</Link>
+            <Link href="/contact">{translateText('Contato')}</Link>
+            <Link href="/privacy">{translateText('Privacidade')}</Link>
+            <Link href="/terms">{translateText('Termos')}</Link>
             <a
               aria-label={translateText('Instagram oficial do PFVL')}
               className="footer-instagram-link"
@@ -456,11 +459,16 @@ function RoutedContent() {
         <Route path="/blog" component={() => <Redirect to="/content" />} />
         <Route path="/news/:postId" component={PostDetailPage} />
         <Route path="/news" component={NewsPage} />
-        <Route path="/apresentacao" component={PresentationPage} />
-        <Route path="/sobre" component={AboutPage} />
-        <Route path="/contato" component={ContactPage} />
-        <Route path="/privacidade" component={() => <LegalPage kind="privacy" />} />
-        <Route path="/termos" component={() => <LegalPage kind="terms" />} />
+        <Route path="/overview" component={PresentationPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/contact" component={ContactPage} />
+        <Route path="/privacy" component={() => <LegalPage kind="privacy" />} />
+        <Route path="/terms" component={() => <LegalPage kind="terms" />} />
+        <Route path="/apresentacao" component={() => <Redirect to="/overview" />} />
+        <Route path="/sobre" component={() => <Redirect to="/about" />} />
+        <Route path="/contato" component={() => <Redirect to="/contact" />} />
+        <Route path="/privacidade" component={() => <Redirect to="/privacy" />} />
+        <Route path="/termos" component={() => <Redirect to="/terms" />} />
         <Route path="/indicators" component={IndicatorsPage} />
         <Route path="/suggestions" component={SuggestionsPage} />
         <Route path="/notifications" component={NotificationsPage} />

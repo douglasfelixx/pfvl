@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/react';
 import {
@@ -167,7 +167,7 @@ export function HomePage() {
             <p className="home-hero-description">{translateText('Organize suas finanças, acompanhe o que foi planejado e transforme seus objetivos em planos com valores, prazos e aportes.')}</p>
             <div className="home-hero-actions">
               <ProductAppLink className="home-cta-primary" />
-              <Link className="home-cta-outline" href="/apresentacao">{translateText('Assistir à apresentação')} <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
+              <Link className="home-cta-outline" href="/overview">{translateText('Assistir à apresentação')} <Play className="demo-play-icon" size={12} fill="currentColor" /></Link>
             </div>
           </div>
           <HomeDashboardPreview previewImageUrl={heroImageUrl} />
@@ -909,10 +909,32 @@ function PublicSuggestionRoadmap() {
       ) : suggestions.isError ? (
         <QueryError retry={() => void suggestions.refetch()} />
       ) : suggestions.data?.length ? (
-        <div className="space-y-3">
-          {suggestions.data.map((suggestion) => (
-            <PublicRoadmapCard key={suggestion.id} suggestion={suggestion} />
-          ))}
+        <div className="space-y-6">
+          {([
+            { status: "planned", suggestions: suggestions.data.filter((item) => item.status === "planned") },
+            { status: "in_progress", suggestions: suggestions.data.filter((item) => item.status === "in_progress") },
+            { status: "available", suggestions: suggestions.data.filter((item) => item.status === "available") },
+          ] as const)
+            .filter((group) => group.suggestions.length > 0)
+            .map((group) => (
+              <section
+                aria-labelledby={`roadmap-stage-${group.status}`}
+                data-testid={`roadmap-stage-${group.status}`}
+                key={group.status}
+              >
+                <h3
+                  className="mb-3 font-display text-lg font-semibold text-[#012140]"
+                  id={`roadmap-stage-${group.status}`}
+                >
+                  {translateText(roadmapStatusLabel[group.status])}
+                </h3>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {group.suggestions.map((suggestion) => (
+                    <PublicRoadmapCard key={suggestion.id} suggestion={suggestion} />
+                  ))}
+                </div>
+              </section>
+            ))}
         </div>
       ) : (
         <EmptyState
@@ -933,22 +955,22 @@ function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion
         : "bg-amber-50 text-amber-800";
 
   return (
-    <article id={`roadmap-${suggestion.id}`} className="rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm scroll-mt-24 sm:p-5" data-testid={`card-public-roadmap-${suggestion.id}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-[#eaf1f9] px-2.5 py-1 font-bold uppercase tracking-wide text-[#42658b]">
-              {suggestion.categoryName ?? translateText("Sugestão")}
-            </span>
-            <span>{translateText("Aprovada em")} <time dateTime={suggestion.approvedAt}>{formatDate(suggestion.approvedAt)}</time></span>
-          </div>
-          <h3 className="mt-3 font-display text-lg font-semibold text-[#012140]">{suggestion.title}</h3>
-        </div>
+    <article id={`roadmap-${suggestion.id}`} className="flex h-full flex-col rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm scroll-mt-24 sm:p-5" data-testid={`card-public-roadmap-${suggestion.id}`}>
+      <div className="flex items-center justify-between gap-2">
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
           {translateText(roadmapStatusLabel[suggestion.status])}
         </span>
+        <span className="text-xs text-muted-foreground">
+          {translateText("Aprovada em")} <time dateTime={suggestion.approvedAt}>{formatDate(suggestion.approvedAt)}</time>
+        </span>
       </div>
-      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.description}</p>
+      <h4 className="mt-3 font-display text-lg font-semibold leading-6 text-[#012140]">{suggestion.title}</h4>
+      <p className="roadmap-description-clamp mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.description}</p>
+      {suggestion.categoryName && (
+        <span className="mt-auto self-start pt-3 text-xs text-muted-foreground">
+          {suggestion.categoryName}
+        </span>
+      )}
     </article>
   );
 }
@@ -962,6 +984,7 @@ const suggestionRequestStatusLabel: Record<SupportRequestStatus, string> = {
 function SuggestionWorkspace() {
   const queryClient = useQueryClient();
   const userId = useSearchAccountId();
+  const [expandedSuggestionId, setExpandedSuggestionId] = useState<number | null>(null);
   const categories = useListSuggestionCategories({
     query: { queryKey: getListSuggestionCategoriesQueryKey() },
   });
@@ -1114,11 +1137,92 @@ function SuggestionWorkspace() {
         {suggestions.isLoading ? <LoadingState rows={2} /> : suggestions.isError ? (
           <QueryError retry={() => void suggestions.refetch()} />
         ) : suggestions.data?.length ? (
-          <div className="space-y-3">
-            {suggestions.data.map((suggestion) => (
-              <SuggestionRequestCard key={suggestion.id} suggestion={suggestion} />
-            ))}
-          </div>
+          <>
+            <div className="hidden overflow-x-auto rounded-xl border border-[#233a59]/15 bg-white lg:block">
+              <table aria-label={translateText("Minhas sugestões")} className="w-full min-w-[780px] border-collapse text-left text-sm" data-testid="my-suggestions-table">
+                <thead className="bg-[#f7f8fa] text-xs uppercase tracking-wide text-[#233a59]/75">
+                  <tr>
+                    <th className="px-4 py-3">{translateText("Protocolo")}</th>
+                    <th className="px-4 py-3">{translateText("Título")}</th>
+                    <th className="px-4 py-3">{translateText("Categoria")}</th>
+                    <th className="px-4 py-3">{translateText("Data de envio")}</th>
+                    <th className="px-4 py-3">{translateText("Status")}</th>
+                    <th className="px-4 py-3">{translateText("Ação")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#233a59]/10">
+                  {suggestions.data.map((suggestion) => {
+                    const expanded = expandedSuggestionId === suggestion.id;
+                    const detailId = `suggestion-details-desktop-${suggestion.id}`;
+                    return (
+                      <Fragment key={suggestion.id}>
+                        <tr data-testid={`my-suggestion-row-${suggestion.id}`}>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-[#233a59]">{suggestion.protocol}</td>
+                          <td className="max-w-[260px] px-4 py-3 font-semibold text-[#012140]">{suggestion.title}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{suggestion.categoryName ?? translateText("Sem categoria")}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground"><time dateTime={suggestion.createdAt}>{formatDate(suggestion.createdAt)}</time></td>
+                          <td className="px-4 py-3"><SuggestionStatusBadge status={suggestion.status} /></td>
+                          <td className="px-4 py-3">
+                            <button
+                              aria-controls={detailId}
+                              aria-expanded={expanded}
+                              className="rounded-lg px-2 py-1 font-semibold text-[#233a59] underline underline-offset-2 hover:bg-[#f7f8fa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#315571]"
+                              onClick={() => setExpandedSuggestionId((current) => current === suggestion.id ? null : suggestion.id)}
+                              type="button"
+                            >
+                              {translateText(expanded ? "Fechar" : "Abrir")}
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded && (
+                          <tr>
+                            <td className="bg-[#fcfcfd] px-4 py-4" colSpan={6}>
+                              <SuggestionDetails id={detailId} suggestion={suggestion} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-3 lg:hidden">
+              {suggestions.data.map((suggestion) => {
+                const expanded = expandedSuggestionId === suggestion.id;
+                const detailId = `suggestion-details-mobile-${suggestion.id}`;
+                return (
+                  <article
+                    className="rounded-xl border border-[#233a59]/15 bg-white p-4 shadow-sm"
+                    data-testid={`my-suggestion-card-${suggestion.id}`}
+                    key={suggestion.id}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-[11px] font-bold text-[#233a59]">{translateText("Protocolo")}: {suggestion.protocol}</p>
+                        <h3 className="mt-1 font-display text-base font-semibold text-[#012140]">{suggestion.title}</h3>
+                      </div>
+                      <SuggestionStatusBadge status={suggestion.status} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span>{suggestion.categoryName ?? translateText("Sem categoria")}</span>
+                      <time dateTime={suggestion.createdAt}>{translateText("Enviada em")} {formatDate(suggestion.createdAt)}</time>
+                    </div>
+                    <button
+                      aria-controls={detailId}
+                      aria-expanded={expanded}
+                      className="mt-3 rounded-lg px-2 py-1 text-sm font-semibold text-[#233a59] underline underline-offset-2 hover:bg-[#f7f8fa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#315571]"
+                      onClick={() => setExpandedSuggestionId((current) => current === suggestion.id ? null : suggestion.id)}
+                      type="button"
+                    >
+                      {translateText(expanded ? "Fechar" : "Abrir")}
+                    </button>
+                    {expanded && <SuggestionDetails id={detailId} suggestion={suggestion} />}
+                  </article>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <EmptyState title="Você ainda não enviou sugestões." description="Quando enviar sua primeira ideia, você poderá acompanhar o andamento e as respostas da equipe por aqui." />
         )}
@@ -1127,28 +1231,25 @@ function SuggestionWorkspace() {
   );
 }
 
-function SuggestionRequestCard({ suggestion }: { suggestion: MySuggestion }) {
+function SuggestionStatusBadge({ status }: { status: SupportRequestStatus }) {
   const statusTone =
-    suggestion.status === "completed"
+    status === "completed"
       ? "bg-emerald-50 text-emerald-800"
-      : suggestion.status === "in_progress"
+      : status === "in_progress"
         ? "bg-blue-50 text-blue-800"
         : "bg-amber-50 text-amber-800";
   return (
-    <article id={`suggestion-${suggestion.id}`} className="scroll-mt-24 rounded-2xl border border-[#233a59]/15 bg-white p-4 shadow-sm sm:p-5" data-testid={`card-my-suggestion-${suggestion.id}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-[11px] font-bold tracking-[.08em] text-[#233a59]">{translateText("Protocolo")}: {suggestion.protocol}</p>
-          <h3 className="mt-2 font-display text-lg font-semibold text-[#012140]">{suggestion.title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {suggestion.categoryName ?? translateText("Sem categoria")} · {formatDate(suggestion.createdAt)}
-          </p>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
-          {translateText(suggestionRequestStatusLabel[suggestion.status])}
-        </span>
-      </div>
-      <p className="mt-4 whitespace-pre-wrap break-words rounded-xl bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{suggestion.message}</p>
+    <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
+      {translateText(suggestionRequestStatusLabel[status])}
+    </span>
+  );
+}
+
+function SuggestionDetails({ id, suggestion }: { id: string; suggestion: MySuggestion }) {
+  return (
+    <div className="mt-3 rounded-xl bg-[#f7f8fa] p-3 sm:p-4" id={id} data-testid={`my-suggestion-details-${suggestion.id}`}>
+      <h4 className="text-xs font-bold uppercase tracking-[.12em] text-[#233a59]/70">{translateText("Descrição original")}</h4>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#233a59]">{suggestion.message}</p>
       <div className="mt-4 border-t border-[#233a59]/10 pt-3">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-[#233a59]/70">{translateText("Atualizações da equipe")}</p>
         {suggestion.comments.length ? (
@@ -1167,7 +1268,7 @@ function SuggestionRequestCard({ suggestion }: { suggestion: MySuggestion }) {
           <p className="mt-2 text-sm text-muted-foreground">{translateText("Ainda não há comentários da equipe.")}</p>
         )}
       </div>
-    </article>
+    </div>
   );
 }
 

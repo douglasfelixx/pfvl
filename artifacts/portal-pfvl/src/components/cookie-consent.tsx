@@ -60,7 +60,7 @@ export function CookieConsentManager({ children }: { children: ReactNode }) {
             <p id="cookie-consent-description">
               {translateText('Usamos cookies necessários para login. O menu do painel só salva seu estado com sua autorização. Não usamos cookies de análise ou publicidade.')}
             </p>
-            <Link className="cookie-consent-policy-link" href="/privacidade">
+            <Link className="cookie-consent-policy-link" href="/privacy">
               {translateText('Política de Privacidade')}
             </Link>
           </div>

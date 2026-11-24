@@ -110,6 +110,11 @@ import { refreshPostQueries } from "@/lib/post-query-refresh";
 const RichTextEditor = lazy(() => import("@/components/rich-text-editor").then((module) => ({ default: module.RichTextEditor })));
 
 type AdminSection = PostKind | "comments" | "users" | "suggestions" | "polls" | "taxonomy" | "media" | "testimonials" | "profile" | "requests";
+type PostListFilters = {
+  status: "all" | PostStatus;
+  category: string;
+  tag: string;
+};
 const inputClass =
   "rounded-lg border border-[#233a59]/15 bg-white px-2.5 py-2 text-sm text-[#012140] outline-none focus:border-[#233a59]";
 
@@ -302,9 +307,12 @@ function AdminConsole() {
   const [createOpen, setCreateOpen] = useState(false);
   const [postDateOrder, setPostDateOrder] = useState<"createdAt" | "updatedAt">("createdAt");
   const [postSortDirection, setPostSortDirection] = useState<"newest" | "oldest">("newest");
-  const [postStatusFilter, setPostStatusFilter] = useState<"all" | PostStatus>("all");
-  const [postCategoryFilter, setPostCategoryFilter] = useState("all");
-  const [postTagFilter, setPostTagFilter] = useState("all");
+  const [postFiltersByKind, setPostFiltersByKind] = useState<Record<PostKind, PostListFilters>>({
+    blog: { status: "all", category: "all", tag: "all" },
+    forum: { status: "all", category: "all", tag: "all" },
+    news: { status: "all", category: "all", tag: "all" },
+    help: { status: "all", category: "all", tag: "all" },
+  });
   const [postPage, setPostPage] = useState(1);
   const [editingPost, setEditingPost] = useState<number | null>(null);
   const [adminDrafts, setAdminDrafts] = useState<Record<string, string>>({});
@@ -562,12 +570,13 @@ function AdminConsole() {
   }
 
   const isPostSection = tab in postSectionDetails;
+  const postFilters = postFiltersByKind[isPostSection ? tab as PostKind : "blog"];
   const visiblePosts = isPostSection
     ? (posts.data ?? []).filter((post) =>
         post.kind === tab
-        && (postStatusFilter === "all" || post.status === postStatusFilter)
-        && (postCategoryFilter === "all" || post.category === postCategoryFilter)
-        && (postTagFilter === "all" || post.tags.includes(postTagFilter)),
+        && (postFilters.status === "all" || post.status === postFilters.status)
+        && (postFilters.category === "all" || post.category === postFilters.category)
+        && (postFilters.tag === "all" || post.tags.includes(postFilters.tag)),
       )
     : [];
   const orderedPosts = [...visiblePosts].sort((left, right) => {
@@ -618,6 +627,14 @@ function AdminConsole() {
     return true;
   }
 
+  function updateActivePostFilters(updates: Partial<PostListFilters>) {
+    const kind = tab as PostKind;
+    setPostFiltersByKind((current) => ({
+      ...current,
+      [kind]: { ...current[kind], ...updates },
+    }));
+  }
+
   return (
     <div className="mt-6 space-y-5">
       {unsavedChangesDialog}
@@ -649,9 +666,6 @@ function AdminConsole() {
                           clearAdminDrafts(pendingKeys);
                           setTab(item.key);
                           setPostPage(1);
-                          setPostStatusFilter("all");
-                          setPostCategoryFilter("all");
-                          setPostTagFilter("all");
                           setCreateOpen(false);
                           setEditingPost(null);
                         }}
@@ -727,11 +741,12 @@ function AdminConsole() {
                   />
                   <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
                     <span>{translateText("Filtrar por status")}</span>
-                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                    <select className={`${inputClass} min-h-10 w-full`} data-testid="admin-post-status-filter" onChange={async (event) => {
+                      const value = event.currentTarget.value as "all" | PostStatus;
                       if (!await preparePostListChange()) return;
-                      setPostStatusFilter(event.target.value as "all" | PostStatus);
+                      updateActivePostFilters({ status: value });
                       setPostPage(1);
-                    }} value={postStatusFilter}>
+                    }} value={postFilters.status}>
                       <option value="all">{translateText("Todos os status")}</option>
                       <option value="published">{translateText("Publicado")}</option>
                       <option value="draft">{translateText("Rascunho")}</option>
@@ -740,22 +755,24 @@ function AdminConsole() {
                   </label>
                   <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
                     <span>{translateText("Filtrar por categoria")}</span>
-                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                    <select className={`${inputClass} min-h-10 w-full`} data-testid="admin-post-category-filter" onChange={async (event) => {
+                      const value = event.currentTarget.value;
                       if (!await preparePostListChange()) return;
-                      setPostCategoryFilter(event.target.value);
+                      updateActivePostFilters({ category: value });
                       setPostPage(1);
-                    }} value={postCategoryFilter}>
+                    }} value={postFilters.category}>
                       <option value="all">{translateText("Todas as categorias")}</option>
                       {postCategories.map((category) => <option key={category} value={category}>{category}</option>)}
                     </select>
                   </label>
                   <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
                     <span>{translateText("Filtrar por marcador")}</span>
-                    <select className={`${inputClass} min-h-10 w-full`} onChange={async (event) => {
+                    <select className={`${inputClass} min-h-10 w-full`} data-testid="admin-post-tag-filter" onChange={async (event) => {
+                      const value = event.currentTarget.value;
                       if (!await preparePostListChange()) return;
-                      setPostTagFilter(event.target.value);
+                      updateActivePostFilters({ tag: value });
                       setPostPage(1);
-                    }} value={postTagFilter}>
+                    }} value={postFilters.tag}>
                       <option value="all">{translateText("Todos os marcadores")}</option>
                       {postTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
                     </select>
@@ -877,11 +894,11 @@ function AdminConsole() {
                     <div className="rounded-xl border border-dashed border-[#233a59]/25 px-5 py-10 text-center">
                       <FileText aria-hidden="true" className="mx-auto h-7 w-7 text-[#233a59]/55" />
                       <p className="mt-3 font-semibold text-[#012140]">
-                        {translateText(postStatusFilter === "all" && postCategoryFilter === "all" && postTagFilter === "all"
+                        {translateText(postFilters.status === "all" && postFilters.category === "all" && postFilters.tag === "all"
                           ? "Ainda não há publicações nesta seção."
                           : "Nenhuma publicação corresponde aos filtros.")}
                       </p>
-                      {postStatusFilter === "all" && postCategoryFilter === "all" && postTagFilter === "all" && <p className="mt-1 text-sm text-muted-foreground">
+                      {postFilters.status === "all" && postFilters.category === "all" && postFilters.tag === "all" && <p className="mt-1 text-sm text-muted-foreground">
                         {translateText("Crie a primeira para começar a organizar este espaço.")}
                       </p>}
                     </div>

@@ -4795,6 +4795,17 @@ table {
   grid-template-columns: minmax(120px, .35fr) minmax(0, 1fr) auto;
 }
 
+.portal-footer-brand {
+  flex: 0 0 auto;
+}
+
+.roadmap-description-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .cta-actions {
   justify-content: center;
 }
@@ -4809,13 +4820,38 @@ table {
   }
 
   .portal-footer > span {
-    white-space: normal;
+    white-space: nowrap;
+  }
+
+  .portal-footer {
+    gap: 4px 8px;
+    padding: 10px 9px;
+  }
+
+  .portal-footer-brand {
+    flex: 0 0 100%;
+    text-align: center;
+    font-size: clamp(8px, 2.45vw, 10px);
   }
 
   .footer-links {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px 12px;
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 2px;
+  }
+
+  .footer-links > a:not(.footer-instagram-link),
+  .footer-links > button {
+    flex: 0 1 auto;
+    white-space: nowrap;
+    font-size: clamp(8px, 2.5vw, 10px);
+  }
+
+  .footer-instagram-link {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
   }
 }
 
