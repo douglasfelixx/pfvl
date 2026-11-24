@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ArrowRight, ArrowUp, Handshake, LifeBuoy, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Handshake, LifeBuoy, Mail, ShieldCheck } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { SiInstagram } from 'react-icons/si';
 import { getGetSiteMediaQueryKey, useGetSiteMedia } from '@workspace/api-client-react';
@@ -197,11 +197,28 @@ function PrivacyPolicyPage() {
 
 function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
   const effectiveDate = '2026-11-22';
-  const documentHtml = kind === 'privacy' ? privacyPolicyHtml : legalTermsHtml;
+  const sourceHtml = kind === 'privacy' ? privacyPolicyHtml : legalTermsHtml;
+  const oldSectionPrefix = kind === 'privacy' ? 'privacidade' : 'termos';
+  const sectionPrefix = kind === 'privacy' ? 'privacy' : 'terms';
+  const documentHtml = sourceHtml
+    .replaceAll(`#${oldSectionPrefix}-`, `#${sectionPrefix}-`)
+    .replaceAll(`id="${oldSectionPrefix}-`, `id="${sectionPrefix}-`)
+    .replaceAll(
+      `aria-labelledby="${oldSectionPrefix}-titulo"`,
+      `aria-labelledby="${sectionPrefix}-titulo"`,
+    )
+    .replace(/<article(?=[\s>])/, '<article id="legal-document-top"')
+    .replace(
+      /<\/section>/g,
+      '<p class="legal-section-return"><a href="#legal-document-top">↑ Voltar ao topo</a></p></section>',
+    );
 
   useEffect(() => {
     const targetId = window.location.hash.slice(1);
-    if (!targetId) return;
+    if (!targetId) {
+      window.scrollTo(0, 0);
+      return;
+    }
 
     const frame = window.requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ block: 'start' });
@@ -232,17 +249,6 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
           __html: DOMPurify.sanitize(documentHtml, { USE_PROFILES: { html: true } }),
         }}
       />
-      <div className="legal-index-footer">
-        <a
-          aria-label={translateText("Voltar ao índice")}
-          className="legal-index-link"
-          href="#legal-index"
-          title={translateText("Voltar ao índice")}
-        >
-          <ArrowUp aria-hidden="true" size={17} />
-          {translateText("Voltar ao índice")}
-        </a>
-      </div>
     </div>
   );
 }

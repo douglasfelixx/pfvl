@@ -1,4 +1,5 @@
 import { useMemo, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
@@ -43,6 +44,7 @@ function searchHref(q: string, area: string, page: number) {
 
 export function SearchPage() {
   const userId = useSearchAccountId();
+  const queryClient = useQueryClient();
   const locationSearch = useSearch();
   const [, setLocation] = useLocation();
   const urlParams = useMemo(() => new URLSearchParams(locationSearch), [locationSearch]);
@@ -63,10 +65,18 @@ export function SearchPage() {
     },
   });
 
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
+  async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const q = String(form.get('q') ?? '').trim();
+    const refreshedParams = {
+      q,
+      ...(activeArea !== 'all' ? { area: activeArea as SearchAreaType } : {}),
+    };
+    await queryClient.invalidateQueries({
+      queryKey: [...getSearchPortalQueryKey(refreshedParams), userId ?? 'anonymous'],
+      exact: true,
+    });
     setLocation(searchHref(q, activeArea, 1));
   }
 

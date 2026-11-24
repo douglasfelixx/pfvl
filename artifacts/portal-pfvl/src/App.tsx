@@ -112,7 +112,7 @@ const pageMetadata = [
   {
     match: /^\/notifications$/,
     title: 'Notificações | PFVL',
-    description: 'Acompanhe novidades, publicações, respostas e mudanças nas sugestões do PFVL.',
+    description: 'Acompanhe novidades, publicações, respostas e mudanças nas suas solicitações e sugestões.',
   },
   {
     match: /^\/help\/requests$/,
@@ -162,7 +162,7 @@ const pageMetadata = [
   {
     match: /^\/notifications$/,
     title: 'Notificações | PFVL',
-    description: 'Acompanhe novidades, publicações, respostas e mudanças nas sugestões do PFVL.',
+    description: 'Acompanhe novidades, publicações, respostas e mudanças nas suas solicitações e sugestões.',
   },
   {
     match: /^\/profile$/,

@@ -24,7 +24,7 @@ const typeLabels: Record<Notification["type"], string> = {
   new_publication: "Publicação",
   comment_reply: "Comentário",
   new_suggestion: "Sugestão",
-  suggestion_status: "Atualização de sugestão",
+  suggestion_status: "Atualização de andamento",
 };
 
 function typeIcon(type: Notification["type"]) {
@@ -40,7 +40,7 @@ export function NotificationsPage() {
       <PageHeading
         eyebrow="Sua conta PFVL"
         title="Notificações."
-        description="Acompanhe novidades, publicações, respostas e mudanças nas sugestões."
+        description="Acompanhe novidades, publicações, respostas e mudanças nas suas solicitações e sugestões."
       />
       <div className="mt-6">
         <AuthActionGate
@@ -191,7 +191,7 @@ function NotificationsList() {
       ) : (
         <EmptyState
           title="Nenhuma notificação por enquanto"
-          description="Avisaremos por aqui quando houver novidades, publicações, respostas ou mudanças nas sugestões."
+          description="Avisaremos por aqui quando houver novidades, publicações, respostas ou mudanças nas suas solicitações e sugestões."
         />
       )}
     </section>

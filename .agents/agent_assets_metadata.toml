@@ -364,3 +364,17 @@ mtime_ms = 1795497393251
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/e4db4a4a-192b-4138-9d81-85402b57ebbc/0c2ef5d5-6f5d-4cc2-b039-1d6024cb9d3f"
 storage_version_token = "1795497406448908"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "VmZIbhJS3VbR_zXIsrwT6"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-24-mobile.zip"
+type = "unspecified"
+title = "ZIP atualizado do PFVL para o GitHub"
+description = "Pacote completo do código-fonte com o ajuste mobile da lista administrativa de sugestões incluído. 407 arquivos; sem node_modules, .git ou credenciais."
+logical_id = "9c5fc264-7a37-4b38-bc4f-ca0530e9c0cb"
+content_hash = "sha256:80f5157b49b2167d524c070038c0d7f6df803d77680bf43e9fd13f86d6ddcecd"
+size = 1196915
+mtime_ms = 1795508070675
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/9c5fc264-7a37-4b38-bc4f-ca0530e9c0cb/49856aaa-9e02-4fd7-9c45-0ca2738e86c8"
+storage_version_token = "1795508089948431"
+content_type = "application/octet-stream"

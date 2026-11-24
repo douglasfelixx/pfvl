@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useListMySupportRequests, getListMySupportRequestsQueryKey, type MySupportRequest } from "@workspace/api-client-react";
 import { ArrowUpRight, Check, Clock3, Headphones, MessageSquareText, RefreshCw, ShieldCheck } from "lucide-react";
@@ -31,131 +31,81 @@ const statusDetails = {
   },
 } as const;
 
-function RequestCard({ request }: { request: MySupportRequest }) {
+function RequestDetails({ request }: { request: MySupportRequest }) {
   const status = statusDetails[request.status];
-  const StatusIcon = status.icon;
 
   return (
-    <article
-      id={`support-request-${request.id}`}
-      className="overflow-hidden rounded-[22px] border border-[#d9e2df] bg-[#fffefa] shadow-[0_8px_28px_rgba(24,55,50,0.045)] transition-transform duration-200 hover:-translate-y-0.5"
-      style={{ scrollMarginTop: '6rem' }}
-      data-testid={`card-support-request-${request.id}`}
-    >
-      <div className="border-b border-[#e7ece8] px-5 py-5 sm:px-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[#58716a]">
-                {translateText("Protocolo")}
-              </span>
-              <span
-                className="rounded-md bg-[#eef2ed] px-2.5 py-1 font-mono text-xs font-bold tracking-[0.08em] text-[#23483e]"
-                data-testid={`text-support-protocol-${request.id}`}
-              >
-                {request.protocol}
-              </span>
-            </div>
-            <h2
-              className="mt-3 break-words font-display text-[22px] font-semibold leading-tight tracking-[-0.03em] text-[#183a34] sm:text-[25px]"
-              data-testid={`text-support-subject-${request.id}`}
-            >
-              {request.subjectName}
-            </h2>
-          </div>
-          <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold ${status.tone}`}
-              data-testid={`status-support-request-${request.id}`}
-            >
-              <StatusIcon aria-hidden="true" size={14} strokeWidth={2.2} />
-              {translateText(status.label)}
-            </span>
-            <span className="text-xs leading-5 text-[#687a73]">{translateText(status.description)}</span>
-          </div>
+    <div className="my-support-request-details" data-testid={`details-support-request-${request.id}`}>
+      <dl className="mb-5 grid grid-cols-2 gap-3 sm:flex sm:gap-8">
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Enviada em")}</dt>
+          <dd className="mt-1 text-xs font-semibold text-[#344f47]" data-testid={`text-support-created-${request.id}`}>
+            <time dateTime={request.createdAt}>{formatDate(request.createdAt)}</time>
+          </dd>
         </div>
-
-        <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-[#e7ece8] pt-4 sm:flex sm:gap-8">
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Enviada em")}</dt>
-            <dd className="mt-1 text-xs font-semibold text-[#344f47]" data-testid={`text-support-created-${request.id}`}>
-              <time dateTime={request.createdAt}>{formatDate(request.createdAt)}</time>
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Última atualização")}</dt>
-            <dd className="mt-1 text-xs font-semibold text-[#344f47]" data-testid={`text-support-updated-${request.id}`}>
-              <time dateTime={request.updatedAt}>{formatDate(request.updatedAt)}</time>
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="px-5 py-5 sm:px-7 sm:py-6">
-        <section aria-labelledby={`request-message-${request.id}`}>
-          <h3 id={`request-message-${request.id}`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#758780]">
-            {translateText("Sua mensagem")}
-          </h3>
-          <p
-            className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-7 text-[#344f47]"
-            data-testid={`text-support-message-${request.id}`}
-          >
-            {request.message}
-          </p>
-        </section>
-
-        <section aria-labelledby={`team-updates-${request.id}`} className="mt-6 border-t border-[#e7ece8] pt-5">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#eaf0e9] text-[#315d50]">
-              <MessageSquareText aria-hidden="true" size={15} />
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Última atualização")}</dt>
+          <dd className="mt-1 text-xs font-semibold text-[#344f47]" data-testid={`text-support-updated-${request.id}`}>
+            <time dateTime={request.updatedAt}>{formatDate(request.updatedAt)}</time>
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Andamento")}</dt>
+          <dd className="mt-1 text-xs font-semibold text-[#344f47]">{translateText(status.description)}</dd>
+        </div>
+      </dl>
+      <section aria-labelledby={`request-message-${request.id}`}>
+        <h3 id={`request-message-${request.id}`} className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#758780]">
+          {translateText("Sua mensagem")}
+        </h3>
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#344f47]" data-testid={`text-support-message-${request.id}`}>
+          {request.message}
+        </p>
+      </section>
+      <section aria-labelledby={`team-updates-${request.id}`} className="mt-5 border-t border-[#e7ece8] pt-4">
+        <div className="flex items-center gap-2.5">
+          <MessageSquareText aria-hidden="true" className="text-[#315d50]" size={16} />
+          <h3 id={`team-updates-${request.id}`} className="text-sm font-bold text-[#23483e]">
+            {translateText("Acompanhamento da equipe")}
+            <span className="ml-2 text-xs font-medium text-[#718078]">
+              {request.comments.length === 1
+                ? translateText("1 atualização")
+                : `${request.comments.length} ${translateText("atualizações")}`}
             </span>
-            <div>
-              <h3 id={`team-updates-${request.id}`} className="text-sm font-bold text-[#23483e]">
-                {translateText("Acompanhamento da equipe")}
-              </h3>
-              <p className="mt-0.5 text-xs text-[#718078]">
-                {request.comments.length === 1
-                  ? translateText("1 atualização")
-                  : `${request.comments.length} ${translateText("atualizações")}`}
-              </p>
-            </div>
-          </div>
-          {request.comments.length ? (
-            <ol className="ml-4 mt-4 space-y-0 border-l border-[#dce6df] pl-5">
-              {request.comments.map((comment) => (
-                <li
-                  className="relative pb-5 last:pb-0"
-                  key={comment.id}
-                  data-testid={`comment-support-request-${comment.id}`}
-                >
-                  <span aria-hidden="true" className={`absolute -left-[25px] top-1.5 h-2 w-2 rounded-full ${status.marker}`} />
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <strong className="text-xs font-bold text-[#315d50]" data-testid={`text-support-comment-author-${comment.id}`}>
-                      {comment.authorName}
-                    </strong>
-                    <time className="text-[11px] text-[#78867f]" dateTime={comment.createdAt} data-testid={`text-support-comment-date-${comment.id}`}>
-                      {formatDate(comment.createdAt)}
-                    </time>
-                  </div>
-                  <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-[#465b53]" data-testid={`text-support-comment-${comment.id}`}>
-                    {comment.message}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="mt-4 rounded-xl bg-[#f4f6f1] px-4 py-3 text-sm leading-6 text-[#65766e]" data-testid={`text-no-support-comments-${request.id}`}>
-              {translateText("Ainda não há atualizações da equipe. Quando houver novidades, elas aparecerão aqui.")}
-            </p>
-          )}
-        </section>
-      </div>
-    </article>
+          </h3>
+        </div>
+        {request.comments.length ? (
+          <ol className="ml-2 mt-4 space-y-0 border-l border-[#dce6df] pl-5">
+            {request.comments.map((comment) => (
+              <li className="relative pb-5 last:pb-0" key={comment.id} data-testid={`comment-support-request-${comment.id}`}>
+                <span aria-hidden="true" className={`absolute -left-[25px] top-1.5 h-2 w-2 rounded-full ${status.marker}`} />
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <strong className="text-xs font-bold text-[#315d50]" data-testid={`text-support-comment-author-${comment.id}`}>
+                    {comment.authorName}
+                  </strong>
+                  <time className="text-[11px] text-[#78867f]" dateTime={comment.createdAt} data-testid={`text-support-comment-date-${comment.id}`}>
+                    {formatDate(comment.createdAt)}
+                  </time>
+                </div>
+                <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-[#465b53]" data-testid={`text-support-comment-${comment.id}`}>
+                  {comment.message}
+                </p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-3 rounded-xl bg-[#f4f6f1] px-4 py-3 text-sm leading-6 text-[#65766e]" data-testid={`text-no-support-comments-${request.id}`}>
+            {translateText("Ainda não há atualizações da equipe. Quando houver novidades, elas aparecerão aqui.")}
+          </p>
+        )}
+      </section>
+    </div>
   );
 }
 
 function SupportRequestsContent() {
   const { isSignedIn, userId } = useAuth();
+  const [expandedRequestId, setExpandedRequestId] = useState<number | null>(null);
   const requestsQuery = useListMySupportRequests({
     query: {
       queryKey: [...getListMySupportRequestsQueryKey(), userId],
@@ -167,11 +117,20 @@ function SupportRequestsContent() {
   });
   useEffect(() => {
     const targetId = window.location.hash.slice(1);
-    if (!requestsQuery.data || !/^support-request-\d+$/.test(targetId)) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
+    const match = /^support-request-(\d+)$/.exec(targetId);
+    if (!requestsQuery.data || !match) return;
+    const requestId = Number(match[1]);
+    if (requestsQuery.data.some((request) => request.id === requestId)) {
+      setExpandedRequestId(requestId);
+    }
   }, [requestsQuery.data]);
+  useEffect(() => {
+    if (expandedRequestId === null) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`support-request-${expandedRequestId}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedRequestId]);
   const requests = requestsQuery.data ?? [];
 
   return (
@@ -213,8 +172,71 @@ function SupportRequestsContent() {
               description="Quando você enviar uma solicitação de suporte, ela aparecerá nesta página com o protocolo e o andamento."
             />
           ) : (
-            <div className="space-y-5" aria-label={translateText("Suas solicitações de suporte")} data-testid="list-support-requests">
-              {requests.map((request) => <RequestCard key={request.id} request={request} />)}
+            <div className="my-support-requests-table-wrap overflow-hidden rounded-2xl border border-[#d9e2df] bg-white" data-testid="list-support-requests">
+              <table aria-label={translateText("Suas solicitações de suporte")} className="my-support-requests-table w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr>
+                    <th scope="col">{translateText("Protocolo")}</th>
+                    <th scope="col">{translateText("Assunto")}</th>
+                    <th scope="col">{translateText("Data de envio")}</th>
+                    <th scope="col">{translateText("Status")}</th>
+                    <th scope="col">{translateText("Ação")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requests.map((request) => {
+                    const status = statusDetails[request.status];
+                    const StatusIcon = status.icon;
+                    const expanded = expandedRequestId === request.id;
+                    const detailId = `support-request-details-${request.id}`;
+                    return (
+                      <Fragment key={request.id}>
+                        <tr
+                          className={`my-support-request-row ${expanded ? "is-expanded" : ""}`}
+                          id={`support-request-${request.id}`}
+                          style={{ scrollMarginTop: "6rem" }}
+                          data-testid={`row-support-request-${request.id}`}
+                        >
+                          <td data-label={translateText("Protocolo")}>
+                            <span className="font-mono text-xs font-bold text-[#23483e]" data-testid={`text-support-protocol-${request.id}`}>{request.protocol}</span>
+                          </td>
+                          <td data-label={translateText("Assunto")}>
+                            <span className="font-semibold text-[#183a34]" data-testid={`text-support-subject-${request.id}`}>{request.subjectName}</span>
+                          </td>
+                          <td data-label={translateText("Data de envio")}>
+                            <time className="text-xs text-[#687a73]" dateTime={request.createdAt}>{formatDate(request.createdAt)}</time>
+                          </td>
+                          <td data-label={translateText("Status")}>
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${status.tone}`} data-testid={`status-support-request-${request.id}`}>
+                              <StatusIcon aria-hidden="true" size={13} strokeWidth={2.2} />
+                              {translateText(status.label)}
+                            </span>
+                          </td>
+                          <td data-label={translateText("Ação")}>
+                            <button
+                              aria-controls={detailId}
+                              aria-expanded={expanded}
+                              className="my-support-request-toggle"
+                              data-testid={`button-open-support-request-${request.id}`}
+                              onClick={() => setExpandedRequestId((current) => current === request.id ? null : request.id)}
+                              type="button"
+                            >
+                              {translateText(expanded ? "Fechar" : "Abrir")}
+                            </button>
+                          </td>
+                        </tr>
+                        {expanded && (
+                          <tr className="my-support-request-detail-row">
+                            <td colSpan={5}>
+                              <RequestDetails request={request} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </main>

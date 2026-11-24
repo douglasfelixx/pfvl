@@ -754,6 +754,7 @@ router.patch(
       const [existing] = await tx
         .select({
           id: supportRequestsTable.id,
+          protocol: supportRequestsTable.protocol,
           requestType: supportRequestsTable.requestType,
           subjectName: supportRequestsTable.subjectName,
           title: supportRequestsTable.title,
@@ -786,27 +787,30 @@ router.patch(
           createdAt: supportRequestsTable.createdAt,
           updatedAt: supportRequestsTable.updatedAt,
         });
-      if (
-        existing.requestType === "suggestion" &&
-        existing.requesterUserId !== null &&
-        existing.status !== parsed.data.status
-      ) {
+      if (existing.requesterUserId !== null && existing.status !== parsed.data.status) {
         const statusLabel =
           parsed.data.status === "new"
             ? "recebida"
             : parsed.data.status === "in_progress"
               ? "em andamento"
               : "concluída";
+        const isSupportRequest = existing.requestType === "support";
         await tx
           .insert(notificationsTable)
           .values({
             recipientUserId: existing.requesterUserId,
             actorUserId: getPfvlUser(req).id,
-            eventKey: `suggestion-request:${existing.id}:status:${randomUUID()}`,
+            eventKey: `${isSupportRequest ? "support-request" : "suggestion-request"}:${existing.id}:status:${randomUUID()}`,
             type: "suggestion_status",
-            title: "Sua sugestão foi atualizada",
-            message: `${existing.title ?? existing.subjectName} está ${statusLabel}.`,
-            href: "/suggestions",
+            title: isSupportRequest
+              ? "O status da sua solicitação foi atualizado"
+              : "Sua sugestão foi atualizada",
+            message: isSupportRequest
+              ? `Protocolo ${existing.protocol}: ${existing.subjectName} está ${statusLabel}.`
+              : `${existing.title ?? existing.subjectName} está ${statusLabel}.`,
+            href: isSupportRequest
+              ? `/help/requests#support-request-${existing.id}`
+              : `/suggestions#suggestion-${existing.id}`,
           })
           .onConflictDoNothing();
       }
@@ -842,6 +846,7 @@ router.patch(
       const [existing] = await tx
         .select({
           id: supportRequestsTable.id,
+          protocol: supportRequestsTable.protocol,
           requestType: supportRequestsTable.requestType,
           title: supportRequestsTable.title,
           roadmapTitle: supportRequestsTable.roadmapTitle,
@@ -914,7 +919,7 @@ router.patch(
               ? "Sua sugestão foi aprovada para o roadmap"
               : "Sua sugestão foi retirada do roadmap público",
             message: existing.title ?? "Sugestão",
-            href: "/suggestions",
+            href: `/suggestions#suggestion-${existing.id}`,
           })
           .onConflictDoNothing();
       }
@@ -970,6 +975,7 @@ router.post(
       const [requestDetails] = await tx
         .select({
           id: supportRequestsTable.id,
+          protocol: supportRequestsTable.protocol,
           requestType: supportRequestsTable.requestType,
           requesterUserId: supportRequestsTable.requesterUserId,
           title: supportRequestsTable.title,
@@ -997,20 +1003,24 @@ router.post(
         .update(supportRequestsTable)
         .set({ updatedAt: new Date() })
         .where(eq(supportRequestsTable.id, request.id));
-      if (
-        requestDetails.requestType === "suggestion" &&
-        requestDetails.requesterUserId !== null
-      ) {
+      if (requestDetails.requesterUserId !== null) {
+        const isSupportRequest = requestDetails.requestType === "support";
         await tx
           .insert(notificationsTable)
           .values({
             recipientUserId: requestDetails.requesterUserId,
             actorUserId: admin.id,
-            eventKey: `suggestion-request:${requestDetails.id}:comment:${randomUUID()}`,
+            eventKey: `${isSupportRequest ? "support-request" : "suggestion-request"}:${requestDetails.id}:comment:${randomUUID()}`,
             type: "comment_reply",
-            title: "A equipe respondeu à sua sugestão",
-            message: requestDetails.title ?? requestDetails.subjectName,
-            href: "/suggestions",
+            title: isSupportRequest
+              ? "A equipe respondeu à sua solicitação"
+              : "A equipe respondeu à sua sugestão",
+            message: isSupportRequest
+              ? `Protocolo ${requestDetails.protocol}: ${requestDetails.subjectName}`
+              : requestDetails.title ?? requestDetails.subjectName,
+            href: isSupportRequest
+              ? `/help/requests#support-request-${requestDetails.id}`
+              : `/suggestions#suggestion-${requestDetails.id}`,
           })
           .onConflictDoNothing();
       }

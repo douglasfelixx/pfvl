@@ -996,11 +996,24 @@ function SuggestionWorkspace() {
   });
   useEffect(() => {
     const targetId = window.location.hash.slice(1);
-    if (!suggestions.data || !/^suggestion-\d+$/.test(targetId)) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
+    const match = /^suggestion-(\d+)$/.exec(targetId);
+    if (!suggestions.data || !match) return;
+    const suggestionId = Number(match[1]);
+    if (suggestions.data.some((suggestion) => suggestion.id === suggestionId)) {
+      setExpandedSuggestionId(suggestionId);
+    }
   }, [suggestions.data]);
+  useEffect(() => {
+    if (expandedSuggestionId === null) return;
+    const suggestion = suggestions.data?.find((item) => item.id === expandedSuggestionId);
+    if (!suggestion) return;
+    window.requestAnimationFrame(() => {
+      const target = window.matchMedia("(min-width: 1024px)").matches
+        ? document.querySelector<HTMLElement>(`[data-testid="my-suggestion-row-${suggestion.id}"]`)
+        : document.querySelector<HTMLElement>(`[data-testid="my-suggestion-card-${suggestion.id}"]`);
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }, [expandedSuggestionId, suggestions.data]);
   const mutation = useCreateMySuggestion();
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
