@@ -1489,8 +1489,8 @@ function SupportInbox({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#233a59]/15">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm" data-testid={`table-${filterBy === "subject" ? "support-requests" : "suggestion-inbox"}`}>
+      <div className="support-request-table-wrap overflow-x-auto rounded-xl border border-[#233a59]/15">
+        <table className="support-request-table w-full min-w-[760px] border-collapse text-left text-sm" data-testid={`table-${filterBy === "subject" ? "support-requests" : "suggestion-inbox"}`}>
           <thead className="bg-[#f7f8fa] text-xs uppercase tracking-wide text-[#233a59]/75">
             <tr>
               <th className="px-4 py-3">{translateText("Protocolo")}</th>
@@ -1506,16 +1506,16 @@ function SupportInbox({
           const statusKey = `request:${request.id}`;
           return (
             <Fragment key={request.id}>
-              <tr data-testid={`support-request-${request.id}`}>
-                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-[#233a59]">{request.protocol}</td>
-                <td className="max-w-[320px] px-4 py-3 font-semibold text-[#012140]">{request.title || request.subjectName}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{filterBy === "subject" ? request.subjectName : request.categoryName ?? "—"}</td>
-                <td className="px-4 py-3">
+              <tr className={`support-request-summary-row ${expandedRequestId === request.id ? "is-expanded" : ""}`} data-testid={`support-request-${request.id}`}>
+                <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-[#233a59]" data-label={translateText("Protocolo")}>{request.protocol}</td>
+                <td className="max-w-[320px] px-4 py-3 font-semibold text-[#012140]" data-label={translateText("Título")}>{request.title || request.subjectName}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground" data-label={translateText(filterBy === "subject" ? "Assunto" : "Categoria")}>{filterBy === "subject" ? request.subjectName : request.categoryName ?? "—"}</td>
+                <td className="px-4 py-3" data-label={translateText(filterBy === "subject" ? "Status" : "Status da sugestão")}>
                   <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
                     {translateText(supportStatusLabel[request.status])}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" data-label={translateText("Ação")}>
                   <button
                     aria-controls={`support-request-detail-${request.id}`}
                     aria-expanded={expandedRequestId === request.id}
@@ -1528,7 +1528,7 @@ function SupportInbox({
                 </td>
               </tr>
               {expandedRequestId === request.id && (
-              <tr>
+              <tr className="support-request-detail-row">
                 <td className="bg-[#fcfcfd] px-4 py-4" colSpan={5}>
               <div className="support-request-details" id={`support-request-detail-${request.id}`} data-testid={`support-request-details-${request.id}`}>
                 <p className="text-xs text-muted-foreground">
@@ -1698,7 +1698,7 @@ function SupportInbox({
           );
         })}
         {!visibleRequests.length && (
-          <tr><td className="px-4 py-8 text-center text-sm text-muted-foreground" colSpan={5}>
+          <tr className="support-request-empty-row"><td className="px-4 py-8 text-center text-sm text-muted-foreground" colSpan={5}>
             {translateText(statusFilter === "all" && classificationFilter === "all"
               ? emptyMessage
               : filterBy === "subject"
