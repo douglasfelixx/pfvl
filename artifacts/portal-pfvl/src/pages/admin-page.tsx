@@ -1,12 +1,13 @@
-import { Fragment, lazy, Suspense, useEffect, useState, type FormEvent } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   ArrowUpRight,
   ArrowDownUp,
   BookOpen,
   ChevronDown,
+  ChevronUp,
   CircleHelp,
   FileText,
   Headset,
@@ -38,18 +39,22 @@ import {
   getListAdminSiteMediaQueryKey,
   getListAdminTaxonomyQueryKey,
   getListTaxonomyQueryKey,
-  getListSuggestionsQueryKey,
   getListAdminTestimonialsQueryKey,
   getListTestimonialsQueryKey,
   getListAdminSupportRequestsQueryKey,
+  getListAdminSupportRequestStatusesQueryKey,
   getListAdminSupportSubjectsQueryKey,
   getListPublicRoadmapSuggestionsQueryKey,
   getListSupportSubjectsQueryKey,
   getListSuggestionCategoriesQueryKey,
+  getListMySuggestionsQueryKey,
+  getListMySupportRequestsQueryKey,
+  getListNotificationsQueryKey,
   useCloseAdminPoll,
   useCreateAdminPoll,
   useCreateAdminSuggestionCategory,
   useCreateAdminSupportRequestComment,
+  useCreateAdminSupportRequestStatus,
   useCreateAdminTaxonomy,
   useDeleteComment,
   useDeleteAdminTaxonomy,
@@ -64,26 +69,25 @@ import {
   useListTaxonomy,
   useGetActivePoll,
   useListComments,
-  useListSuggestions,
   useListAdminTestimonials,
   useCreateAdminSupportSubject,
   useListAdminSupportRequests,
+  useListAdminSupportRequestStatuses,
   useListAdminSupportSubjects,
   useUpdateAdminTestimonial,
-  useUpdateAdminSuggestion,
   useUpdateAdminTaxonomy,
   useUpdateAdminSiteMedia,
   useUpdateAdminUser,
   useUpdateAdminSupportRequest,
+  useUpdateAdminSupportRequestStatus,
   useUpdateAdminSupportRequestRoadmap,
   useUpdateAdminSuggestionCategory,
   useUpdateAdminSupportSubject,
+  useReorderAdminSupportRequestStatuses,
   useUpdatePost,
   type Post,
   type PostKind,
   type PostStatus,
-  type Suggestion,
-  type SuggestionStatus,
   type UserRole,
   type UserProfile,
   type UserStatus,
@@ -94,6 +98,7 @@ import {
   type Testimonial,
   type AdminSupportRequest,
   type SupportRequestStatus,
+  type SupportRequestStatusCatalogEntry,
   type SupportRequestSubject,
   type SupportRequestCategory,
 } from "@workspace/api-client-react";
@@ -104,6 +109,10 @@ import { normalizeRichContent, richContentToPlainText } from "@/components/rich-
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate, LoadingState, PageHeading, QueryError, Surface } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
+import {
+  getPrivateStatusLabel,
+  getPrivateStatusLabelFromRequest,
+} from "@/lib/private-status-label";
 import { ProfilePage } from "@/pages/profile-page";
 import { refreshPostQueries } from "@/lib/post-query-refresh";
 
@@ -303,7 +312,19 @@ export function AdminPage() {
 function AdminConsole() {
   const queryClient = useQueryClient();
   const { confirm: confirmUnsavedChanges, dialog: unsavedChangesDialog } = useUnsavedChangesConfirm();
-  const [tab, setTab] = useState<AdminSection>("blog");
+  const locationSearch = useSearch();
+  const suggestionRequestParam = new URLSearchParams(locationSearch).get("suggestionRequest");
+  const initialSuggestionRequestId =
+    suggestionRequestParam && /^\d+$/.test(suggestionRequestParam)
+      ? Number(suggestionRequestParam)
+      : NaN;
+  const suggestionRequestId =
+    Number.isSafeInteger(initialSuggestionRequestId) && initialSuggestionRequestId > 0
+      ? initialSuggestionRequestId
+      : null;
+  const [tab, setTab] = useState<AdminSection>(() =>
+    suggestionRequestId ? "suggestions" : "blog",
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [postDateOrder, setPostDateOrder] = useState<"createdAt" | "updatedAt">("createdAt");
   const [postSortDirection, setPostSortDirection] = useState<"newest" | "oldest">("newest");
@@ -332,9 +353,6 @@ function AdminConsole() {
   const users = useListAdminUsers({
     query: { queryKey: getListAdminUsersQueryKey(), enabled: profile.data?.role === "admin" },
   });
-  const suggestions = useListSuggestions({
-    query: { queryKey: getListSuggestionsQueryKey(), enabled: profile.data?.role === "admin" },
-  });
   const taxonomy = useListAdminTaxonomy({
     query: { queryKey: getListAdminTaxonomyQueryKey(), enabled: profile.data?.role === "admin" },
   });
@@ -348,6 +366,24 @@ function AdminConsole() {
       refetchInterval: 30_000,
     },
   });
+  const supportStatuses = useListAdminSupportRequestStatuses(
+    { requestType: "support" },
+    {
+      query: {
+        queryKey: getListAdminSupportRequestStatusesQueryKey({ requestType: "support" }),
+        enabled: profile.data?.role === "admin",
+      },
+    },
+  );
+  const suggestionStatuses = useListAdminSupportRequestStatuses(
+    { requestType: "suggestion" },
+    {
+      query: {
+        queryKey: getListAdminSupportRequestStatusesQueryKey({ requestType: "suggestion" }),
+        enabled: profile.data?.role === "admin",
+      },
+    },
+  );
   const supportSubjects = useListAdminSupportSubjects({
     query: {
       queryKey: getListAdminSupportSubjectsQueryKey(),
@@ -614,7 +650,17 @@ function AdminConsole() {
     }
     if (section === "taxonomy") return taxonomy.data?.length ?? "—";
     if (section === "testimonials") return testimonials.data?.filter((item) => item.status === "pending").length ?? "—";
-    if (section === "requests") return supportRequests.data?.counts.new ?? "—";
+    if (section === "requests") {
+      if (supportRequests.isLoading || supportStatuses.isLoading) return "—";
+      const initialStatus = supportStatuses.data?.find((status) => status.isInitial);
+      return initialStatus
+        ? supportRequests.data?.requests.filter(
+            (request) =>
+              request.requestType === "support" &&
+              request.status === initialStatus.key,
+          ).length ?? 0
+        : "—";
+    }
     return undefined;
   };
 
@@ -819,7 +865,7 @@ function AdminConsole() {
                             </p>
                             {post.commentCount > 0 && (
                               <p className="mt-1 text-xs font-semibold text-[#233a59]">
-                                {post.commentCount} {post.commentCount === 1 ? "comentário" : "comentários"}
+                                {post.commentCount} {translateText(post.commentCount === 1 ? "comentário" : "comentários")}
                               </p>
                             )}
                           </div>
@@ -948,6 +994,10 @@ function AdminConsole() {
             <SupportRequestsManager
               requests={supportRequests.data?.requests ?? []}
               subjects={supportSubjects.data ?? []}
+              statuses={supportStatuses.data ?? []}
+              statusesLoading={supportStatuses.isLoading}
+              statusesError={supportStatuses.isError}
+              retryStatuses={() => void supportStatuses.refetch()}
               isLoading={supportRequests.isLoading || supportSubjects.isLoading}
               isError={supportRequests.isError || supportSubjects.isError}
               retry={() => {
@@ -994,7 +1044,10 @@ function AdminConsole() {
           {tab === "suggestions" && (
             <AdminSuggestionsManager
               requests={supportRequests.data?.requests.filter((request) => request.requestType === "suggestion") ?? []}
-              counts={supportRequests.data?.counts ?? { new: 0, inProgress: 0, completed: 0 }}
+              statuses={suggestionStatuses.data ?? []}
+              statusesLoading={suggestionStatuses.isLoading}
+              statusesError={suggestionStatuses.isError}
+              retryStatuses={() => void suggestionStatuses.refetch()}
               requestsLoading={supportRequests.isLoading}
               requestsError={supportRequests.isError}
               retryRequests={() => void supportRequests.refetch()}
@@ -1002,15 +1055,7 @@ function AdminConsole() {
               categoriesLoading={suggestionCategories.isLoading}
               categoriesError={suggestionCategories.isError}
               retryCategories={() => void suggestionCategories.refetch()}
-              legacySuggestions={suggestions.data ?? []}
-              legacyLoading={suggestions.isLoading}
-              legacyError={suggestions.isError}
-              retryLegacy={() => void suggestions.refetch()}
-              drafts={adminDrafts}
-              stageDraft={stageAdminDraft}
-              clearDraft={clearAdminDraft}
-              feedback={changeFeedback}
-              reportChange={reportChange}
+              initialRequestId={suggestionRequestId}
             />
           )}
 
@@ -1029,37 +1074,30 @@ function AdminConsole() {
   );
 }
 
-const supportStatusLabel: Record<SupportRequestStatus, string> = {
-  new: "Nova",
-  in_progress: "Em andamento",
-  completed: "Concluída",
-};
-
 function SupportRequestsManager({
   requests,
   subjects,
+  statuses,
+  statusesLoading,
+  statusesError,
+  retryStatuses,
   isLoading,
   isError,
   retry,
 }: {
   requests: AdminSupportRequest[];
   subjects: SupportRequestSubject[];
+  statuses: SupportRequestStatusCatalogEntry[];
+  statusesLoading: boolean;
+  statusesError: boolean;
+  retryStatuses: () => void;
   isLoading: boolean;
   isError: boolean;
   retry: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"requests" | "subjects">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "subjects" | "statuses">("requests");
   const [requestsPage, setRequestsPage] = useState(1);
   const visibleRequests = requests.filter((request) => request.requestType === "support");
-  const visibleCounts = visibleRequests.reduce(
-    (total, request) => {
-      if (request.status === "new") total.new += 1;
-      if (request.status === "in_progress") total.inProgress += 1;
-      if (request.status === "completed") total.completed += 1;
-      return total;
-    },
-    { new: 0, inProgress: 0, completed: 0 },
-  );
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div>
@@ -1086,11 +1124,20 @@ function SupportRequestsManager({
         >
           {translateText("Assuntos do formulário")}
         </button>
+        <button
+          aria-selected={activeTab === "statuses"}
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${activeTab === "statuses" ? "bg-[#012140] text-white" : "text-[#233a59] hover:bg-[#f2f4f7]"}`}
+          onClick={() => setActiveTab("statuses")}
+          role="tab"
+          type="button"
+        >
+          {translateText("Status")}
+        </button>
       </div>
       {activeTab === "requests" ? (
         <SupportInbox
           requests={visibleRequests}
-          counts={visibleCounts}
+          statuses={statuses}
           classificationOptions={subjects.map((subject) => subject.name)}
           filterBy="subject"
           isLoading={isLoading}
@@ -1099,8 +1146,16 @@ function SupportRequestsManager({
           page={requestsPage}
           onPageChange={setRequestsPage}
         />
-      ) : (
+      ) : activeTab === "subjects" ? (
         <SupportSubjectsManager subjects={subjects} />
+      ) : (
+        <SupportRequestStatusesManager
+          requestType="support"
+          statuses={statuses}
+          isLoading={statusesLoading}
+          isError={statusesError}
+          retry={retryStatuses}
+        />
       )}
     </div>
   );
@@ -1108,7 +1163,10 @@ function SupportRequestsManager({
 
 function AdminSuggestionsManager({
   requests,
-  counts,
+  statuses,
+  statusesLoading,
+  statusesError,
+  retryStatuses,
   requestsLoading,
   requestsError,
   retryRequests,
@@ -1116,18 +1174,13 @@ function AdminSuggestionsManager({
   categoriesLoading,
   categoriesError,
   retryCategories,
-  legacySuggestions,
-  legacyLoading,
-  legacyError,
-  retryLegacy,
-  drafts,
-  stageDraft,
-  clearDraft,
-  feedback,
-  reportChange,
+  initialRequestId,
 }: {
   requests: AdminSupportRequest[];
-  counts: { new: number; inProgress: number; completed: number };
+  statuses: SupportRequestStatusCatalogEntry[];
+  statusesLoading: boolean;
+  statusesError: boolean;
+  retryStatuses: () => void;
   requestsLoading: boolean;
   requestsError: boolean;
   retryRequests: () => void;
@@ -1135,27 +1188,10 @@ function AdminSuggestionsManager({
   categoriesLoading: boolean;
   categoriesError: boolean;
   retryCategories: () => void;
-  legacySuggestions: Suggestion[];
-  legacyLoading: boolean;
-  legacyError: boolean;
-  retryLegacy: () => void;
-  drafts: Record<string, string>;
-  stageDraft: (key: string, value: string, original: string) => void;
-  clearDraft: (key: string) => void;
-  feedback: Record<string, string>;
-  reportChange: (key: string, message: string) => void;
+  initialRequestId: number | null;
 }) {
-  const [activeTab, setActiveTab] = useState<"inbox" | "categories" | "legacy">("inbox");
+  const [activeTab, setActiveTab] = useState<"inbox" | "categories" | "statuses">("inbox");
   const [inboxPage, setInboxPage] = useState(1);
-  const suggestionCounts = requests.reduce(
-    (total, request) => {
-      if (request.status === "new") total.new += 1;
-      if (request.status === "in_progress") total.inProgress += 1;
-      if (request.status === "completed") total.completed += 1;
-      return total;
-    },
-    { new: 0, inProgress: 0, completed: 0 },
-  );
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
@@ -1169,7 +1205,7 @@ function AdminSuggestionsManager({
         {([
           ["inbox", "Mensagens recebidas"],
           ["categories", "Categorias"],
-          ["legacy", "Ideias anteriores"],
+          ["statuses", "Status"],
         ] as const).map(([key, label]) => (
           <button
             aria-selected={activeTab === key}
@@ -1186,13 +1222,14 @@ function AdminSuggestionsManager({
       {activeTab === "inbox" ? (
         <SupportInbox
           requests={requests}
-          counts={suggestionCounts}
+          statuses={statuses}
           classificationOptions={categories.map((category) => category.name)}
           filterBy="category"
           isLoading={requestsLoading}
           isError={requestsError}
           retry={retryRequests}
           emptyMessage="Ainda não há sugestões recebidas."
+          initialExpandedRequestId={initialRequestId}
           page={inboxPage}
           onPageChange={setInboxPage}
         />
@@ -1203,26 +1240,14 @@ function AdminSuggestionsManager({
           isError={categoriesError}
           retry={retryCategories}
         />
-      ) : legacyLoading ? (
-        <LoadingState rows={3} />
-      ) : legacyError ? (
-        <p className="text-sm text-muted-foreground">
-          {translateText("Não foi possível carregar as ideias anteriores.")}
-          <button className="ml-2 font-semibold underline" onClick={retryLegacy} type="button">{translateText("Tentar novamente")}</button>
-        </p>
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{translateText("Registros do antigo mural público foram preservados. Novos envios entram somente pela caixa privada.")}</p>
-          <SuggestionsTable
-            suggestions={legacySuggestions}
-            drafts={drafts}
-            stageDraft={stageDraft}
-            clearDraft={clearDraft}
-            feedback={feedback}
-            reportChange={reportChange}
-            emptyMessage="Nenhuma ideia anterior cadastrada."
-          />
-        </div>
+        <SupportRequestStatusesManager
+          requestType="suggestion"
+          statuses={statuses}
+          isLoading={statusesLoading}
+          isError={statusesError}
+          retry={retryStatuses}
+        />
       )}
     </div>
   );
@@ -1230,24 +1255,26 @@ function AdminSuggestionsManager({
 
 function SupportInbox({
   requests,
-  counts,
+  statuses,
   classificationOptions,
   filterBy,
   isLoading,
   isError,
   retry,
   emptyMessage = "Ainda não há solicitações registradas.",
+  initialExpandedRequestId = null,
   page = 1,
   onPageChange,
 }: {
   requests: AdminSupportRequest[];
-  counts: { new: number; inProgress: number; completed: number };
+  statuses: SupportRequestStatusCatalogEntry[];
   classificationOptions: string[];
   filterBy: "subject" | "category";
   isLoading: boolean;
   isError: boolean;
   retry: () => void;
   emptyMessage?: string;
+  initialExpandedRequestId?: number | null;
   page?: number;
   onPageChange?: (page: number) => void;
 }) {
@@ -1266,6 +1293,7 @@ function SupportInbox({
   const [commentFeedback, setCommentFeedback] = useState<Record<number, string>>({});
   const [roadmapFeedback, setRoadmapFeedback] = useState<Record<number, string>>({});
   const [expandedRequestId, setExpandedRequestId] = useState<number | null>(null);
+  const handledInitialRequestId = useRef<number | null>(null);
   const [roadmapDrafts, setRoadmapDrafts] = useState<Record<number, {
     title: string;
     description: string;
@@ -1288,9 +1316,54 @@ function SupportInbox({
     ...classificationOptions,
     ...requests.map((request) => filterBy === "subject" ? request.subjectName : request.categoryName).filter((name): name is string => Boolean(name)),
   ])].sort((left, right) => left.localeCompare(right, "pt-BR"));
+  const statusCounts = statuses
+    .filter((status) => status.active || requests.some((request) => request.status === status.key))
+    .map((status) => ({
+      key: status.key,
+      label: getPrivateStatusLabel(status),
+      value: requests.filter((request) => request.status === status.key).length,
+    }));
   const pageCount = Math.max(1, Math.ceil(visibleRequests.length / pageSize));
   const safePage = Math.min(page, pageCount);
   const visibleRequestPage = visibleRequests.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  useEffect(() => {
+    if (
+      initialExpandedRequestId === null
+      || isLoading
+      || isError
+      || handledInitialRequestId.current === initialExpandedRequestId
+    ) return;
+
+    const requestIndex = visibleRequests.findIndex((request) => request.id === initialExpandedRequestId);
+    handledInitialRequestId.current = initialExpandedRequestId;
+    if (requestIndex < 0) return;
+
+    setExpandedRequestId(initialExpandedRequestId);
+    const targetPage = Math.floor(requestIndex / pageSize) + 1;
+    if (targetPage !== safePage) onPageChange?.(targetPage);
+  }, [
+    initialExpandedRequestId,
+    isLoading,
+    isError,
+    visibleRequests,
+    pageSize,
+    safePage,
+    onPageChange,
+  ]);
+
+  useEffect(() => {
+    if (
+      expandedRequestId === null
+      || !visibleRequestPage.some((request) => request.id === expandedRequestId)
+    ) return;
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`support-request-detail-${expandedRequestId}`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expandedRequestId, safePage]);
 
   async function saveStatus(request: AdminSupportRequest) {
     const status = drafts[request.id];
@@ -1309,6 +1382,13 @@ function SupportInbox({
       await queryClient.invalidateQueries({
         queryKey: getListAdminSupportRequestsQueryKey(),
       });
+      await queryClient.invalidateQueries({
+        queryKey: getListNotificationsQueryKey(),
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListMySupportRequestsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListMySuggestionsQueryKey() }),
+      ]);
     } catch {
       setFeedback((current) => ({ ...current, [request.id]: "Não foi possível salvar as alterações. Tente novamente." }));
     }
@@ -1427,15 +1507,11 @@ function SupportInbox({
 
   return (
     <div className="space-y-4">
-      <div aria-label={translateText("Resumo de solicitações")} className="grid gap-2 sm:grid-cols-3">
-        {[
-          { label: "Novas", value: counts.new },
-          { label: "Em andamento", value: counts.inProgress },
-          { label: "Concluídas", value: counts.completed },
-        ].map((count) => (
-          <div className="flex items-center justify-between rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3" key={count.label}>
-            <span className="text-sm text-muted-foreground">{translateText(count.label)}</span>
-            <strong className="font-display text-lg tabular-nums text-[#012140]">{count.value}</strong>
+      <div aria-label={translateText("Resumo de solicitações")} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {statusCounts.map((status) => (
+          <div className="flex items-center justify-between rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3" key={status.key}>
+            <span className="text-sm text-muted-foreground">{status.label}</span>
+            <strong className="font-display text-lg tabular-nums text-[#012140]">{status.value}</strong>
           </div>
         ))}
       </div>
@@ -1448,9 +1524,9 @@ function SupportInbox({
             onPageChange?.(1);
           }} value={statusFilter}>
             <option value="all">{translateText("Todos")}</option>
-            <option value="new">{translateText("Nova")}</option>
-            <option value="in_progress">{translateText("Em andamento")}</option>
-            <option value="completed">{translateText("Concluída")}</option>
+            {statuses.map((status) => (
+              <option key={status.id} value={status.key}>{getPrivateStatusLabel(status)}</option>
+            ))}
           </select>
         </label>
         <label className="grid min-w-0 gap-1 text-xs font-semibold text-[#233a59]">
@@ -1512,7 +1588,7 @@ function SupportInbox({
                 <td className="px-4 py-3 text-xs text-muted-foreground" data-label={translateText(filterBy === "subject" ? "Assunto" : "Categoria")}>{filterBy === "subject" ? request.subjectName : request.categoryName ?? "—"}</td>
                 <td className="px-4 py-3" data-label={translateText(filterBy === "subject" ? "Status" : "Status da sugestão")}>
                   <span className={`support-request-status ${request.status === "new" ? "bg-amber-50 text-amber-800" : request.status === "completed" ? "bg-emerald-50 text-emerald-800" : "bg-blue-50 text-blue-800"}`}>
-                    {translateText(supportStatusLabel[request.status])}
+                    {getPrivateStatusLabelFromRequest(request)}
                   </span>
                 </td>
                 <td className="px-4 py-3" data-label={translateText("Ação")}>
@@ -1669,9 +1745,18 @@ function SupportInbox({
                   }}
                   value={selectedStatus}
                 >
-                  <option value="new">{translateText("Nova")}</option>
-                  <option value="in_progress">{translateText("Em andamento")}</option>
-                  <option value="completed">{translateText("Concluída")}</option>
+                  {statuses
+                    .filter((status) => status.active || status.key === selectedStatus)
+                    .map((status) => (
+                      <option disabled={!status.active} key={status.id} value={status.key}>
+                        {getPrivateStatusLabel(status)}
+                      </option>
+                    ))}
+                  {!statuses.some((status) => status.key === selectedStatus) && (
+                    <option value={selectedStatus}>
+                      {getPrivateStatusLabelFromRequest(request)}
+                    </option>
+                  )}
                 </select>
                 {selectedStatus !== request.status && (
                   <button
@@ -1863,6 +1948,287 @@ function SuggestionCategoriesManager({
             {translateText("Nenhuma categoria foi criada ainda.")}
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SupportRequestStatusesManager({
+  requestType,
+  statuses,
+  isLoading,
+  isError,
+  retry,
+}: {
+  requestType: "support" | "suggestion";
+  statuses: SupportRequestStatusCatalogEntry[];
+  isLoading: boolean;
+  isError: boolean;
+  retry: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const createStatus = useCreateAdminSupportRequestStatus();
+  const updateStatus = useUpdateAdminSupportRequestStatus();
+  const reorderStatuses = useReorderAdminSupportRequestStatuses();
+  const [newLabel, setNewLabel] = useState("");
+  const [newLabelEn, setNewLabelEn] = useState("");
+  const [drafts, setDrafts] = useState<Record<number, {
+    label: string;
+    labelEn: string;
+    active: boolean;
+  }>>({});
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+  const orderedStatuses = [...statuses].sort(
+    (left, right) => left.sortOrder - right.sortOrder || left.id - right.id,
+  );
+
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: getListAdminSupportRequestStatusesQueryKey({ requestType }),
+      }),
+      queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListMySupportRequestsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListMySuggestionsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() }),
+    ]);
+  }
+
+  async function addStatus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeedback("");
+    setError("");
+    try {
+      await createStatus.mutateAsync({
+        data: {
+          requestType,
+          label: newLabel.trim(),
+          labelEn: newLabelEn.trim(),
+        },
+      });
+      setNewLabel("");
+      setNewLabelEn("");
+      setFeedback(translateText("Status criado."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError) ??
+          translateText("Não foi possível criar o status."),
+      );
+    }
+  }
+
+  async function saveStatus(status: SupportRequestStatusCatalogEntry) {
+    const draft = drafts[status.id];
+    if (!draft) return;
+    setFeedback("");
+    setError("");
+    try {
+      await updateStatus.mutateAsync({
+        statusId: status.id,
+        data: {
+          label: draft.label.trim(),
+          labelEn: draft.labelEn.trim(),
+          active: draft.active,
+        },
+      });
+      setDrafts((current) => {
+        const { [status.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setFeedback(translateText("Status atualizado."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError) ??
+          translateText("Não foi possível atualizar o status."),
+      );
+    }
+  }
+
+  async function moveStatus(index: number, offset: -1 | 1) {
+    const destination = index + offset;
+    if (destination < 0 || destination >= orderedStatuses.length) return;
+    const nextOrder = [...orderedStatuses];
+    [nextOrder[index], nextOrder[destination]] = [
+      nextOrder[destination],
+      nextOrder[index],
+    ];
+    setFeedback("");
+    setError("");
+    try {
+      await reorderStatuses.mutateAsync({
+        data: {
+          requestType,
+          statusIds: nextOrder.map((status) => status.id),
+        },
+      });
+      setFeedback(translateText("Ordem dos status atualizada."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError) ??
+          translateText("Não foi possível reordenar os status."),
+      );
+    }
+  }
+
+  if (isLoading) return <LoadingState rows={3} />;
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p>{translateText("Não foi possível carregar os status.")}</p>
+        <button className="mt-2 font-semibold underline" onClick={retry} type="button">
+          {translateText("Tentar novamente")}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-[#012140]">
+          {translateText(requestType === "support" ? "Status de solicitações" : "Status de sugestões")}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {translateText("Edite os nomes em português e inglês e escolha a ordem. Status inativos ficam no histórico, mas não podem ser selecionados em novas atualizações.")}
+        </p>
+      </div>
+      <form
+        className="grid gap-2 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+        onSubmit={(event) => void addStatus(event)}
+      >
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Nome em português")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={80}
+            minLength={2}
+            onChange={(event) => setNewLabel(event.target.value)}
+            placeholder={translateText("Ex.: Aguardando retorno")}
+            required
+            value={newLabel}
+          />
+        </label>
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Nome em inglês")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={80}
+            minLength={2}
+            onChange={(event) => setNewLabelEn(event.target.value)}
+            placeholder={translateText("Example: Waiting for a reply")}
+            required
+            value={newLabelEn}
+          />
+        </label>
+        <button
+          className="auth-header-primary self-end"
+          disabled={createStatus.isPending}
+          type="submit"
+        >
+          {translateText(createStatus.isPending ? "Salvando…" : "Adicionar status")}
+        </button>
+      </form>
+      {feedback && <p className="text-sm text-emerald-700" role="status">{feedback}</p>}
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
+      <div className="space-y-2">
+        {orderedStatuses.map((status, index) => {
+          const draft = drafts[status.id] ?? {
+            label: status.label,
+            labelEn: status.labelEn,
+            active: status.active,
+          };
+          const isDirty =
+            draft.label !== status.label ||
+            draft.labelEn !== status.labelEn ||
+            draft.active !== status.active;
+          return (
+            <article
+              className="grid gap-3 rounded-xl border border-[#233a59]/15 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_145px_auto]"
+              key={status.id}
+            >
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome em português")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={80}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, label: event.target.value },
+                  }))}
+                  value={draft.label}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome em inglês")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={80}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, labelEn: event.target.value },
+                  }))}
+                  value={draft.labelEn}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Disponibilidade")}
+                <select
+                  className={`${inputClass} mt-1 block w-full`}
+                  disabled={status.isInitial}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, active: event.target.value === "true" },
+                  }))}
+                  value={String(draft.active)}
+                >
+                  <option value="true">{translateText("Ativo")}</option>
+                  <option value="false">{translateText("Inativo")}</option>
+                </select>
+                {status.isInitial && (
+                  <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+                    {translateText("Status inicial")}
+                  </span>
+                )}
+              </label>
+              <div className="flex items-end gap-1">
+                <button
+                  aria-label={translateText("Mover status para cima")}
+                  className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
+                  disabled={index === 0 || reorderStatuses.isPending}
+                  onClick={() => void moveStatus(index, -1)}
+                  type="button"
+                >
+                  <ChevronUp aria-hidden="true" size={17} />
+                </button>
+                <button
+                  aria-label={translateText("Mover status para baixo")}
+                  className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
+                  disabled={index === orderedStatuses.length - 1 || reorderStatuses.isPending}
+                  onClick={() => void moveStatus(index, 1)}
+                  type="button"
+                >
+                  <ChevronDown aria-hidden="true" size={17} />
+                </button>
+                {isDirty && (
+                  <button
+                    className="auth-header-primary !min-h-10 !px-3 !py-1.5 !text-sm"
+                    disabled={updateStatus.isPending}
+                    onClick={() => void saveStatus(status)}
+                    type="button"
+                  >
+                    {translateText(updateStatus.isPending ? "Salvando…" : "Salvar")}
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -2722,7 +3088,7 @@ function AdminPollManagement() {
               <article className="rounded-xl border border-[#233a59]/15 bg-white p-4 sm:p-5" key={poll.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="mb-2 flex items-center gap-2"><span className={poll.status === "active" ? "rounded-full bg-[#e4efe9] px-2.5 py-1 text-[11px] font-bold text-[#285b48]" : "rounded-full bg-[#e8e8e8] px-2.5 py-1 text-[11px] font-bold text-[#233a59]"}>{poll.status === "active" ? "Ativa" : "Encerrada"}</span><span className="text-xs text-muted-foreground">{formatDate(poll.createdAt)}</span></div>
+                    <div className="mb-2 flex items-center gap-2"><span className={poll.status === "active" ? "rounded-full bg-[#e4efe9] px-2.5 py-1 text-[11px] font-bold text-[#285b48]" : "rounded-full bg-[#e8e8e8] px-2.5 py-1 text-[11px] font-bold text-[#233a59]"}>{translateText(poll.status === "active" ? "Ativa" : "Encerrada")}</span><span className="text-xs text-muted-foreground">{formatDate(poll.createdAt)}</span></div>
                     <h4 className="font-semibold leading-6 text-[#012140]">{poll.question}</h4>
                     {poll.details && <p className="mt-1 text-sm leading-6 text-muted-foreground">{poll.details}</p>}
                   </div>
@@ -3038,148 +3404,6 @@ function UsersTable({
       ))}
       {!filteredUsers.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && roleFilter === "all" && !search.trim() ? "Nenhuma conta cadastrada ainda." : "Nenhuma conta corresponde aos filtros.")}</p>}
       <PaginationControls page={safePage} pageSize={pageSize} totalItems={filteredUsers.length} onPageChange={setPage} />
-    </div>
-  );
-}
-
-function SuggestionsTable({
-  suggestions,
-  drafts,
-  stageDraft,
-  clearDraft,
-  feedback,
-  reportChange,
-  emptyMessage = "Nenhuma sugestão cadastrada.",
-}: {
-  suggestions: Suggestion[];
-  drafts: Record<string, string>;
-  stageDraft: (key: string, value: string, originalValue: string) => void;
-  clearDraft: (key: string) => void;
-  feedback: Record<string, string>;
-  reportChange: (key: string, message: string) => void;
-  emptyMessage?: string;
-}) {
-  const queryClient = useQueryClient();
-  const updateSuggestion = useUpdateAdminSuggestion();
-  const [statusFilter, setStatusFilter] = useState<"all" | SuggestionStatus>("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-  const categories = [...new Set(suggestions.map((suggestion) => suggestion.category))]
-    .sort((left, right) => left.localeCompare(right, "pt-BR"));
-  const filteredSuggestions = suggestions
-    .filter((suggestion) =>
-      (statusFilter === "all" || suggestion.status === statusFilter)
-      && (categoryFilter === "all" || suggestion.category === categoryFilter),
-    )
-    .sort((left, right) => {
-      const difference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
-      return sortOrder === "oldest"
-        ? difference || left.id - right.id
-        : -difference || right.id - left.id;
-    });
-  const pageCount = Math.max(1, Math.ceil(filteredSuggestions.length / pageSize));
-  const safePage = Math.min(page, pageCount);
-  const visibleSuggestions = filteredSuggestions.slice((safePage - 1) * pageSize, safePage * pageSize);
-
-  async function saveSuggestion(suggestion: Suggestion) {
-    const key = `suggestion:${suggestion.id}:status`;
-    const draft = drafts[key];
-    if (!draft) return;
-    try {
-      await updateSuggestion.mutateAsync({
-        suggestionId: suggestion.id,
-        data: { status: draft as SuggestionStatus },
-      });
-      clearDraft(key);
-      reportChange(key, "Alterações salvas.");
-      await queryClient.invalidateQueries({ queryKey: getListSuggestionsQueryKey() });
-    } catch {
-      reportChange(key, "Não foi possível salvar.");
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-3 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
-          <span>{translateText("Filtrar por status")}</span>
-          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
-            setStatusFilter(event.target.value as "all" | SuggestionStatus);
-            setPage(1);
-          }} value={statusFilter}>
-            <option value="all">{translateText("Todos os status")}</option>
-            <option value="under_review">{translateText("Em análise")}</option>
-            <option value="planned">{translateText("Planejada")}</option>
-            <option value="in_progress">{translateText("Em andamento")}</option>
-            <option value="completed">{translateText("Concluída")}</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-semibold text-[#233a59]">
-          <span>{translateText("Filtrar por categoria")}</span>
-          <select className={`${inputClass} min-h-10 w-full`} onChange={(event) => {
-            setCategoryFilter(event.target.value);
-            setPage(1);
-          }} value={categoryFilter}>
-            <option value="all">{translateText("Todas as categorias")}</option>
-            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
-          </select>
-        </label>
-        <SortSelect
-          label="Ordenar por data"
-          value={sortOrder}
-          onChange={(value) => {
-            setSortOrder(value as typeof sortOrder);
-            setPage(1);
-          }}
-          options={[
-            { value: "newest", label: "Mais recentes primeiro" },
-            { value: "oldest", label: "Mais antigas primeiro" },
-          ]}
-        />
-      </div>
-      {visibleSuggestions.map((suggestion) => (
-        <article className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-[minmax(0,1fr)_190px]" key={suggestion.id}>
-          <div>
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="font-semibold text-[#012140]">{suggestion.title}</p>
-              <span className="text-xs text-muted-foreground">{formatDate(suggestion.createdAt)}</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{suggestion.authorName} · {suggestion.category}</p>
-            <details className="mt-2">
-              <summary className="w-fit cursor-pointer text-xs font-semibold text-[#233a59] hover:underline">{translateText("Ver detalhes")}</summary>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{suggestion.details}</p>
-            </details>
-          </div>
-          <label className="text-xs font-semibold text-[#233a59]">
-            {translateText("Andamento")}
-            {(() => {
-              const key = `suggestion:${suggestion.id}:status`;
-              const value = drafts[key] ?? suggestion.status;
-              return (
-                <>
-            <select
-              className={`${inputClass} mt-1 block w-full`}
-              disabled={updateSuggestion.isPending}
-              onChange={(event) => stageDraft(key, event.target.value, suggestion.status)}
-              value={value}
-            >
-              <option value="under_review">{translateText("Em análise")}</option>
-              <option value="planned">{translateText("Planejada")}</option>
-              <option value="in_progress">{translateText("Em andamento")}</option>
-              <option value="completed">{translateText("Concluída")}</option>
-            </select>
-                  {value !== suggestion.status && <button className="auth-header-primary mt-2 !min-h-8 !px-3 !py-1 !text-xs" disabled={updateSuggestion.isPending} onClick={() => void saveSuggestion(suggestion)} type="button">{translateText(updateSuggestion.isPending ? "Salvando…" : "Salvar")}</button>}
-                  {feedback[key] && <span className={`mt-1 block ${feedback[key] === "Alterações salvas." ? "text-emerald-700" : "text-red-700"}`} role="status">{translateText(feedback[key])}</span>}
-                </>
-              );
-            })()}
-          </label>
-        </article>
-      ))}
-      {!filteredSuggestions.length && <p className="text-sm text-muted-foreground">{translateText(statusFilter === "all" && categoryFilter === "all" ? emptyMessage : "Nenhuma sugestão corresponde aos filtros.")}</p>}
-      <PaginationControls page={safePage} pageSize={pageSize} totalItems={filteredSuggestions.length} onPageChange={setPage} />
     </div>
   );
 }

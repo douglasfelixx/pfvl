@@ -48,11 +48,11 @@ import {
   type PostKind,
   type MySuggestion,
   type PublicRoadmapSuggestion,
-  type SupportRequestStatus,
 } from '@workspace/api-client-react';
 import { Link, useLocation, useParams, useSearch } from 'wouter';
 import { AuthActionGate, useSearchAccountId } from '@/components/auth-ui';
 import { getLocale, translateText } from '@/lib/i18n';
+import { getPrivateStatusLabelFromRequest } from '@/lib/private-status-label';
 import {
   CommentComposer,
   CommunityCreatePanel,
@@ -302,7 +302,7 @@ export function CommunityPage() {
                   <Link aria-label={`${post.commentCount} ${translateText(post.commentCount === 1 ? 'resposta' : 'respostas')} ${translateText('em')} ${post.title}`} className="topic-replies" href={`/community/${post.id}`}>
                     <MessageCircle size={17} />
                     <strong>{post.commentCount}</strong>
-                    <span>{post.commentCount === 1 ? 'resposta' : 'respostas'}</span>
+                    <span>{translateText(post.commentCount === 1 ? 'resposta' : 'respostas')}</span>
                   </Link>
                 </article>
               ))}
@@ -398,7 +398,7 @@ export function PostDetailPage() {
         <>
           <article className={isForum ? "detail-panel forum-detail-panel" : "detail-panel"}>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="eyebrow-pill">{isForum ? 'Tópico da comunidade' : post.data.category}</span>
+              <span className="eyebrow-pill">{isForum ? translateText('Tópico da comunidade') : post.data.category}</span>
               {isForum && <span className="text-xs font-semibold text-[#233a59]">{post.data.category}</span>}
               <div className="basis-full text-xs text-muted-foreground sm:basis-auto">
                 <time dateTime={post.data.createdAt}>
@@ -438,7 +438,7 @@ export function PostDetailPage() {
                 </Link>
               </div>
             )}
-            <SectionHeading title={isForum ? `Respostas (${comments.data?.length ?? post.data.commentCount})` : `Comentários (${comments.data?.length ?? post.data.commentCount})`} />
+            <SectionHeading title={`${translateText(isForum ? 'Respostas' : 'Comentários')} (${comments.data?.length ?? post.data.commentCount})`} />
             {isForum && <p className="mb-4 text-sm leading-6 text-muted-foreground">{translateText('Compartilhe uma resposta útil, uma pergunta complementar ou o que funcionou na sua realidade.')}</p>}
             <CommentComposer postId={postId} />
             {comments.isLoading ? <div className="mt-4"><LoadingState rows={2} /></div> : comments.isError ? <div className="mt-4"><QueryError retry={() => void comments.refetch()} /></div> : roots.length ? (
@@ -975,12 +975,6 @@ function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion
   );
 }
 
-const suggestionRequestStatusLabel: Record<SupportRequestStatus, string> = {
-  new: "Recebida",
-  in_progress: "Em andamento",
-  completed: "Concluída",
-};
-
 function SuggestionWorkspace() {
   const queryClient = useQueryClient();
   const userId = useSearchAccountId();
@@ -1174,7 +1168,7 @@ function SuggestionWorkspace() {
                           <td className="max-w-[260px] px-4 py-3 font-semibold text-[#012140]">{suggestion.title}</td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{suggestion.categoryName ?? translateText("Sem categoria")}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground"><time dateTime={suggestion.createdAt}>{formatDate(suggestion.createdAt)}</time></td>
-                          <td className="px-4 py-3"><SuggestionStatusBadge status={suggestion.status} /></td>
+                          <td className="px-4 py-3"><SuggestionStatusBadge suggestion={suggestion} /></td>
                           <td className="px-4 py-3">
                             <button
                               aria-controls={detailId}
@@ -1215,7 +1209,7 @@ function SuggestionWorkspace() {
                         <p className="font-mono text-[11px] font-bold text-[#233a59]">{translateText("Protocolo")}: {suggestion.protocol}</p>
                         <h3 className="mt-1 font-display text-base font-semibold text-[#012140]">{suggestion.title}</h3>
                       </div>
-                      <SuggestionStatusBadge status={suggestion.status} />
+                      <SuggestionStatusBadge suggestion={suggestion} />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{suggestion.categoryName ?? translateText("Sem categoria")}</span>
@@ -1244,16 +1238,16 @@ function SuggestionWorkspace() {
   );
 }
 
-function SuggestionStatusBadge({ status }: { status: SupportRequestStatus }) {
+function SuggestionStatusBadge({ suggestion }: { suggestion: MySuggestion }) {
   const statusTone =
-    status === "completed"
+    suggestion.status === "completed"
       ? "bg-emerald-50 text-emerald-800"
-      : status === "in_progress"
+      : suggestion.status === "in_progress"
         ? "bg-blue-50 text-blue-800"
         : "bg-amber-50 text-amber-800";
   return (
     <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
-      {translateText(suggestionRequestStatusLabel[status])}
+      {getPrivateStatusLabelFromRequest(suggestion)}
     </span>
   );
 }

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -12,6 +13,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./pfvl.js";
+import { supportRequestStatusesTable } from "./support-request-statuses.js";
 
 export const supportRequestSubjectsTable = pgTable(
   "pfvl_support_request_subjects",
@@ -93,6 +95,7 @@ export const supportRequestsTable = pgTable(
     requestYear: integer("request_year").notNull(),
     requestSequence: integer("request_sequence").notNull(),
     requestType: varchar("request_type", { length: 24 }).notNull().default("support"),
+    statusId: integer("status_id"),
     subjectId: integer("subject_id").references(
       () => supportRequestSubjectsTable.id,
       { onDelete: "set null" },
@@ -115,7 +118,7 @@ export const supportRequestsTable = pgTable(
     requesterName: varchar("requester_name", { length: 100 }).notNull(),
     requesterEmail: varchar("requester_email", { length: 320 }).notNull(),
     message: text("message").notNull(),
-    status: varchar("status", { length: 24 }).notNull().default("new"),
+    status: varchar("status", { length: 40 }).notNull().default("new"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -128,10 +131,11 @@ export const supportRequestsTable = pgTable(
       "pfvl_support_requests_type_check",
       sql`${table.requestType} IN ('support', 'suggestion')`,
     ),
-    check(
-      "pfvl_support_requests_status_check",
-      sql`${table.status} IN ('new', 'in_progress', 'completed')`,
-    ),
+    foreignKey({
+      columns: [table.statusId],
+      foreignColumns: [supportRequestStatusesTable.id],
+      name: "pfvl_support_requests_status_id_fk",
+    }).onDelete("restrict"),
     check(
       "pfvl_support_requests_roadmap_status_check",
       sql`${table.roadmapStatus} IS NULL OR ${table.roadmapStatus} IN ('planned', 'in_progress', 'available')`,
@@ -148,6 +152,7 @@ export const supportRequestsTable = pgTable(
       table.status,
       table.createdAt,
     ),
+    index("pfvl_support_requests_status_id_idx").on(table.statusId),
     index("pfvl_support_requests_roadmap_approved_at_idx")
       .on(table.approvedAt, table.id)
       .where(sql`${table.requestType} = 'suggestion' AND ${table.approvedAt} IS NOT NULL`),

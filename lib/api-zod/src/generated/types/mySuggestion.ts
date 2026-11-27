@@ -19,6 +19,8 @@ export interface MySuggestion {
   categoryName: string | null;
   message: string;
   status: SupportRequestStatus;
+  statusLabel: string;
+  statusLabelEn: string;
   comments: SupportRequestComment[];
   createdAt: Date;
   updatedAt: Date;

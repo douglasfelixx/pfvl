@@ -10,6 +10,7 @@ import {
   or,
   sql,
   supportRequestCommentsTable,
+  supportRequestStatusesTable,
   supportRequestsTable,
   usersTable,
   postsTable,
@@ -276,19 +277,14 @@ async function searchRoadmap(searchTerm: string, query: string, page: number): P
 }
 
 async function searchPrivateItems(userId: number, searchTerm: string, query: string, page: number): Promise<SearchItem[]> {
-  const privateStatusText = sql`CASE ${supportRequestsTable.status}
-    WHEN 'new' THEN 'recebida'
-    WHEN 'in_progress' THEN 'em andamento'
-    WHEN 'completed' THEN 'concluída'
-    ELSE ''
-  END`;
   const requestMatch = or(
     fieldMatches(supportRequestsTable.protocol, searchTerm),
     fieldMatches(supportRequestsTable.subjectName, searchTerm),
     fieldMatches(supportRequestsTable.title, searchTerm),
     fieldMatches(supportRequestsTable.categoryName, searchTerm),
     fieldMatches(supportRequestsTable.message, searchTerm),
-    fieldMatches(privateStatusText, searchTerm),
+    fieldMatches(supportRequestStatusesTable.label, searchTerm),
+    fieldMatches(supportRequestStatusesTable.labelEn, searchTerm),
   )!;
   const requests = await db
     .select({
@@ -300,10 +296,19 @@ async function searchPrivateItems(userId: number, searchTerm: string, query: str
       categoryName: supportRequestsTable.categoryName,
       message: supportRequestsTable.message,
       status: supportRequestsTable.status,
+      statusLabel: supportRequestStatusesTable.label,
+      statusLabelEn: supportRequestStatusesTable.labelEn,
       createdAt: supportRequestsTable.createdAt,
       updatedAt: supportRequestsTable.updatedAt,
     })
     .from(supportRequestsTable)
+    .leftJoin(
+      supportRequestStatusesTable,
+      and(
+        eq(supportRequestStatusesTable.requestType, supportRequestsTable.requestType),
+        eq(supportRequestStatusesTable.key, supportRequestsTable.status),
+      ),
+    )
     .where(
       and(
         eq(supportRequestsTable.requesterUserId, userId),
@@ -347,7 +352,8 @@ async function searchPrivateItems(userId: number, searchTerm: string, query: str
       row.categoryName ?? "",
       row.subjectName,
       row.protocol,
-      row.status === "new" ? "Recebida" : row.status === "in_progress" ? "Em andamento" : "Concluída",
+      row.statusLabel ?? "",
+      row.statusLabelEn ?? "",
     ].find((value) => normalizeSearchText(stripMarkup(value)).includes(searchTerm)) ?? row.message;
     return {
       id: row.id,

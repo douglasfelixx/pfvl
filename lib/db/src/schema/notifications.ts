@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgTable,
@@ -14,6 +15,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./pfvl.js";
+import { supportRequestStatusesTable } from "./support-request-statuses.js";
 
 export const notificationsTable = pgTable(
   "pfvl_notifications",
@@ -25,6 +27,7 @@ export const notificationsTable = pgTable(
     actorUserId: integer("actor_user_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),
+    statusId: integer("status_id"),
     eventKey: varchar("event_key", { length: 255 }).notNull(),
     type: varchar("type", { length: 32 }).notNull(),
     title: varchar("title", { length: 180 }).notNull(),
@@ -44,10 +47,16 @@ export const notificationsTable = pgTable(
       table.recipientUserId,
       table.eventKey,
     ),
+    foreignKey({
+      columns: [table.statusId],
+      foreignColumns: [supportRequestStatusesTable.id],
+      name: "pfvl_notifications_status_id_fk",
+    }).onDelete("restrict"),
     index("pfvl_notifications_recipient_created_idx").on(
       table.recipientUserId,
       table.createdAt,
     ),
+    index("pfvl_notifications_status_id_idx").on(table.statusId),
   ],
 );
 

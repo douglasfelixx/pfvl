@@ -296,14 +296,79 @@ export interface UpdateMyProfileInput {
   preferredLanguage: PreferredLanguage;
 }
 
-export type SupportRequestStatus = typeof SupportRequestStatus[keyof typeof SupportRequestStatus];
+/**
+ * @minLength 1
+ * @maxLength 40
+ * @pattern ^[a-z0-9_-]+$
+ */
+export type SupportRequestStatus = string;
+
+export type SupportRequestType = typeof SupportRequestType[keyof typeof SupportRequestType];
 
 
-export const SupportRequestStatus = {
-  new: 'new',
-  in_progress: 'in_progress',
-  completed: 'completed',
+export const SupportRequestType = {
+  support: 'support',
+  suggestion: 'suggestion',
 } as const;
+
+export interface SupportRequestStatusCatalogEntry {
+  id: number;
+  requestType: SupportRequestType;
+  key: SupportRequestStatus;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn: string;
+  active: boolean;
+  isInitial: boolean;
+  /** @minimum 0 */
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestStatusCatalogCreateInput {
+  requestType: SupportRequestType;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn: string;
+}
+
+export interface SupportRequestStatusCatalogUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label?: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn?: string;
+  active?: boolean;
+}
+
+export interface SupportRequestStatusOrderUpdate {
+  requestType: SupportRequestType;
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  statusIds: number[];
+}
 
 export interface SupportRequestSubject {
   id: number;
@@ -405,6 +470,8 @@ export interface MySuggestion {
   categoryName: string | null;
   message: string;
   status: SupportRequestStatus;
+  statusLabel: string;
+  statusLabelEn: string;
   comments: SupportRequestComment[];
   createdAt: string;
   updatedAt: string;
@@ -417,6 +484,8 @@ export interface MySupportRequest {
   subjectName: string;
   message: string;
   status: SupportRequestStatus;
+  statusLabel: string;
+  statusLabelEn: string;
   comments: SupportRequestComment[];
   createdAt: string;
   updatedAt: string;
@@ -483,6 +552,8 @@ export interface AdminSupportRequest {
   requesterEmail: string;
   message: string;
   status: SupportRequestStatus;
+  statusLabel: string;
+  statusLabelEn: string;
   comments: SupportRequestComment[];
   createdAt: string;
   updatedAt: string;
@@ -539,15 +610,8 @@ export interface SupportRequestRoadmapApprovalResponse {
   roadmapStatus: SupportRequestRoadmapApprovalResponseRoadmapStatus;
 }
 
-export interface SupportRequestCounts {
-  new: number;
-  inProgress: number;
-  completed: number;
-}
-
 export interface AdminSupportRequestsList {
   requests: AdminSupportRequest[];
-  counts: SupportRequestCounts;
 }
 
 export type TestimonialStatus = typeof TestimonialStatus[keyof typeof TestimonialStatus];
@@ -741,6 +805,10 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
+  /** @nullable */
+  statusLabel?: string | null;
+  /** @nullable */
+  statusLabelEn?: string | null;
   href: string;
   isRead: boolean;
   createdAt: string;
@@ -813,5 +881,9 @@ area?: SearchArea;
  * @maximum 1000
  */
 page?: number;
+};
+
+export type ListAdminSupportRequestStatusesParams = {
+requestType: SupportRequestType;
 };
 

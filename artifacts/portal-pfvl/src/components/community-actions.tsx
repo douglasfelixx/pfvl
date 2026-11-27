@@ -147,9 +147,9 @@ export function CreatePostForm({
     <AuthActionGate>
       <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" noValidate onSubmit={submit}>
         <div>
-          <p className="eyebrow-pill">{mode === "community" ? "Nova conversa" : "Publicação do portal"}</p>
+          <p className="eyebrow-pill">{translateText(mode === "community" ? "Nova conversa" : "Publicação do portal")}</p>
           <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">
-            {mode === "community"
+            {translateText(mode === "community"
               ? "Compartilhe com a comunidade."
               : kind === "blog"
                 ? "Criar conteúdo"
@@ -157,7 +157,7 @@ export function CreatePostForm({
                   ? "Criar tópico"
                   : kind === "news"
                     ? "Criar novidade"
-                    : "Criar tutorial"}
+                    : "Criar tutorial")}
           </h2>
         </div>
         {mode === "admin" && <div className={`grid gap-3 ${fixedKind ? "sm:grid-cols-1" : "sm:grid-cols-2"}`}>

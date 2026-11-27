@@ -10,7 +10,7 @@ import {
   useListNotifications,
 } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { translateText, useI18n } from "@/lib/i18n";
+import { hasSavedLocalePreference, translateText, useI18n } from "@/lib/i18n";
 
 export const AuthAvailabilityContext = createContext(false);
 const SearchAccountContext = createContext<string | null>(null);
@@ -108,7 +108,12 @@ function ClerkHeader() {
     },
   });
   useEffect(() => {
-    if (isSignedIn && profile.data?.preferredLanguage && profile.data.preferredLanguage !== locale) {
+    if (
+      isSignedIn
+      && profile.data?.preferredLanguage
+      && profile.data.preferredLanguage !== locale
+      && !hasSavedLocalePreference()
+    ) {
       setLocale(profile.data.preferredLanguage);
     }
   }, [isSignedIn, profile.data?.id, profile.data?.preferredLanguage, setLocale]);

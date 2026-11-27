@@ -11,6 +11,7 @@ import {
 import { useLocation } from "wouter";
 import { AuthActionGate } from "@/components/auth-ui";
 import { translateText } from "@/lib/i18n";
+import { getPrivateStatusLabelFromNotification } from "@/lib/private-status-label";
 import {
   EmptyState,
   formatDate,
@@ -26,6 +27,55 @@ const typeLabels: Record<Notification["type"], string> = {
   new_suggestion: "Sugestão",
   suggestion_status: "Atualização de andamento",
 };
+
+function notificationCategory(notification: Notification): string {
+  if (notification.type === "comment_reply" || notification.type === "suggestion_status") {
+    try {
+      const path = new URL(notification.href, window.location.origin).pathname;
+      if (path === "/help/requests") return "Solicitação de atendimento";
+    } catch {
+      // Keep the standard category if a stored destination is malformed.
+    }
+  }
+  return typeLabels[notification.type];
+}
+
+function notificationMessage(notification: Notification): string {
+  const message = notification.message;
+  const privateStatusLabel = getPrivateStatusLabelFromNotification(notification);
+  if (notification.type === "suggestion_status" && privateStatusLabel) {
+    const supportRequest = message.match(/^Protocolo (.+): (.+)$/);
+    const baseMessage = supportRequest
+      ? `${translateText("Protocolo")} ${supportRequest[1]}: ${supportRequest[2]}`
+      : message;
+    return `${baseMessage} ${translateText("está")} ${privateStatusLabel}.`;
+  }
+  const supportStatus = message.match(/^Protocolo (.+): (.+) está (recebida|em andamento|concluída)\.$/);
+  if (notification.type === "suggestion_status" && supportStatus) {
+    return `${translateText("Protocolo")} ${supportStatus[1]}: ${supportStatus[2]} ${translateText("está")} ${translateText(supportStatus[3])}.`;
+  }
+
+  const suggestionStatus = message.match(/^(.+) está (recebida|em andamento|concluída)\.$/);
+  if (notification.type === "suggestion_status" && suggestionStatus) {
+    return `${suggestionStatus[1]} ${translateText("está")} ${translateText(suggestionStatus[2])}.`;
+  }
+
+  const legacyStatus = message.match(/^"(.+)" agora está (em análise|planejada|em andamento|concluída)\.$/);
+  if (notification.type === "suggestion_status" && legacyStatus) {
+    return `"${legacyStatus[1]}"${translateText(" agora está ")}${translateText(legacyStatus[2])}.`;
+  }
+
+  if (
+    notification.type === "comment_reply"
+    && (notification.title === "A equipe respondeu à sua solicitação"
+      || notification.title === "O status da sua solicitação foi atualizado")
+    && message.startsWith("Protocolo ")
+  ) {
+    return message.replace(/^Protocolo /, `${translateText("Protocolo")} `);
+  }
+
+  return message;
+}
 
 function typeIcon(type: Notification["type"]) {
   if (type === "comment_reply") return MessageCircle;
@@ -79,7 +129,7 @@ function NotificationsList() {
       await refreshList();
       return true;
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Não foi possível atualizar a notificação.");
+      setActionError(translateText(error instanceof Error ? error.message : "Não foi possível atualizar a notificação."));
       return false;
     }
   }
@@ -111,7 +161,7 @@ function NotificationsList() {
       await remove.mutateAsync({ notificationId });
       await refreshList();
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Não foi possível excluir a notificação.");
+      setActionError(translateText(error instanceof Error ? error.message : "Não foi possível excluir a notificação."));
     }
   }
 
@@ -124,11 +174,13 @@ function NotificationsList() {
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold text-[#012140]">
           {query.data?.unreadCount
-            ? `${query.data.unreadCount} não lida${query.data.unreadCount === 1 ? "" : "s"}`
-            : "Tudo em dia"}
+            ? query.data.unreadCount === 1
+              ? translateText("1 notificação não lida")
+              : `${query.data.unreadCount} ${translateText("notificações não lidas")}`
+            : translateText("Tudo em dia")}
         </h2>
       </div>
-      {actionError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{actionError}</p>}
+      {actionError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(actionError)}</p>}
       {notifications.length ? (
         <div className="space-y-3">
           {notifications.map((notification) => {
@@ -152,12 +204,12 @@ function NotificationsList() {
                   </span>
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-[#012140]">{notification.title}</span>
+                      <span className="font-semibold text-[#012140]">{translateText(notification.title)}</span>
                       {!notification.isRead && <span className="h-2 w-2 rounded-full bg-[#286bd4]" aria-label={translateText('Não lida')} />}
                     </span>
-                    <span className="mt-1 block text-sm leading-6 text-[#4b5563]">{notification.message}</span>
+                    <span className="mt-1 block text-sm leading-6 text-[#4b5563]">{notificationMessage(notification)}</span>
                     <span className="mt-2 block text-xs text-muted-foreground">
-                      {typeLabels[notification.type]} · {formatDate(notification.createdAt)}
+                      {translateText(notificationCategory(notification))} · {formatDate(notification.createdAt)}
                     </span>
                   </span>
                 </button>

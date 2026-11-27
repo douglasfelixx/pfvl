@@ -3356,6 +3356,7 @@ button:active:not(:disabled) {
 }
 
 .legal-document article {
+  scroll-margin-top: 100px;
   border: 1px solid rgba(35, 58, 89, .12);
   border-radius: 20px;
   background: #fff;
@@ -3498,6 +3499,7 @@ button:active:not(:disabled) {
   }
 
   .legal-document article {
+    scroll-margin-top: 90px;
     border-radius: 16px;
     padding: 20px;
   }

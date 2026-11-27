@@ -555,6 +555,10 @@ export const ListPublicRoadmapSuggestionsResponse = zod.array(ListPublicRoadmapS
  * @summary Lista solicitações de atendimento da conta autenticada
  */
 export const listMySupportRequestsResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const listMySupportRequestsResponseStatusMax = 40;
+
+
+export const listMySupportRequestsResponseStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 
 
 export const ListMySupportRequestsResponseItem = zod.object({
@@ -562,7 +566,9 @@ export const ListMySupportRequestsResponseItem = zod.object({
   "protocol": zod.string().regex(listMySupportRequestsResponseProtocolRegExp),
   "subjectName": zod.string(),
   "message": zod.string(),
-  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "status": zod.string().min(1).max(listMySupportRequestsResponseStatusMax).regex(listMySupportRequestsResponseStatusRegExp),
+  "statusLabel": zod.string(),
+  "statusLabelEn": zod.string(),
   "comments": zod.array(zod.object({
   "id": zod.number().int(),
   "authorName": zod.string(),
@@ -579,6 +585,10 @@ export const ListMySupportRequestsResponse = zod.array(ListMySupportRequestsResp
  * @summary Lista as sugestões privadas enviadas pela conta autenticada
  */
 export const listMySuggestionsResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const listMySuggestionsResponseStatusMax = 40;
+
+
+export const listMySuggestionsResponseStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 
 
 export const ListMySuggestionsResponseItem = zod.object({
@@ -588,7 +598,9 @@ export const ListMySuggestionsResponseItem = zod.object({
   "title": zod.string().nullable(),
   "categoryName": zod.string().nullable(),
   "message": zod.string(),
-  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "status": zod.string().min(1).max(listMySuggestionsResponseStatusMax).regex(listMySuggestionsResponseStatusRegExp),
+  "statusLabel": zod.string(),
+  "statusLabelEn": zod.string(),
   "comments": zod.array(zod.object({
   "id": zod.number().int(),
   "authorName": zod.string(),
@@ -754,9 +766,13 @@ export const UpdateAdminSupportSubjectResponse = zod.object({
 
 
 /**
- * @summary Lista solicitações e totais por status para o painel
+ * @summary Lista solicitações para o painel
  */
 export const listAdminSupportRequestsResponseRequestsItemProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const listAdminSupportRequestsResponseRequestsItemStatusMax = 40;
+
+
+export const listAdminSupportRequestsResponseRequestsItemStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 
 
 export const ListAdminSupportRequestsResponse = zod.object({
@@ -774,7 +790,9 @@ export const ListAdminSupportRequestsResponse = zod.object({
   "requesterName": zod.string(),
   "requesterEmail": zod.string().email(),
   "message": zod.string(),
-  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "status": zod.string().min(1).max(listAdminSupportRequestsResponseRequestsItemStatusMax).regex(listAdminSupportRequestsResponseRequestsItemStatusRegExp),
+  "statusLabel": zod.string(),
+  "statusLabelEn": zod.string(),
   "comments": zod.array(zod.object({
   "id": zod.number().int(),
   "authorName": zod.string(),
@@ -783,12 +801,181 @@ export const ListAdminSupportRequestsResponse = zod.object({
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
-})),
-  "counts": zod.object({
-  "new": zod.number().int(),
-  "inProgress": zod.number().int(),
-  "completed": zod.number().int()
+}))
 })
+
+
+/**
+ * @summary Lista os status privados de um fluxo
+ */
+export const ListAdminSupportRequestStatusesQueryParams = zod.object({
+  "requestType": zod.enum(['support', 'suggestion'])
+})
+
+export const listAdminSupportRequestStatusesResponseKeyMax = 40;
+
+
+export const listAdminSupportRequestStatusesResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const listAdminSupportRequestStatusesResponseLabelMin = 2;
+export const listAdminSupportRequestStatusesResponseLabelMax = 80;
+
+export const listAdminSupportRequestStatusesResponseLabelEnMin = 2;
+export const listAdminSupportRequestStatusesResponseLabelEnMax = 80;
+
+export const listAdminSupportRequestStatusesResponseSortOrderMin = 0;
+
+
+
+export const ListAdminSupportRequestStatusesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "key": zod.string().min(1).max(listAdminSupportRequestStatusesResponseKeyMax).regex(listAdminSupportRequestStatusesResponseKeyRegExp),
+  "label": zod.string().min(listAdminSupportRequestStatusesResponseLabelMin).max(listAdminSupportRequestStatusesResponseLabelMax),
+  "labelEn": zod.string().min(listAdminSupportRequestStatusesResponseLabelEnMin).max(listAdminSupportRequestStatusesResponseLabelEnMax),
+  "active": zod.boolean(),
+  "isInitial": zod.boolean(),
+  "sortOrder": zod.number().int().min(listAdminSupportRequestStatusesResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminSupportRequestStatusesResponse = zod.array(ListAdminSupportRequestStatusesResponseItem)
+
+
+/**
+ * @summary Adiciona um status privado
+ */
+export const createAdminSupportRequestStatusBodyLabelMin = 2;
+export const createAdminSupportRequestStatusBodyLabelMax = 80;
+
+export const createAdminSupportRequestStatusBodyLabelEnMin = 2;
+export const createAdminSupportRequestStatusBodyLabelEnMax = 80;
+
+
+
+export const CreateAdminSupportRequestStatusBody = zod.object({
+  "requestType": zod.enum(['support', 'suggestion']),
+  "label": zod.string().min(createAdminSupportRequestStatusBodyLabelMin).max(createAdminSupportRequestStatusBodyLabelMax),
+  "labelEn": zod.string().min(createAdminSupportRequestStatusBodyLabelEnMin).max(createAdminSupportRequestStatusBodyLabelEnMax)
+})
+
+export const createAdminSupportRequestStatusResponseKeyMax = 40;
+
+
+export const createAdminSupportRequestStatusResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const createAdminSupportRequestStatusResponseLabelMin = 2;
+export const createAdminSupportRequestStatusResponseLabelMax = 80;
+
+export const createAdminSupportRequestStatusResponseLabelEnMin = 2;
+export const createAdminSupportRequestStatusResponseLabelEnMax = 80;
+
+export const createAdminSupportRequestStatusResponseSortOrderMin = 0;
+
+
+
+export const CreateAdminSupportRequestStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "key": zod.string().min(1).max(createAdminSupportRequestStatusResponseKeyMax).regex(createAdminSupportRequestStatusResponseKeyRegExp),
+  "label": zod.string().min(createAdminSupportRequestStatusResponseLabelMin).max(createAdminSupportRequestStatusResponseLabelMax),
+  "labelEn": zod.string().min(createAdminSupportRequestStatusResponseLabelEnMin).max(createAdminSupportRequestStatusResponseLabelEnMax),
+  "active": zod.boolean(),
+  "isInitial": zod.boolean(),
+  "sortOrder": zod.number().int().min(createAdminSupportRequestStatusResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Reordena os status privados de um fluxo
+ */
+
+
+
+
+export const ReorderAdminSupportRequestStatusesBody = zod.object({
+  "requestType": zod.enum(['support', 'suggestion']),
+  "statusIds": zod.array(zod.number().int().min(1)).min(1)
+})
+
+export const reorderAdminSupportRequestStatusesResponseKeyMax = 40;
+
+
+export const reorderAdminSupportRequestStatusesResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const reorderAdminSupportRequestStatusesResponseLabelMin = 2;
+export const reorderAdminSupportRequestStatusesResponseLabelMax = 80;
+
+export const reorderAdminSupportRequestStatusesResponseLabelEnMin = 2;
+export const reorderAdminSupportRequestStatusesResponseLabelEnMax = 80;
+
+export const reorderAdminSupportRequestStatusesResponseSortOrderMin = 0;
+
+
+
+export const ReorderAdminSupportRequestStatusesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "key": zod.string().min(1).max(reorderAdminSupportRequestStatusesResponseKeyMax).regex(reorderAdminSupportRequestStatusesResponseKeyRegExp),
+  "label": zod.string().min(reorderAdminSupportRequestStatusesResponseLabelMin).max(reorderAdminSupportRequestStatusesResponseLabelMax),
+  "labelEn": zod.string().min(reorderAdminSupportRequestStatusesResponseLabelEnMin).max(reorderAdminSupportRequestStatusesResponseLabelEnMax),
+  "active": zod.boolean(),
+  "isInitial": zod.boolean(),
+  "sortOrder": zod.number().int().min(reorderAdminSupportRequestStatusesResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ReorderAdminSupportRequestStatusesResponse = zod.array(ReorderAdminSupportRequestStatusesResponseItem)
+
+
+/**
+ * @summary Renomeia ou ativa e desativa um status privado
+ */
+
+
+
+export const UpdateAdminSupportRequestStatusParams = zod.object({
+  "statusId": zod.coerce.number().int().min(1)
+})
+
+export const updateAdminSupportRequestStatusBodyLabelMin = 2;
+export const updateAdminSupportRequestStatusBodyLabelMax = 80;
+
+export const updateAdminSupportRequestStatusBodyLabelEnMin = 2;
+export const updateAdminSupportRequestStatusBodyLabelEnMax = 80;
+
+
+
+export const UpdateAdminSupportRequestStatusBody = zod.object({
+  "label": zod.string().min(updateAdminSupportRequestStatusBodyLabelMin).max(updateAdminSupportRequestStatusBodyLabelMax).optional(),
+  "labelEn": zod.string().min(updateAdminSupportRequestStatusBodyLabelEnMin).max(updateAdminSupportRequestStatusBodyLabelEnMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const updateAdminSupportRequestStatusResponseKeyMax = 40;
+
+
+export const updateAdminSupportRequestStatusResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const updateAdminSupportRequestStatusResponseLabelMin = 2;
+export const updateAdminSupportRequestStatusResponseLabelMax = 80;
+
+export const updateAdminSupportRequestStatusResponseLabelEnMin = 2;
+export const updateAdminSupportRequestStatusResponseLabelEnMax = 80;
+
+export const updateAdminSupportRequestStatusResponseSortOrderMin = 0;
+
+
+
+export const UpdateAdminSupportRequestStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "requestType": zod.enum(['support', 'suggestion']),
+  "key": zod.string().min(1).max(updateAdminSupportRequestStatusResponseKeyMax).regex(updateAdminSupportRequestStatusResponseKeyRegExp),
+  "label": zod.string().min(updateAdminSupportRequestStatusResponseLabelMin).max(updateAdminSupportRequestStatusResponseLabelMax),
+  "labelEn": zod.string().min(updateAdminSupportRequestStatusResponseLabelEnMin).max(updateAdminSupportRequestStatusResponseLabelEnMax),
+  "active": zod.boolean(),
+  "isInitial": zod.boolean(),
+  "sortOrder": zod.number().int().min(updateAdminSupportRequestStatusResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 
@@ -799,11 +986,21 @@ export const UpdateAdminSupportRequestParams = zod.object({
   "requestId": zod.coerce.number().int()
 })
 
+export const updateAdminSupportRequestBodyStatusMax = 40;
+
+
+export const updateAdminSupportRequestBodyStatusRegExp = new RegExp('^[a-z0-9_-]+$');
+
+
 export const UpdateAdminSupportRequestBody = zod.object({
-  "status": zod.enum(['new', 'in_progress', 'completed'])
+  "status": zod.string().min(1).max(updateAdminSupportRequestBodyStatusMax).regex(updateAdminSupportRequestBodyStatusRegExp)
 })
 
 export const updateAdminSupportRequestResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const updateAdminSupportRequestResponseStatusMax = 40;
+
+
+export const updateAdminSupportRequestResponseStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 
 
 export const UpdateAdminSupportRequestResponse = zod.object({
@@ -820,7 +1017,9 @@ export const UpdateAdminSupportRequestResponse = zod.object({
   "requesterName": zod.string(),
   "requesterEmail": zod.string().email(),
   "message": zod.string(),
-  "status": zod.enum(['new', 'in_progress', 'completed']),
+  "status": zod.string().min(1).max(updateAdminSupportRequestResponseStatusMax).regex(updateAdminSupportRequestResponseStatusRegExp),
+  "statusLabel": zod.string(),
+  "statusLabelEn": zod.string(),
   "comments": zod.array(zod.object({
   "id": zod.number().int(),
   "authorName": zod.string(),
@@ -1259,6 +1458,8 @@ export const ListNotificationsResponse = zod.object({
   "type": zod.enum(['new_update', 'new_publication', 'comment_reply', 'new_suggestion', 'suggestion_status']),
   "title": zod.string(),
   "message": zod.string(),
+  "statusLabel": zod.string().nullish(),
+  "statusLabelEn": zod.string().nullish(),
   "href": zod.string(),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date()
@@ -1279,6 +1480,8 @@ export const MarkNotificationReadResponse = zod.object({
   "type": zod.enum(['new_update', 'new_publication', 'comment_reply', 'new_suggestion', 'suggestion_status']),
   "title": zod.string(),
   "message": zod.string(),
+  "statusLabel": zod.string().nullish(),
+  "statusLabelEn": zod.string().nullish(),
   "href": zod.string(),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date()

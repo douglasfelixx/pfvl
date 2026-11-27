@@ -6,11 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type SupportRequestStatus = typeof SupportRequestStatus[keyof typeof SupportRequestStatus];
-
-
-export const SupportRequestStatus = {
-  new: 'new',
-  in_progress: 'in_progress',
-  completed: 'completed',
-} as const;
+/**
+ * @minLength 1
+ * @maxLength 40
+ * @pattern ^[a-z0-9_-]+$
+ */
+export type SupportRequestStatus = string;

@@ -46,7 +46,7 @@ export function CommunityPoll() {
       <div className="community-poll-topline">
         <span className="community-poll-kicker"><span aria-hidden="true" /> {translateText("Enquete da comunidade")}</span>
         <span className={poll ? "community-poll-live" : "community-poll-live community-poll-unavailable"}>
-          {poll ? "Ativa" : query.isError ? "Indisponível" : "Votação"}
+          {translateText(poll ? "Ativa" : query.isError ? "Indisponível" : "Votação")}
         </span>
       </div>
       {query.isLoading ? <LoadingState rows={1} /> : query.isError ? (
@@ -75,7 +75,7 @@ export function CommunityPoll() {
                 disabled={vote.isPending}
                 onClick={() => void castVote("like")}
                 type="button"
-              ><ThumbsUp size={16} /> {poll.userVote === "like" ? "Você votou a favor" : "Votar a favor"}</button>
+              ><ThumbsUp size={16} /> {translateText(poll.userVote === "like" ? "Você votou a favor" : "Votar a favor")}</button>
               <button
                 aria-pressed={poll.userVote === "dislike"}
                 className={poll.userVote === "dislike" ? "community-vote-button selected" : "community-vote-button"}
@@ -83,7 +83,7 @@ export function CommunityPoll() {
                 disabled={vote.isPending}
                 onClick={() => void castVote("dislike")}
                 type="button"
-              ><ThumbsDown size={16} /> {poll.userVote === "dislike" ? "Você votou contra" : "Votar contra"}</button>
+              ><ThumbsDown size={16} /> {translateText(poll.userVote === "dislike" ? "Você votou contra" : "Votar contra")}</button>
             </div>
           </AuthActionGate>
           {voteMessage && <p className="community-poll-message" role="alert">{voteMessage}</p>}

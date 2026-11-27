@@ -35,6 +35,15 @@ export function getLocale(): Locale {
   return activeLocale;
 }
 
+export function hasSavedLocalePreference(): boolean {
+  try {
+    const savedLocale = window.localStorage.getItem(STORAGE_KEY);
+    return savedLocale === 'pt-BR' || savedLocale === 'en-US';
+  } catch {
+    return false;
+  }
+}
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readSavedLocale);
 

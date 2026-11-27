@@ -5,11 +5,13 @@ import { SiInstagram } from 'react-icons/si';
 import { getGetSiteMediaQueryKey, useGetSiteMedia } from '@workspace/api-client-react';
 import { Link } from 'wouter';
 import privacyPolicyHtml from '@/content/privacy-policy.html?raw';
+import privacyPolicyEnglishHtml from '@/content/privacy-policy.en.html?raw';
 import legalTermsHtml from '@/content/legal-terms.html?raw';
+import legalTermsEnglishHtml from '@/content/legal-terms.en.html?raw';
 import { AuthActionGate } from '@/components/auth-ui';
 import { ProductAppLink } from '@/components/homepage-composition';
 import { PageHeading, Surface } from '@/components/portal-ui';
-import { translateText } from '@/lib/i18n';
+import { useI18n, translateText } from '@/lib/i18n';
 
 export function PresentationPage() {
   const siteMedia = useGetSiteMedia({
@@ -196,8 +198,11 @@ function PrivacyPolicyPage() {
 }
 
 function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
+  const { locale } = useI18n();
   const effectiveDate = '2026-11-22';
-  const sourceHtml = kind === 'privacy' ? privacyPolicyHtml : legalTermsHtml;
+  const sourceHtml = kind === 'privacy'
+    ? locale === 'en-US' ? privacyPolicyEnglishHtml : privacyPolicyHtml
+    : locale === 'en-US' ? legalTermsEnglishHtml : legalTermsHtml;
   const oldSectionPrefix = kind === 'privacy' ? 'privacidade' : 'termos';
   const sectionPrefix = kind === 'privacy' ? 'privacy' : 'terms';
   const documentHtml = sourceHtml
@@ -210,7 +215,7 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
     .replace(/<article(?=[\s>])/, '<article id="legal-document-top"')
     .replace(
       /<\/section>/g,
-      '<p class="legal-section-return"><a href="#legal-document-top">↑ Voltar ao topo</a></p></section>',
+      `<p class="legal-section-return"><a href="#legal-document-top" data-legal-return-to-top>↑ ${translateText('Voltar ao topo')}</a></p></section>`,
     );
 
   useEffect(() => {
@@ -225,7 +230,7 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [kind]);
+  }, [kind, locale]);
 
   return (
     <div className="page-enter institutional-page legal-page">
@@ -234,7 +239,7 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
         <p className="legal-effective-date">
           <strong>{translateText("Vigente desde")}:</strong>{' '}
           <time dateTime={effectiveDate}>
-            {new Intl.DateTimeFormat('pt-BR', {
+            {new Intl.DateTimeFormat(locale, {
               day: 'numeric',
               month: 'long',
               year: 'numeric',
@@ -245,6 +250,20 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
       </div>
       <div
         className="legal-document"
+        onClick={(event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          const returnLink = target.closest<HTMLAnchorElement>("[data-legal-return-to-top]");
+          if (!returnLink) return;
+
+          event.preventDefault();
+          window.history.replaceState(
+            window.history.state,
+            "",
+            `${window.location.pathname}${window.location.search}`,
+          );
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
         dangerouslySetInnerHTML={{
           __html: DOMPurify.sanitize(documentHtml, { USE_PROFILES: { html: true } }),
         }}

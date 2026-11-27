@@ -97,6 +97,7 @@ import {
   pollsTable,
   sql,
   siteMediaTable,
+  supportRequestStatusesTable,
   suggestionsTable,
   taxonomyTable,
   testimonialsTable,
@@ -699,14 +700,21 @@ router.get(
       db
         .select({
           id: notificationsTable.id,
+          eventKey: notificationsTable.eventKey,
           type: notificationsTable.type,
           title: notificationsTable.title,
           message: notificationsTable.message,
+          statusLabel: supportRequestStatusesTable.label,
+          statusLabelEn: supportRequestStatusesTable.labelEn,
           href: notificationsTable.href,
           isRead: notificationsTable.isRead,
           createdAt: notificationsTable.createdAt,
         })
         .from(notificationsTable)
+        .leftJoin(
+          supportRequestStatusesTable,
+          eq(notificationsTable.statusId, supportRequestStatusesTable.id),
+        )
         .where(eq(notificationsTable.recipientUserId, user.id))
         .orderBy(desc(notificationsTable.createdAt))
         .limit(100),
@@ -725,7 +733,29 @@ router.get(
 
     res.json(
       ListNotificationsResponse.parse({
-        notifications,
+        notifications: notifications.map(({ eventKey, ...notification }) => {
+          const newSuggestionId = notification.type === "new_suggestion"
+            ? /^suggestion-request:(\d+):new$/.exec(eventKey)?.[1]
+            : undefined;
+          const supportRequestId =
+            notification.type === "comment_reply" || notification.type === "suggestion_status"
+              ? /^support-request:(\d+):/.exec(eventKey)?.[1]
+              : undefined;
+          const privateSuggestionId =
+            notification.type === "comment_reply" || notification.type === "suggestion_status"
+              ? /^suggestion-request:(\d+):/.exec(eventKey)?.[1]
+              : undefined;
+          return {
+            ...notification,
+            href: newSuggestionId
+              ? `/admin?suggestionRequest=${newSuggestionId}`
+              : supportRequestId
+                ? `/help/requests#support-request-${supportRequestId}`
+                : privateSuggestionId
+                  ? `/suggestions#suggestion-${privateSuggestionId}`
+                  : notification.href,
+          };
+        }),
         unreadCount: unreadRows[0]?.count ?? 0,
       }),
     );

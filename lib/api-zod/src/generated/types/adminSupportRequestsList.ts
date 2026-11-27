@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AdminSupportRequest } from './adminSupportRequest';
-import type { SupportRequestCounts } from './supportRequestCounts';
 
 export interface AdminSupportRequestsList {
   requests: AdminSupportRequest[];
-  counts: SupportRequestCounts;
 }

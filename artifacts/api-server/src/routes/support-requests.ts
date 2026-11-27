@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
-import { asc, isNotNull } from "drizzle-orm";
+import { asc, isNotNull, isNull } from "drizzle-orm";
 import {
+  CreateAdminSupportRequestStatusBody,
+  CreateAdminSupportRequestStatusResponse,
   CreateAdminSupportRequestCommentBody,
   CreateAdminSupportRequestCommentParams,
   CreateAdminSupportRequestCommentResponse,
@@ -15,6 +17,8 @@ import {
   CreateSupportRequestResponse,
   ListPublicRoadmapSuggestionsResponse,
   ListAdminSupportRequestsResponse,
+  ListAdminSupportRequestStatusesQueryParams,
+  ListAdminSupportRequestStatusesResponse,
   ListAdminSuggestionCategoriesResponse,
   ListAdminSupportSubjectsResponse,
   ListMySupportRequestsResponse,
@@ -27,12 +31,17 @@ import {
   UpdateAdminSupportRequestBody,
   UpdateAdminSupportRequestParams,
   UpdateAdminSupportRequestResponse,
+  UpdateAdminSupportRequestStatusBody,
+  UpdateAdminSupportRequestStatusParams,
+  UpdateAdminSupportRequestStatusResponse,
   UpdateAdminSupportRequestRoadmapBody,
   UpdateAdminSupportRequestRoadmapParams,
   UpdateAdminSupportRequestRoadmapResponse,
   UpdateAdminSupportSubjectBody,
   UpdateAdminSupportSubjectParams,
   UpdateAdminSupportSubjectResponse,
+  ReorderAdminSupportRequestStatusesBody,
+  ReorderAdminSupportRequestStatusesResponse,
 } from "@workspace/api-zod";
 import {
   and,
@@ -45,6 +54,7 @@ import {
   supportRequestCategoriesTable,
   supportRequestCommentsTable,
   supportRequestSequencesTable,
+  supportRequestStatusesTable,
   supportRequestsTable,
   supportRequestSubjectsTable,
   usersTable,
@@ -79,9 +89,133 @@ type NewRequest = {
   categoryId?: number;
 };
 
+type RequestFlow = "support" | "suggestion";
+
+const defaultRequestStatuses: Record<
+  RequestFlow,
+  Array<{
+    key: string;
+    label: string;
+    labelEn: string;
+    isInitial: boolean;
+    sortOrder: number;
+  }>
+> = {
+  support: [
+    { key: "new", label: "Nova", labelEn: "New", isInitial: true, sortOrder: 0 },
+    { key: "in_progress", label: "Em andamento", labelEn: "In progress", isInitial: false, sortOrder: 10 },
+    { key: "completed", label: "Concluída", labelEn: "Completed", isInitial: false, sortOrder: 20 },
+    { key: "postponed", label: "Adiada", labelEn: "Deferred", isInitial: false, sortOrder: 30 },
+    { key: "cancelled", label: "Cancelada", labelEn: "Cancelled", isInitial: false, sortOrder: 40 },
+  ],
+  suggestion: [
+    { key: "new", label: "Recebida", labelEn: "Received", isInitial: true, sortOrder: 0 },
+    { key: "in_progress", label: "Em andamento", labelEn: "In progress", isInitial: false, sortOrder: 10 },
+    { key: "completed", label: "Concluída", labelEn: "Completed", isInitial: false, sortOrder: 20 },
+    { key: "not_approved", label: "Não aprovada", labelEn: "Not approved", isInitial: false, sortOrder: 30 },
+  ],
+};
+
+async function ensureDefaultRequestStatuses(requestType?: RequestFlow) {
+  const flows: RequestFlow[] = requestType
+    ? [requestType]
+    : ["support", "suggestion"];
+  const seeds = flows.flatMap((flow) =>
+    defaultRequestStatuses[flow].map((status) => ({
+      requestType: flow,
+      ...status,
+    })),
+  );
+  await db
+    .insert(supportRequestStatusesTable)
+    .values(seeds)
+    .onConflictDoNothing();
+
+  const catalog = await db
+    .select({
+      id: supportRequestStatusesTable.id,
+      requestType: supportRequestStatusesTable.requestType,
+      key: supportRequestStatusesTable.key,
+    })
+    .from(supportRequestStatusesTable)
+    .where(inArray(supportRequestStatusesTable.requestType, flows));
+  const catalogByKey = new Map(
+    catalog.map((status) => [`${status.requestType}:${status.key}`, status]),
+  );
+  const missingRequests = await db
+    .select({
+      id: supportRequestsTable.id,
+      requestType: supportRequestsTable.requestType,
+      status: supportRequestsTable.status,
+    })
+    .from(supportRequestsTable)
+    .where(
+      and(
+        isNull(supportRequestsTable.statusId),
+        inArray(supportRequestsTable.requestType, flows),
+      ),
+    );
+  for (const request of missingRequests) {
+    const status = catalogByKey.get(`${request.requestType}:${request.status}`);
+    if (!status) {
+      throw new Error(
+        `No status catalog entry exists for ${request.requestType}:${request.status}`,
+      );
+    }
+    await db
+      .update(supportRequestsTable)
+      .set({ statusId: status.id })
+      .where(
+        and(
+          eq(supportRequestsTable.id, request.id),
+          isNull(supportRequestsTable.statusId),
+        ),
+      );
+  }
+}
+
+async function attachRequestStatusLabels<
+  T extends { status: string; requestType?: string },
+>(requests: T[], requestType?: RequestFlow) {
+  if (!requests.length) {
+    return requests.map((request) => ({
+      ...request,
+      statusLabel: "",
+      statusLabelEn: "",
+    }));
+  }
+  const catalog = await db
+    .select({
+      requestType: supportRequestStatusesTable.requestType,
+      key: supportRequestStatusesTable.key,
+      label: supportRequestStatusesTable.label,
+      labelEn: supportRequestStatusesTable.labelEn,
+    })
+    .from(supportRequestStatusesTable);
+  const catalogByKey = new Map(
+    catalog.map((status) => [`${status.requestType}:${status.key}`, status]),
+  );
+  return requests.map((request) => {
+    const flow = requestType ?? request.requestType;
+    if (flow !== "support" && flow !== "suggestion") {
+      throw new Error("A request flow is required to resolve its status label");
+    }
+    const status = catalogByKey.get(`${flow}:${request.status}`);
+    if (!status) {
+      throw new Error(`No status catalog entry exists for ${flow}:${request.status}`);
+    }
+    return {
+      ...request,
+      statusLabel: status.label,
+      statusLabelEn: status.labelEn,
+    };
+  });
+}
+
 async function createTrackedRequest(input: NewRequest) {
   const year = new Date().getFullYear();
   if (year < 1000 || year > 9999) return { error: "sequence" as const };
+  await ensureDefaultRequestStatuses(input.requestType);
 
   return db.transaction(async (tx) => {
     const subjectFilter =
@@ -100,6 +234,22 @@ async function createTrackedRequest(input: NewRequest) {
       .where(subjectFilter)
       .limit(1);
     if (!subject) return { error: "subject" as const };
+
+    const [initialStatus] = await tx
+      .select({
+        id: supportRequestStatusesTable.id,
+        key: supportRequestStatusesTable.key,
+      })
+      .from(supportRequestStatusesTable)
+      .where(
+        and(
+          eq(supportRequestStatusesTable.requestType, input.requestType),
+          eq(supportRequestStatusesTable.isInitial, true),
+          eq(supportRequestStatusesTable.active, true),
+        ),
+      )
+      .limit(1);
+    if (!initialStatus) return { error: "status" as const };
 
     let categoryName: string | null = null;
     if (input.requestType === "suggestion") {
@@ -143,6 +293,7 @@ async function createTrackedRequest(input: NewRequest) {
         requestYear: year,
         requestSequence: counter.lastSequence,
         requestType: input.requestType,
+        statusId: initialStatus.id,
         subjectId: subject.id,
         subjectName: subject.name,
         title: input.title ?? null,
@@ -152,7 +303,7 @@ async function createTrackedRequest(input: NewRequest) {
         requesterName: input.user.displayName,
         requesterEmail: input.user.email,
         message: input.message,
-        status: "new",
+        status: initialStatus.key,
       })
       .returning({
         id: supportRequestsTable.id,
@@ -179,7 +330,7 @@ async function createTrackedRequest(input: NewRequest) {
           type: "new_suggestion",
           title: "Nova sugestão privada",
           message: `${input.user.displayName}: ${input.title ?? "Sugestão"}`,
-          href: "/admin",
+          href: `/admin?suggestionRequest=${created.id}`,
         }));
       if (notificationRows.length) {
         await tx
@@ -256,6 +407,10 @@ router.post(
         res.status(404).json({ error: "Este assunto não está mais disponível" });
         return;
       }
+      if (result.error === "status") {
+        res.status(503).json({ error: "O status inicial da solicitação não está configurado" });
+        return;
+      }
       res.status(503).json({ error: "Não foi possível gerar o protocolo anual" });
       return;
     }
@@ -289,7 +444,9 @@ router.get(
         ),
       )
       .orderBy(desc(supportRequestsTable.updatedAt), desc(supportRequestsTable.id));
-    const withComments = await attachRequestComments(requests);
+    await ensureDefaultRequestStatuses("support");
+    const withLabels = await attachRequestStatusLabels(requests, "support");
+    const withComments = await attachRequestComments(withLabels);
     res.json(ListMySupportRequestsResponse.parse(withComments));
   },
 );
@@ -375,7 +532,9 @@ router.get(
         ),
       )
       .orderBy(desc(supportRequestsTable.createdAt), desc(supportRequestsTable.id));
-    const withComments = await attachRequestComments(requests);
+    await ensureDefaultRequestStatuses("suggestion");
+    const withLabels = await attachRequestStatusLabels(requests, "suggestion");
+    const withComments = await attachRequestComments(withLabels);
     res.json(ListMySuggestionsResponse.parse(withComments));
   },
 );
@@ -408,6 +567,10 @@ router.post(
       }
       if (result.error === "category") {
         res.status(404).json({ error: "Esta categoria não está mais disponível" });
+        return;
+      }
+      if (result.error === "status") {
+        res.status(503).json({ error: "O status inicial da sugestão não está configurado" });
         return;
       }
       res.status(503).json({ error: "Não foi possível gerar o protocolo anual" });
@@ -685,51 +848,224 @@ router.patch(
 );
 
 router.get(
+  "/admin/support-request-statuses",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = ListAdminSupportRequestStatusesQueryParams.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    await ensureDefaultRequestStatuses(parsed.data.requestType);
+    const statuses = await db
+      .select()
+      .from(supportRequestStatusesTable)
+      .where(eq(supportRequestStatusesTable.requestType, parsed.data.requestType))
+      .orderBy(asc(supportRequestStatusesTable.sortOrder), asc(supportRequestStatusesTable.id));
+    res.json(ListAdminSupportRequestStatusesResponse.parse(statuses));
+  },
+);
+
+router.post(
+  "/admin/support-request-statuses",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = CreateAdminSupportRequestStatusBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const label = parsed.data.label.trim().replace(/\s+/g, " ");
+    const labelEn = parsed.data.labelEn.trim().replace(/\s+/g, " ");
+    if (label.length < 2 || labelEn.length < 2) {
+      res.status(400).json({ error: "Informe o nome do status em português e em inglês." });
+      return;
+    }
+    await ensureDefaultRequestStatuses(parsed.data.requestType);
+    const [maxOrder] = await db
+      .select({
+        value: sql<number>`coalesce(max(${supportRequestStatusesTable.sortOrder}), -10)::int`.mapWith(
+          Number,
+        ),
+      })
+      .from(supportRequestStatusesTable)
+      .where(eq(supportRequestStatusesTable.requestType, parsed.data.requestType));
+    const key = `custom_${randomUUID().replaceAll("-", "").slice(0, 24)}`;
+    try {
+      const [created] = await db
+        .insert(supportRequestStatusesTable)
+        .values({
+          requestType: parsed.data.requestType,
+          key,
+          label,
+          labelEn,
+          active: true,
+          isInitial: false,
+          sortOrder: (maxOrder?.value ?? -10) + 10,
+        })
+        .returning();
+      res
+        .status(201)
+        .json(CreateAdminSupportRequestStatusResponse.parse(created));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "Já existe um status com esse nome neste fluxo." });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.patch(
+  "/admin/support-request-statuses/order",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = ReorderAdminSupportRequestStatusesBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    await ensureDefaultRequestStatuses(parsed.data.requestType);
+    const existing = await db
+      .select({ id: supportRequestStatusesTable.id })
+      .from(supportRequestStatusesTable)
+      .where(eq(supportRequestStatusesTable.requestType, parsed.data.requestType))
+      .orderBy(asc(supportRequestStatusesTable.sortOrder), asc(supportRequestStatusesTable.id));
+    const requestedIds = new Set(parsed.data.statusIds);
+    if (
+      requestedIds.size !== existing.length ||
+      existing.some((status) => !requestedIds.has(status.id))
+    ) {
+      res.status(400).json({ error: "A lista deve conter todos os status desse fluxo, sem duplicatas." });
+      return;
+    }
+    const reordered = await db.transaction(async (tx) => {
+      for (const [index, id] of parsed.data.statusIds.entries()) {
+        await tx
+          .update(supportRequestStatusesTable)
+          .set({ sortOrder: index * 10, updatedAt: new Date() })
+          .where(
+            and(
+              eq(supportRequestStatusesTable.id, id),
+              eq(supportRequestStatusesTable.requestType, parsed.data.requestType),
+            ),
+          );
+      }
+      return tx
+        .select()
+        .from(supportRequestStatusesTable)
+        .where(eq(supportRequestStatusesTable.requestType, parsed.data.requestType))
+        .orderBy(asc(supportRequestStatusesTable.sortOrder), asc(supportRequestStatusesTable.id));
+    });
+    res.json(ReorderAdminSupportRequestStatusesResponse.parse(reordered));
+  },
+);
+
+router.patch(
+  "/admin/support-request-statuses/:statusId",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const params = UpdateAdminSupportRequestStatusParams.safeParse(req.params);
+    const parsed = UpdateAdminSupportRequestStatusBody.safeParse(req.body);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(supportRequestStatusesTable)
+      .where(eq(supportRequestStatusesTable.id, params.data.statusId))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Status não encontrado." });
+      return;
+    }
+    if (existing.isInitial && parsed.data.active === false) {
+      res.status(400).json({ error: "O status inicial não pode ser desativado." });
+      return;
+    }
+    const changes: Partial<typeof supportRequestStatusesTable.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (parsed.data.label !== undefined) {
+      const label = parsed.data.label.trim().replace(/\s+/g, " ");
+      if (label.length < 2) {
+        res.status(400).json({ error: "O nome em português precisa ter pelo menos 2 caracteres." });
+        return;
+      }
+      changes.label = label;
+    }
+    if (parsed.data.labelEn !== undefined) {
+      const labelEn = parsed.data.labelEn.trim().replace(/\s+/g, " ");
+      if (labelEn.length < 2) {
+        res.status(400).json({ error: "O nome em inglês precisa ter pelo menos 2 caracteres." });
+        return;
+      }
+      changes.labelEn = labelEn;
+    }
+    if (parsed.data.active !== undefined) changes.active = parsed.data.active;
+    try {
+      const [updated] = await db
+        .update(supportRequestStatusesTable)
+        .set(changes)
+        .where(eq(supportRequestStatusesTable.id, params.data.statusId))
+        .returning();
+      if (!updated) {
+        res.status(404).json({ error: "Status não encontrado." });
+        return;
+      }
+      res.json(UpdateAdminSupportRequestStatusResponse.parse(updated));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "Já existe um status com esse nome neste fluxo." });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.get(
   "/admin/support-requests",
   requirePfvlUser,
   requireAdmin,
   async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
-    const [requests, groupedCounts] = await Promise.all([
-      db
-        .select({
-          id: supportRequestsTable.id,
-          protocol: supportRequestsTable.protocol,
+    await ensureDefaultRequestStatuses();
+    const requests = await db
+      .select({
+        id: supportRequestsTable.id,
+        protocol: supportRequestsTable.protocol,
         requestType: supportRequestsTable.requestType,
-          subjectName: supportRequestsTable.subjectName,
+        subjectName: supportRequestsTable.subjectName,
         title: supportRequestsTable.title,
-          roadmapTitle: supportRequestsTable.roadmapTitle,
-          roadmapDescription: supportRequestsTable.roadmapDescription,
-          roadmapStatus: supportRequestsTable.roadmapStatus,
+        roadmapTitle: supportRequestsTable.roadmapTitle,
+        roadmapDescription: supportRequestsTable.roadmapDescription,
+        roadmapStatus: supportRequestsTable.roadmapStatus,
         categoryName: supportRequestsTable.categoryName,
-          approvedAt: supportRequestsTable.approvedAt,
-          requesterName: supportRequestsTable.requesterName,
-          requesterEmail: supportRequestsTable.requesterEmail,
-          message: supportRequestsTable.message,
-          status: supportRequestsTable.status,
-          createdAt: supportRequestsTable.createdAt,
-          updatedAt: supportRequestsTable.updatedAt,
-        })
-        .from(supportRequestsTable)
-        .orderBy(desc(supportRequestsTable.createdAt), desc(supportRequestsTable.id)),
-      db
-        .select({
-          status: supportRequestsTable.status,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(supportRequestsTable)
-        .groupBy(supportRequestsTable.status),
-    ]);
-    const requestsWithComments = await attachRequestComments(requests);
-    const counts = { new: 0, inProgress: 0, completed: 0 };
-    for (const row of groupedCounts) {
-      if (row.status === "new") counts.new = row.count;
-      if (row.status === "in_progress") counts.inProgress = row.count;
-      if (row.status === "completed") counts.completed = row.count;
-    }
+        approvedAt: supportRequestsTable.approvedAt,
+        requesterName: supportRequestsTable.requesterName,
+        requesterEmail: supportRequestsTable.requesterEmail,
+        message: supportRequestsTable.message,
+        status: supportRequestsTable.status,
+        createdAt: supportRequestsTable.createdAt,
+        updatedAt: supportRequestsTable.updatedAt,
+      })
+      .from(supportRequestsTable)
+      .orderBy(desc(supportRequestsTable.createdAt), desc(supportRequestsTable.id));
+    const withLabels = await attachRequestStatusLabels(requests);
+    const requestsWithComments = await attachRequestComments(withLabels);
     res.json(
       ListAdminSupportRequestsResponse.parse({
         requests: requestsWithComments,
-        counts,
       }),
     );
   },
@@ -750,6 +1086,7 @@ router.patch(
       res.status(400).json({ error: parsed.error.message });
       return;
     }
+    await ensureDefaultRequestStatuses();
     const result = await db.transaction(async (tx) => {
       const [existing] = await tx
         .select({
@@ -764,10 +1101,29 @@ router.patch(
         .from(supportRequestsTable)
         .where(eq(supportRequestsTable.id, params.data.requestId))
         .limit(1);
-      if (!existing) return null;
+      if (!existing) return { kind: "not_found" as const };
+      const [nextStatus] = await tx
+        .select({
+          id: supportRequestStatusesTable.id,
+          key: supportRequestStatusesTable.key,
+        })
+        .from(supportRequestStatusesTable)
+        .where(
+          and(
+            eq(supportRequestStatusesTable.requestType, existing.requestType),
+            eq(supportRequestStatusesTable.key, parsed.data.status),
+            eq(supportRequestStatusesTable.active, true),
+          ),
+        )
+        .limit(1);
+      if (!nextStatus) return { kind: "invalid_status" as const };
       const [updated] = await tx
         .update(supportRequestsTable)
-        .set({ status: parsed.data.status, updatedAt: new Date() })
+        .set({
+          status: nextStatus.key,
+          statusId: nextStatus.id,
+          updatedAt: new Date(),
+        })
         .where(eq(supportRequestsTable.id, params.data.requestId))
         .returning({
           id: supportRequestsTable.id,
@@ -788,12 +1144,6 @@ router.patch(
           updatedAt: supportRequestsTable.updatedAt,
         });
       if (existing.requesterUserId !== null && existing.status !== parsed.data.status) {
-        const statusLabel =
-          parsed.data.status === "new"
-            ? "recebida"
-            : parsed.data.status === "in_progress"
-              ? "em andamento"
-              : "concluída";
         const isSupportRequest = existing.requestType === "support";
         await tx
           .insert(notificationsTable)
@@ -802,25 +1152,33 @@ router.patch(
             actorUserId: getPfvlUser(req).id,
             eventKey: `${isSupportRequest ? "support-request" : "suggestion-request"}:${existing.id}:status:${randomUUID()}`,
             type: "suggestion_status",
+            statusId: nextStatus.id,
             title: isSupportRequest
               ? "O status da sua solicitação foi atualizado"
               : "Sua sugestão foi atualizada",
             message: isSupportRequest
-              ? `Protocolo ${existing.protocol}: ${existing.subjectName} está ${statusLabel}.`
-              : `${existing.title ?? existing.subjectName} está ${statusLabel}.`,
+              ? `Protocolo ${existing.protocol}: ${existing.subjectName}`
+              : `${existing.title ?? existing.subjectName}`,
             href: isSupportRequest
               ? `/help/requests#support-request-${existing.id}`
               : `/suggestions#suggestion-${existing.id}`,
           })
           .onConflictDoNothing();
       }
-      return updated ?? null;
+      return updated
+        ? { kind: "updated" as const, request: updated }
+        : { kind: "not_found" as const };
     });
-    if (!result) {
+    if (result.kind === "not_found") {
       res.status(404).json({ error: "Solicitação não encontrada" });
       return;
     }
-    const withComments = await attachRequestComments([result]);
+    if (result.kind === "invalid_status") {
+      res.status(400).json({ error: "Escolha um status ativo deste fluxo." });
+      return;
+    }
+    const withLabels = await attachRequestStatusLabels([result.request]);
+    const withComments = await attachRequestComments(withLabels);
     res.json(UpdateAdminSupportRequestResponse.parse(withComments[0]));
   },
 );

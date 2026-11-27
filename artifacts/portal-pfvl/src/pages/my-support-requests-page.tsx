@@ -6,33 +6,32 @@ import { Link } from "wouter";
 import { AuthActionGate } from "@/components/auth-ui";
 import { EmptyState, formatDate, LoadingState, PageHeading } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
+import { getPrivateStatusLabelFromRequest } from "@/lib/private-status-label";
 
-const statusDetails = {
-  new: {
-    label: "Recebida",
-    description: "Sua solicitação chegou à equipe.",
-    icon: Clock3,
-    tone: "border-amber-200 bg-amber-50 text-amber-800",
-    marker: "bg-amber-500",
-  },
-  in_progress: {
-    label: "Em andamento",
-    description: "A equipe está cuidando do seu pedido.",
+function getStatusAppearance(status: string) {
+  if (status === "completed") {
+    return {
+      icon: Check,
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
+      marker: "bg-emerald-600",
+    };
+  }
+  if (status === "new") {
+    return {
+      icon: Clock3,
+      tone: "border-amber-200 bg-amber-50 text-amber-800",
+      marker: "bg-amber-500",
+    };
+  }
+  return {
     icon: MessageSquareText,
     tone: "border-sky-200 bg-sky-50 text-sky-800",
     marker: "bg-sky-600",
-  },
-  completed: {
-    label: "Concluída",
-    description: "A equipe finalizou esta solicitação.",
-    icon: Check,
-    tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    marker: "bg-emerald-600",
-  },
-} as const;
+  };
+}
 
 function RequestDetails({ request }: { request: MySupportRequest }) {
-  const status = statusDetails[request.status];
+  const status = getStatusAppearance(request.status);
 
   return (
     <div className="my-support-request-details" data-testid={`details-support-request-${request.id}`}>
@@ -51,7 +50,7 @@ function RequestDetails({ request }: { request: MySupportRequest }) {
         </div>
         <div>
           <dt className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#758780]">{translateText("Andamento")}</dt>
-          <dd className="mt-1 text-xs font-semibold text-[#344f47]">{translateText(status.description)}</dd>
+          <dd className="mt-1 text-xs font-semibold text-[#344f47]">{getPrivateStatusLabelFromRequest(request)}</dd>
         </div>
       </dl>
       <section aria-labelledby={`request-message-${request.id}`}>
@@ -185,7 +184,7 @@ function SupportRequestsContent() {
                 </thead>
                 <tbody>
                   {requests.map((request) => {
-                    const status = statusDetails[request.status];
+                    const status = getStatusAppearance(request.status);
                     const StatusIcon = status.icon;
                     const expanded = expandedRequestId === request.id;
                     const detailId = `support-request-details-${request.id}`;
@@ -209,7 +208,7 @@ function SupportRequestsContent() {
                           <td data-label={translateText("Status")}>
                             <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${status.tone}`} data-testid={`status-support-request-${request.id}`}>
                               <StatusIcon aria-hidden="true" size={13} strokeWidth={2.2} />
-                              {translateText(status.label)}
+                              {getPrivateStatusLabelFromRequest(request)}
                             </span>
                           </td>
                           <td data-label={translateText("Ação")}>

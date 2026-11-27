@@ -696,7 +696,7 @@ paths:
     get:
       operationId: listAdminSupportRequests
       tags: [admin]
-      summary: Lista solicitações e totais por status para o painel
+      summary: Lista solicitações para o painel
       responses:
         "200":
           description: Solicitações ordenadas pelas mais recentes
@@ -708,6 +708,115 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /admin/support-request-statuses:
+    get:
+      operationId: listAdminSupportRequestStatuses
+      tags: [admin]
+      summary: Lista os status privados de um fluxo
+      parameters:
+        - name: requestType
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/SupportRequestType" }
+      responses:
+        "200":
+          description: Status disponíveis e históricos do fluxo
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupportRequestStatusCatalogEntry" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminSupportRequestStatus
+      tags: [admin]
+      summary: Adiciona um status privado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestStatusCatalogCreateInput"
+      responses:
+        "201":
+          description: Status criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestStatusCatalogEntry" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Já existe um status com esse nome nesse fluxo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/support-request-statuses/order:
+    patch:
+      operationId: reorderAdminSupportRequestStatuses
+      tags: [admin]
+      summary: Reordena os status privados de um fluxo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestStatusOrderUpdate"
+      responses:
+        "200":
+          description: Status reordenados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SupportRequestStatusCatalogEntry" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/support-request-statuses/{statusId}:
+    patch:
+      operationId: updateAdminSupportRequestStatus
+      tags: [admin]
+      summary: Renomeia ou ativa e desativa um status privado
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportRequestStatusCatalogUpdate"
+      responses:
+        "200":
+          description: Status atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupportRequestStatusCatalogEntry" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Já existe um status com esse nome nesse fluxo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/support-requests/{requestId}:
     patch:
       operationId: updateAdminSupportRequest
@@ -1554,7 +1663,50 @@ components:
       required: [preferredLanguage]
     SupportRequestStatus:
       type: string
-      enum: [new, in_progress, completed]
+      minLength: 1
+      maxLength: 40
+      pattern: "^[a-z0-9_-]+$"
+    SupportRequestType:
+      type: string
+      enum: [support, suggestion]
+    SupportRequestStatusCatalogEntry:
+      type: object
+      properties:
+        id: { type: integer }
+        requestType: { $ref: "#/components/schemas/SupportRequestType" }
+        key: { $ref: "#/components/schemas/SupportRequestStatus" }
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+        active: { type: boolean }
+        isInitial: { type: boolean }
+        sortOrder: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, requestType, key, label, labelEn, active, isInitial, sortOrder, createdAt, updatedAt]
+    SupportRequestStatusCatalogCreateInput:
+      type: object
+      properties:
+        requestType: { $ref: "#/components/schemas/SupportRequestType" }
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+      required: [requestType, label, labelEn]
+    SupportRequestStatusCatalogUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+        active: { type: boolean }
+    SupportRequestStatusOrderUpdate:
+      type: object
+      properties:
+        requestType: { $ref: "#/components/schemas/SupportRequestType" }
+        statusIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+      required: [requestType, statusIds]
     SupportRequestSubject:
       type: object
       properties:
@@ -1634,12 +1786,14 @@ components:
         categoryName: { type: ["string", "null"] }
         message: { type: string }
         status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        statusLabel: { type: string }
+        statusLabelEn: { type: string }
         comments:
           type: array
           items: { $ref: "#/components/schemas/SupportRequestComment" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-      required: [id, protocol, subjectName, title, categoryName, message, status, comments, createdAt, updatedAt]
+      required: [id, protocol, subjectName, title, categoryName, message, status, statusLabel, statusLabelEn, comments, createdAt, updatedAt]
     MySupportRequest:
       type: object
       properties:
@@ -1648,12 +1802,14 @@ components:
         subjectName: { type: string }
         message: { type: string }
         status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        statusLabel: { type: string }
+        statusLabelEn: { type: string }
         comments:
           type: array
           items: { $ref: "#/components/schemas/SupportRequestComment" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-      required: [id, protocol, subjectName, message, status, comments, createdAt, updatedAt]
+      required: [id, protocol, subjectName, message, status, statusLabel, statusLabelEn, comments, createdAt, updatedAt]
     PublicRoadmapSuggestion:
       type: object
       properties:
@@ -1681,12 +1837,14 @@ components:
         requesterEmail: { type: string, format: email }
         message: { type: string }
         status: { $ref: "#/components/schemas/SupportRequestStatus" }
+        statusLabel: { type: string }
+        statusLabelEn: { type: string }
         comments:
           type: array
           items: { $ref: "#/components/schemas/SupportRequestComment" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-      required: [id, protocol, requestType, subjectName, title, roadmapTitle, roadmapDescription, roadmapStatus, categoryName, approvedAt, requesterName, requesterEmail, message, status, comments, createdAt, updatedAt]
+      required: [id, protocol, requestType, subjectName, title, roadmapTitle, roadmapDescription, roadmapStatus, categoryName, approvedAt, requesterName, requesterEmail, message, status, statusLabel, statusLabelEn, comments, createdAt, updatedAt]
     SupportRequestCommentInput:
       type: object
       properties:
@@ -1717,21 +1875,13 @@ components:
     RoadmapStatus:
       type: string
       enum: [planned, in_progress, available]
-    SupportRequestCounts:
-      type: object
-      properties:
-        new: { type: integer }
-        inProgress: { type: integer }
-        completed: { type: integer }
-      required: [new, inProgress, completed]
     AdminSupportRequestsList:
       type: object
       properties:
         requests:
           type: array
           items: { $ref: "#/components/schemas/AdminSupportRequest" }
-        counts: { $ref: "#/components/schemas/SupportRequestCounts" }
-      required: [requests, counts]
+      required: [requests]
     TestimonialStatus:
       type: string
       enum: [pending, approved, rejected]
@@ -1852,6 +2002,8 @@ components:
         type: { $ref: "#/components/schemas/NotificationType" }
         title: { type: string }
         message: { type: string }
+        statusLabel: { type: ["string", "null"] }
+        statusLabelEn: { type: ["string", "null"] }
         href: { type: string }
         isRead: { type: boolean }
         createdAt: { type: string, format: date-time }

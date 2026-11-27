@@ -36,6 +36,7 @@ import type {
   ImageUpload,
   ImageUploadInput,
   Indicator,
+  ListAdminSupportRequestStatusesParams,
   ListPostsParams,
   MySuggestion,
   MySuggestionInput,
@@ -64,6 +65,10 @@ import type {
   SupportRequestInput,
   SupportRequestRoadmapApprovalInput,
   SupportRequestRoadmapApprovalResponse,
+  SupportRequestStatusCatalogCreateInput,
+  SupportRequestStatusCatalogEntry,
+  SupportRequestStatusCatalogUpdate,
+  SupportRequestStatusOrderUpdate,
   SupportRequestStatusUpdate,
   SupportRequestSubject,
   SupportRequestSubjectInput,
@@ -2809,7 +2814,7 @@ export const getListAdminSupportRequestsUrl = () => {
 }
 
 /**
- * @summary Lista solicitações e totais por status para o painel
+ * @summary Lista solicitações para o painel
  */
 export const listAdminSupportRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSupportRequestsList> => {
 
@@ -2856,7 +2861,7 @@ export type ListAdminSupportRequestsQueryError = ErrorType<UnauthorizedResponse 
 
 
 /**
- * @summary Lista solicitações e totais por status para o painel
+ * @summary Lista solicitações para o painel
  */
 
 export function useListAdminSupportRequests<TData = Awaited<ReturnType<typeof listAdminSupportRequests>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
@@ -2876,6 +2881,355 @@ export function useListAdminSupportRequests<TData = Awaited<ReturnType<typeof li
 
 
 
+
+export const getListAdminSupportRequestStatusesUrl = (params: ListAdminSupportRequestStatusesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/support-request-statuses?${stringifiedParams}` : `/api/admin/support-request-statuses`
+}
+
+/**
+ * @summary Lista os status privados de um fluxo
+ */
+export const listAdminSupportRequestStatuses = async (params: ListAdminSupportRequestStatusesParams, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestStatusCatalogEntry[]> => {
+
+  return customFetch<SupportRequestStatusCatalogEntry[]>(getListAdminSupportRequestStatusesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminSupportRequestStatusesQueryKey = (params?: ListAdminSupportRequestStatusesParams,) => {
+    return [
+    `/api/admin/support-request-statuses`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminSupportRequestStatusesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params: ListAdminSupportRequestStatusesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminSupportRequestStatusesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>> = ({ signal }) => listAdminSupportRequestStatuses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminSupportRequestStatusesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>>
+export type ListAdminSupportRequestStatusesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista os status privados de um fluxo
+ */
+
+export function useListAdminSupportRequestStatuses<TData = Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params: ListAdminSupportRequestStatusesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminSupportRequestStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminSupportRequestStatusesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminSupportRequestStatusUrl = () => {
+
+
+
+
+  return `/api/admin/support-request-statuses`
+}
+
+/**
+ * @summary Adiciona um status privado
+ */
+export const createAdminSupportRequestStatus = async (supportRequestStatusCatalogCreateInput: SupportRequestStatusCatalogCreateInput, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestStatusCatalogEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestStatusCatalogEntry>(getCreateAdminSupportRequestStatusUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestStatusCatalogCreateInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminSupportRequestStatusMutationKey = () => ['createAdminSupportRequestStatus'] as const;
+
+export const getCreateAdminSupportRequestStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestStatus>>, TError,CreateAdminSupportRequestStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestStatus>>, TError,CreateAdminSupportRequestStatusMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminSupportRequestStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminSupportRequestStatus>>, CreateAdminSupportRequestStatusMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminSupportRequestStatus(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminSupportRequestStatusMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminSupportRequestStatus>>>
+    export type CreateAdminSupportRequestStatusMutationBody = BodyType<SupportRequestStatusCatalogCreateInput>
+    export type CreateAdminSupportRequestStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>
+    export type CreateAdminSupportRequestStatusMutationVariables = {data: BodyType<SupportRequestStatusCatalogCreateInput>}
+
+    /**
+ * @summary Adiciona um status privado
+ */
+export const useCreateAdminSupportRequestStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminSupportRequestStatus>>, TError,CreateAdminSupportRequestStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminSupportRequestStatus>>,
+        TError,
+        CreateAdminSupportRequestStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminSupportRequestStatusMutationOptions(options));
+    }
+
+export const getReorderAdminSupportRequestStatusesUrl = () => {
+
+
+
+
+  return `/api/admin/support-request-statuses/order`
+}
+
+/**
+ * @summary Reordena os status privados de um fluxo
+ */
+export const reorderAdminSupportRequestStatuses = async (supportRequestStatusOrderUpdate: SupportRequestStatusOrderUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestStatusCatalogEntry[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestStatusCatalogEntry[]>(getReorderAdminSupportRequestStatusesUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestStatusOrderUpdate)
+  }
+);}
+
+
+
+
+
+export const getReorderAdminSupportRequestStatusesMutationKey = () => ['reorderAdminSupportRequestStatuses'] as const;
+
+export const getReorderAdminSupportRequestStatusesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>, TError,ReorderAdminSupportRequestStatusesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>, TError,ReorderAdminSupportRequestStatusesMutationVariables, TContext> => {
+
+const mutationKey = getReorderAdminSupportRequestStatusesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>, ReorderAdminSupportRequestStatusesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  reorderAdminSupportRequestStatuses(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderAdminSupportRequestStatusesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>>
+    export type ReorderAdminSupportRequestStatusesMutationBody = BodyType<SupportRequestStatusOrderUpdate>
+    export type ReorderAdminSupportRequestStatusesMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type ReorderAdminSupportRequestStatusesMutationVariables = {data: BodyType<SupportRequestStatusOrderUpdate>}
+
+    /**
+ * @summary Reordena os status privados de um fluxo
+ */
+export const useReorderAdminSupportRequestStatuses = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>, TError,ReorderAdminSupportRequestStatusesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderAdminSupportRequestStatuses>>,
+        TError,
+        ReorderAdminSupportRequestStatusesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReorderAdminSupportRequestStatusesMutationOptions(options));
+    }
+
+export const getUpdateAdminSupportRequestStatusUrl = (statusId: number,) => {
+
+
+
+
+  return `/api/admin/support-request-statuses/${statusId}`
+}
+
+/**
+ * @summary Renomeia ou ativa e desativa um status privado
+ */
+export const updateAdminSupportRequestStatus = async (statusId: number,
+    supportRequestStatusCatalogUpdate: SupportRequestStatusCatalogUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupportRequestStatusCatalogEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupportRequestStatusCatalogEntry>(getUpdateAdminSupportRequestStatusUrl(statusId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supportRequestStatusCatalogUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminSupportRequestStatusMutationKey = () => ['updateAdminSupportRequestStatus'] as const;
+
+export const getUpdateAdminSupportRequestStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>, TError,UpdateAdminSupportRequestStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>, TError,UpdateAdminSupportRequestStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminSupportRequestStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>, UpdateAdminSupportRequestStatusMutationVariables> = (props) => {
+          const {statusId,data} = props ?? {};
+
+          return  updateAdminSupportRequestStatus(statusId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminSupportRequestStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>>
+    export type UpdateAdminSupportRequestStatusMutationBody = BodyType<SupportRequestStatusCatalogUpdate>
+    export type UpdateAdminSupportRequestStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type UpdateAdminSupportRequestStatusMutationVariables = {statusId: number;data: BodyType<SupportRequestStatusCatalogUpdate>}
+
+    /**
+ * @summary Renomeia ou ativa e desativa um status privado
+ */
+export const useUpdateAdminSupportRequestStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>, TError,UpdateAdminSupportRequestStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminSupportRequestStatus>>,
+        TError,
+        UpdateAdminSupportRequestStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminSupportRequestStatusMutationOptions(options));
+    }
 
 export const getUpdateAdminSupportRequestUrl = (requestId: number,) => {
 

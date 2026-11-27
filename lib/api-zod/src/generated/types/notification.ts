@@ -12,6 +12,10 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
+  /** @nullable */
+  statusLabel?: string | null;
+  /** @nullable */
+  statusLabelEn?: string | null;
   href: string;
   isRead: boolean;
   createdAt: Date;
