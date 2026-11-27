@@ -4838,29 +4838,64 @@ table {
 
 @media (max-width: 420px) {
   .site-header-inner {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 36px;
-    grid-template-rows: auto auto;
-    column-gap: 8px;
-    row-gap: 5px;
+    display: flex;
+    flex-wrap: nowrap;
+    min-height: 0;
+    gap: 6px;
+    padding: 7px 8px;
   }
 
   .brand-lockup {
-    grid-column: 1;
-    grid-row: 1;
+    flex: 0 0 auto;
   }
 
-  .menu-button {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
+  .brand-logo {
+    width: clamp(76px, 24vw, 92px);
   }
 
   .header-menu-controls {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: 4px;
     justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  .header-search-link {
+    width: 34px;
+    min-height: 34px;
+    flex: 0 0 34px;
+    padding: 0;
+  }
+
+  .menu-button {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    margin-left: 0;
+  }
+
+  .header-auth-actions {
+    min-width: 0;
+    flex: 0 1 auto;
+    gap: 3px !important;
+  }
+
+  .header-auth-actions > span {
+    display: none;
+  }
+
+  .header-auth-actions .auth-header-link,
+  .header-auth-actions .auth-header-primary {
+    min-height: 34px;
+    padding: 4px 5px;
+    font-size: 10px;
+  }
+
+  .header-auth-actions > a[aria-label*="Notificações"] {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
   }
 }
 
