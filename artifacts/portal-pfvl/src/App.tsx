@@ -261,7 +261,7 @@ function PortalShell({ children }: { children: ReactNode }) {
       menuTriggerRef.current?.focus();
     };
     const closeWhenWide = () => {
-      if (window.innerWidth > 1120) setMobileOpen(false);
+      if (window.innerWidth > 1280) setMobileOpen(false);
     };
     document.addEventListener('keydown', closeOnEscape);
     window.addEventListener('resize', closeWhenWide);

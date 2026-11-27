@@ -4714,7 +4714,7 @@ table {
 }
 
 /* Collapse the desktop navigation before its labels compete for header space. */
-@media (min-width: 768px) and (max-width: 1120px) {
+@media (min-width: 768px) and (max-width: 1279px) {
   .site-header-inner {
     position: relative;
     min-height: 62px;
@@ -4760,7 +4760,7 @@ table {
     gap: 8px;
     padding: 5px 10px;
     font-size: 12px;
-    white-space: normal;
+    white-space: nowrap;
   }
 
   .primary-nav-link-active::after {
@@ -4861,6 +4861,16 @@ table {
     grid-row: 2;
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 767px) {
+  .primary-navigation-open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .primary-nav-link {
+    white-space: nowrap;
   }
 }
 

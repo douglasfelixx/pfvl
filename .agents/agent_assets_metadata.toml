@@ -406,3 +406,17 @@ mtime_ms = 1795739081945
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/1f1c1240-956c-4e59-ae06-2abbfabf84d0/32345c43-0351-44be-8dc2-ed9a9dfc770c"
 storage_version_token = "1795739088930540"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "GfiFbU9OunTyOfqVjDNbn"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-27-status-catalogos.zip"
+type = "unspecified"
+title = "ZIP completo para GitHub"
+description = "Código versionado do PFVL, incluindo a separação de status privados e públicos. O ZIP não contém .git, node_modules, builds nem valores de ambiente; o .env.example foi deixado sem valores."
+logical_id = "b2b5c9ff-36c2-4a27-9bae-eeb003a42042"
+content_hash = "sha256:458d427886a85b1ce9dddc55d9024063a0265f77e4aac067596dfbe2e10ecfa0"
+size = 1223963
+mtime_ms = 1795751036265
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/b2b5c9ff-36c2-4a27-9bae-eeb003a42042/4449e148-c280-41d3-9a51-3a5b8b864100"
+storage_version_token = "1795751066284821"
+content_type = "application/octet-stream"
