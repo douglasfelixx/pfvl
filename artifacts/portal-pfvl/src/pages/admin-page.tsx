@@ -110,7 +110,7 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { CreatePostForm, ImageUploadField } from "@/components/community-actions";
-import { useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
+import { markFormSaved, useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
 import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate, LoadingState, PageHeading, QueryError, Surface } from "@/components/portal-ui";
@@ -411,56 +411,6 @@ function AdminConsole() {
   const updatePost = useUpdatePost();
   const deletePost = useDeletePost();
 
-  useEffect(() => {
-    if (!dirtyKeys.length) return;
-    const currentUrl = window.location.href;
-    let allowUnload = false;
-
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (allowUnload) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const confirmHistoryNavigation = (event: PopStateEvent) => {
-      event.stopImmediatePropagation();
-      const destinationUrl = window.location.href;
-      window.history.pushState(window.history.state, "", currentUrl);
-      void confirmUnsavedChanges().then((confirmed) => {
-        if (!confirmed) return;
-        allowUnload = true;
-        setAdminDrafts({});
-        window.location.assign(destinationUrl);
-      });
-    };
-    const confirmInternalNavigation = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const anchor = target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
-
-      const destination = new URL(anchor.href, window.location.href);
-      if (destination.href === window.location.href) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      void confirmUnsavedChanges().then((confirmed) => {
-        if (!confirmed) return;
-        allowUnload = true;
-        setAdminDrafts({});
-        window.location.assign(destination.href);
-      });
-    };
-
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    window.addEventListener("popstate", confirmHistoryNavigation, true);
-    document.addEventListener("click", confirmInternalNavigation, true);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeUnload);
-      window.removeEventListener("popstate", confirmHistoryNavigation, true);
-      document.removeEventListener("click", confirmInternalNavigation, true);
-    };
-  }, [confirmUnsavedChanges, dirtyKeys.length]);
-
   function stageAdminDraft(key: string, value: string, originalValue: string) {
     setAdminDrafts((current) => {
       if (value === originalValue) {
@@ -694,7 +644,7 @@ function AdminConsole() {
   }
 
   return (
-    <div className="mt-6 space-y-5">
+    <div className="mt-6 space-y-5" data-admin-unsaved-dirty={dirtyKeys.length ? "true" : undefined}>
       {unsavedChangesDialog}
       <div className="grid gap-4 lg:grid-cols-[296px_minmax(0,1fr)]">
         <aside className="min-w-0 rounded-2xl bg-[#012140] p-3 text-white shadow-sm lg:sticky lg:top-24 lg:h-fit lg:p-4">
@@ -1410,6 +1360,8 @@ function SupportInbox({
         requestId: request.id,
         data: { status },
       });
+      const statusForm = document.getElementById(`private-status-form-${request.id}`);
+      if (statusForm instanceof HTMLFormElement) markFormSaved(statusForm);
       setDrafts((current) => {
         const { [request.id]: _saved, ...remaining } = current;
         return remaining;
@@ -1439,6 +1391,8 @@ function SupportInbox({
         requestId: request.id,
         data: { message },
       });
+      const commentForm = document.getElementById(`suggestion-update-form-${request.id}`);
+      if (commentForm instanceof HTMLFormElement) markFormSaved(commentForm);
       setCommentDrafts((current) => ({ ...current, [request.id]: "" }));
       setCommentFeedback((current) => ({ ...current, [request.id]: "Atualização enviada." }));
       await queryClient.invalidateQueries({
@@ -1513,6 +1467,8 @@ function SupportInbox({
           description: saved.roadmapDescription ?? description,
         },
       }));
+      const copyForm = document.getElementById(`roadmap-copy-form-${request.id}`);
+      if (copyForm instanceof HTMLFormElement) markFormSaved(copyForm);
       setRoadmapFeedback((current) => ({
         ...current,
         [request.id]: "Texto público salvo.",
@@ -1542,6 +1498,8 @@ function SupportInbox({
         requestId: request.id,
         data: { roadmapStatus: status },
       });
+      const statusForm = document.getElementById(`roadmap-status-form-${request.id}`);
+      if (statusForm instanceof HTMLFormElement) markFormSaved(statusForm);
       setRoadmapDrafts((current) => ({
         ...current,
         [request.id]: { ...roadmapDraft(request), status },
@@ -1602,6 +1560,8 @@ function SupportInbox({
         : { approved };
       await updateRoadmap.mutateAsync({ requestId: request.id, data });
       if (approved) {
+        const copyForm = document.getElementById(`roadmap-copy-form-${request.id}`);
+        if (copyForm instanceof HTMLFormElement) markFormSaved(copyForm);
         setRoadmapDrafts((current) => ({
           ...current,
           [request.id]: { ...draft, title, description },
@@ -1784,54 +1744,65 @@ function SupportInbox({
                     const draft = roadmapDraft(request);
                     return (
                       <div className="grid gap-3">
-                        <label className="block text-xs font-semibold text-[#233a59]">
-                          {translateText("Título público")}
-                          <input
-                            className={`${inputClass} mt-1 block w-full`}
-                            maxLength={220}
-                            minLength={4}
-                            onChange={(event) => stageRoadmapDraft(request, "title", event.target.value)}
-                            value={draft.title}
-                          />
-                        </label>
-                        <label className="block text-xs font-semibold text-[#233a59]">
-                          {translateText("Descrição pública")}
-                          <textarea
-                            className={`${inputClass} mt-1 block min-h-24 w-full resize-y`}
-                            maxLength={5000}
-                            minLength={10}
-                            onChange={(event) => stageRoadmapDraft(request, "description", event.target.value)}
-                            value={draft.description}
-                          />
-                        </label>
-                        <label className="block text-xs font-semibold text-[#233a59]">
-                          {translateText("Status público")}
-                          <select
-                            className={`${inputClass} mt-1 block w-full sm:w-auto`}
-                            onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
-                            value={draft.status}
-                          >
-                            {!draft.status && (
-                              <option value="" disabled>{translateText("Selecione um status ativo")}</option>
-                            )}
-                            {draft.status && !publicRoadmapStatuses.some((status) => status.key === draft.status) && (
-                              <option value={draft.status} disabled>{draft.status}</option>
-                            )}
-                            {publicRoadmapStatuses.find((status) => status.key === draft.status && !status.active) && (
-                              <option value={draft.status} disabled>
-                                {`${publicRoadmapStatusLabel(publicRoadmapStatuses.find((status) => status.key === draft.status)!)} — ${translateText("inativo; mantido no histórico")}`}
-                              </option>
-                            )}
-                            {[...publicRoadmapStatuses]
-                              .filter((status) => status.active)
-                              .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
-                              .map((status) => (
-                                <option key={status.id} value={status.key}>
-                                  {publicRoadmapStatusLabel(status)}
+                        <form
+                          className="grid gap-3"
+                          id={`roadmap-copy-form-${request.id}`}
+                          onSubmit={(event) => event.preventDefault()}
+                        >
+                          <label className="block text-xs font-semibold text-[#233a59]">
+                            {translateText("Título público")}
+                            <input
+                              className={`${inputClass} mt-1 block w-full`}
+                              maxLength={220}
+                              minLength={4}
+                              onChange={(event) => stageRoadmapDraft(request, "title", event.target.value)}
+                              value={draft.title}
+                            />
+                          </label>
+                          <label className="block text-xs font-semibold text-[#233a59]">
+                            {translateText("Descrição pública")}
+                            <textarea
+                              className={`${inputClass} mt-1 block min-h-24 w-full resize-y`}
+                              maxLength={5000}
+                              minLength={10}
+                              onChange={(event) => stageRoadmapDraft(request, "description", event.target.value)}
+                              value={draft.description}
+                            />
+                          </label>
+                        </form>
+                        <form
+                          id={`roadmap-status-form-${request.id}`}
+                          onSubmit={(event) => event.preventDefault()}
+                        >
+                          <label className="block text-xs font-semibold text-[#233a59]">
+                            {translateText("Status público")}
+                            <select
+                              className={`${inputClass} mt-1 block w-full sm:w-auto`}
+                              onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
+                              value={draft.status}
+                            >
+                              {!draft.status && (
+                                <option value="" disabled>{translateText("Selecione um status ativo")}</option>
+                              )}
+                              {draft.status && !publicRoadmapStatuses.some((status) => status.key === draft.status) && (
+                                <option value={draft.status} disabled>{draft.status}</option>
+                              )}
+                              {publicRoadmapStatuses.find((status) => status.key === draft.status && !status.active) && (
+                                <option value={draft.status} disabled>
+                                  {`${publicRoadmapStatusLabel(publicRoadmapStatuses.find((status) => status.key === draft.status)!)} — ${translateText("inativo; mantido no histórico")}`}
                                 </option>
-                              ))}
-                          </select>
-                        </label>
+                              )}
+                              {[...publicRoadmapStatuses]
+                                .filter((status) => status.active)
+                                .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
+                                .map((status) => (
+                                  <option key={status.id} value={status.key}>
+                                    {publicRoadmapStatusLabel(status)}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                        </form>
                       </div>
                     );
                   })()}
@@ -1885,7 +1856,7 @@ function SupportInbox({
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">{translateText("Nenhuma atualização enviada à pessoa solicitante.")}</p>
                 )}
-                <form className="suggestion-update-form mt-3" onSubmit={(event) => {
+                <form className="suggestion-update-form mt-3" id={`suggestion-update-form-${request.id}`} onSubmit={(event) => {
                   event.preventDefault();
                   void saveComment(request);
                 }}>
@@ -1899,22 +1870,6 @@ function SupportInbox({
                       value={commentDrafts[request.id] ?? ""}
                     />
                   </label>
-                  {request.requestType === "suggestion" && (
-                    <PrivateStatusControl
-                      label="Status privado"
-                      className="suggestion-private-status-control"
-                      request={request}
-                      statuses={statuses}
-                      selectedStatus={selectedStatus}
-                      feedback={feedback[request.id]}
-                      isSaving={updateRequest.isPending}
-                      onStatusChange={(next) => {
-                        setDrafts((current) => ({ ...current, [request.id]: next }));
-                        setFeedback((current) => ({ ...current, [request.id]: "" }));
-                      }}
-                      onSave={() => void saveStatus(request)}
-                    />
-                  )}
                   <div className="suggestion-update-submit flex flex-wrap items-center gap-3">
                     <button
                       className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
@@ -1930,21 +1885,50 @@ function SupportInbox({
                     )}
                   </div>
                 </form>
+                {request.requestType === "suggestion" && (
+                  <form
+                    className="suggestion-private-status-control mt-3"
+                    id={`private-status-form-${request.id}`}
+                    onSubmit={(event) => event.preventDefault()}
+                  >
+                    <PrivateStatusControl
+                      label="Status privado"
+                      className=""
+                      request={request}
+                      statuses={statuses}
+                      selectedStatus={selectedStatus}
+                      feedback={feedback[request.id]}
+                      isSaving={updateRequest.isPending}
+                      onStatusChange={(next) => {
+                        setDrafts((current) => ({ ...current, [request.id]: next }));
+                        setFeedback((current) => ({ ...current, [request.id]: "" }));
+                      }}
+                      onSave={() => void saveStatus(request)}
+                    />
+                  </form>
+                )}
               </section>
               {request.requestType === "support" && (
-                <PrivateStatusControl
-                  label="Atualizar status"
-                  request={request}
-                  statuses={statuses}
-                  selectedStatus={selectedStatus}
-                  feedback={feedback[request.id]}
-                  isSaving={updateRequest.isPending}
-                  onStatusChange={(next) => {
-                    setDrafts((current) => ({ ...current, [request.id]: next }));
-                    setFeedback((current) => ({ ...current, [request.id]: "" }));
-                  }}
-                  onSave={() => void saveStatus(request)}
-                />
+                <form
+                  className="mt-3"
+                  id={`private-status-form-${request.id}`}
+                  onSubmit={(event) => event.preventDefault()}
+                >
+                  <PrivateStatusControl
+                    label="Atualizar status"
+                    className=""
+                    request={request}
+                    statuses={statuses}
+                    selectedStatus={selectedStatus}
+                    feedback={feedback[request.id]}
+                    isSaving={updateRequest.isPending}
+                    onStatusChange={(next) => {
+                      setDrafts((current) => ({ ...current, [request.id]: next }));
+                      setFeedback((current) => ({ ...current, [request.id]: "" }));
+                    }}
+                    onSave={() => void saveStatus(request)}
+                  />
+                </form>
               )}
               <span className="sr-only" data-testid={`${statusKey}-status`}>{request.status}</span>
               </div>
@@ -1991,6 +1975,10 @@ function SuggestionCategoriesManager({
   const [drafts, setDrafts] = useState<Record<number, { name: string; active: boolean }>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const hasUnsavedEdits = categories.some((category) => {
+    const draft = drafts[category.id];
+    return Boolean(draft && (draft.name !== category.name || draft.active !== category.active));
+  });
 
   async function refresh() {
     await Promise.all([
@@ -2001,10 +1989,12 @@ function SuggestionCategoriesManager({
 
   async function addCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError("");
     setFeedback("");
     try {
       await createCategory.mutateAsync({ data: { name: newName.trim() } });
+      markFormSaved(form);
       setNewName("");
       setFeedback(translateText("Categoria criada."));
       await refresh();
@@ -2045,7 +2035,7 @@ function SuggestionCategoriesManager({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-unsaved-dirty={hasUnsavedEdits ? "true" : undefined}>
       <div>
         <h3 className="font-semibold text-[#012140]">{translateText("Categorias de sugestões")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("Crie, edite ou inative categorias. Não é possível excluir opções, para preservar as mensagens já associadas.")}</p>
@@ -2219,6 +2209,14 @@ function SupportRequestStatusesManager({
   }>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const hasUnsavedEdits = statuses.some((status) => {
+    const draft = drafts[status.id];
+    return Boolean(draft && (
+      draft.label !== status.label
+      || draft.labelEn !== status.labelEn
+      || draft.active !== status.active
+    ));
+  });
   const orderedStatuses = [...statuses].sort(
     (left, right) => left.sortOrder - right.sortOrder || left.id - right.id,
   );
@@ -2237,6 +2235,7 @@ function SupportRequestStatusesManager({
 
   async function addStatus(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setFeedback("");
     setError("");
     try {
@@ -2247,6 +2246,7 @@ function SupportRequestStatusesManager({
           labelEn: newLabelEn.trim(),
         },
       });
+      markFormSaved(form);
       setNewLabel("");
       setNewLabelEn("");
       setFeedback(translateText("Status criado."));
@@ -2327,7 +2327,7 @@ function SupportRequestStatusesManager({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-unsaved-dirty={hasUnsavedEdits ? "true" : undefined}>
       <div>
         <h3 className="font-semibold text-[#012140]">
           {translateText(heading ?? (requestType === "support" ? "Status de solicitações" : "Status de sugestões"))}
@@ -2498,6 +2498,14 @@ function PublicRoadmapStatusesManager({
   }>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const hasUnsavedEdits = statuses.some((status) => {
+    const draft = drafts[status.id];
+    return Boolean(draft && (
+      draft.label !== status.label
+      || draft.labelEn !== status.labelEn
+      || draft.active !== status.active
+    ));
+  });
   const orderedStatuses = [...statuses].sort(
     (left, right) => left.sortOrder - right.sortOrder || left.id - right.id,
   );
@@ -2512,12 +2520,14 @@ function PublicRoadmapStatusesManager({
 
   async function addStatus(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setFeedback("");
     setError("");
     try {
       await createStatus.mutateAsync({
         data: { label: newLabel.trim(), labelEn: newLabelEn.trim() },
       });
+      markFormSaved(form);
       setNewLabel("");
       setNewLabelEn("");
       setFeedback(translateText("Status público criado."));
@@ -2595,7 +2605,7 @@ function PublicRoadmapStatusesManager({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-unsaved-dirty={hasUnsavedEdits ? "true" : undefined}>
       <div>
         <h3 className="font-semibold text-[#012140]">{translateText("Status públicos")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -2742,6 +2752,10 @@ function SupportSubjectsManager({ subjects }: { subjects: SupportRequestSubject[
   const [drafts, setDrafts] = useState<Record<number, { name: string; active: boolean }>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const hasUnsavedEdits = subjects.some((subject) => {
+    const draft = drafts[subject.id];
+    return Boolean(draft && (draft.name !== subject.name || draft.active !== subject.active));
+  });
 
   async function refreshSubjects() {
     await Promise.all([
@@ -2752,10 +2766,12 @@ function SupportSubjectsManager({ subjects }: { subjects: SupportRequestSubject[
 
   async function addSubject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setFeedback("");
     setError("");
     try {
       await createSubject.mutateAsync({ data: { name: newName.trim() } });
+      markFormSaved(form);
       setNewName("");
       setFeedback(translateText("Assunto criado."));
       await refreshSubjects();
@@ -2786,7 +2802,7 @@ function SupportSubjectsManager({ subjects }: { subjects: SupportRequestSubject[
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-unsaved-dirty={hasUnsavedEdits ? "true" : undefined}>
       <div>
         <h3 className="font-semibold text-[#012140]">{translateText("Assuntos disponíveis no formulário")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("Assuntos não podem ser excluídos; somente inativados. As solicitações antigas permanecem registradas.")}</p>
@@ -3112,7 +3128,7 @@ function SiteMediaAssetEditor({
   }
 
   return (
-    <form className="rounded-xl border border-[#233a59]/15 p-4 sm:p-5" onSubmit={(event) => void save(event)}>
+    <form className="rounded-xl border border-[#233a59]/15 p-4 sm:p-5" data-unsaved-ignore="true" onSubmit={(event) => void save(event)}>
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#e8e8e8] text-[#233a59]">
           <Image aria-hidden="true" className="h-5 w-5" />
@@ -3317,7 +3333,7 @@ function TaxonomyManager({
         </p>
       </header>
 
-      <form className="grid gap-3 rounded-xl bg-[#f6f7f9] p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end" noValidate onSubmit={submit}>
+      <form className="grid gap-3 rounded-xl bg-[#f6f7f9] p-4 sm:grid-cols-[1fr_1.4fr_auto] sm:items-end" data-unsaved-ignore="true" noValidate onSubmit={submit}>
         <label className="block text-sm font-semibold text-[#012140]">
           {translateText("Tipo")}
           <select className={`${inputClass} mt-1.5 w-full`} onChange={(event) => { setType(event.target.value as "category" | "tag"); setNameError(""); }} value={type}>
@@ -3361,7 +3377,7 @@ function TaxonomyManager({
                         {group.map((item) => (
                           <li className="inline-flex max-w-full items-center gap-1 rounded-full bg-[#e8e8e8] px-3 py-1.5 text-sm text-[#012140]" key={item.id}>
                             {editingId === item.id ? (
-                              <form className="flex flex-wrap items-center gap-2" noValidate onSubmit={(event) => void saveEdit(event, item)}>
+                              <form className="flex flex-wrap items-center gap-2" data-unsaved-ignore="true" noValidate onSubmit={(event) => void saveEdit(event, item)}>
                                 <label className="sr-only" htmlFor={`taxonomy-edit-${item.id}`}>{translateText("Editar")} {item.name}</label>
                                 <input
                                   aria-describedby={editNameError ? `taxonomy-edit-error-${item.id}` : undefined}
@@ -3470,6 +3486,8 @@ function AdminPollManagement() {
     setMessage("");
     try {
       await create.mutateAsync({ data: { question: values.question.trim(), details: values.details.trim() || undefined } });
+      const pollForm = document.getElementById("admin-poll-create-form");
+      if (pollForm instanceof HTMLFormElement) markFormSaved(pollForm);
       form.reset();
       setPage(1);
       setMessageKind("success");
@@ -3516,7 +3534,7 @@ function AdminPollManagement() {
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{translateText("Publique uma pergunta para receber votos. Apenas uma enquete pode ficar ativa por vez.")}</p>
       </div>
       <Form {...form}>
-        <form className="grid gap-3 rounded-xl border border-[#233a59]/15 bg-[#f6f7f9] p-4 sm:p-5" onSubmit={form.handleSubmit(submit)}>
+        <form className="grid gap-3 rounded-xl border border-[#233a59]/15 bg-[#f6f7f9] p-4 sm:p-5" id="admin-poll-create-form" onSubmit={form.handleSubmit(submit)}>
           <FormField
             control={form.control}
             name="question"
@@ -3692,7 +3710,7 @@ function EditPostForm({
   }
 
   return (
-    <form className="mt-4 space-y-3 rounded-xl bg-[#f6f7f9] p-4" noValidate onSubmit={submit}>
+    <form className="mt-4 space-y-3 rounded-xl bg-[#f6f7f9] p-4" data-unsaved-ignore="true" noValidate onSubmit={submit}>
       <label className="block text-sm font-semibold text-[#012140]">
         {translateText("Título")}
         <input aria-describedby={titleError ? `edit-post-title-error-${post.id}` : undefined} aria-invalid={Boolean(titleError)} className={`${inputClass} mt-1.5 w-full`} data-testid={`input-edit-post-title-${post.id}`} maxLength={220} minLength={4} onChange={(event) => { setTitle(event.target.value); setMessage(""); if (event.target.value.trim().length >= 4) setTitleError(""); }} required value={title} />

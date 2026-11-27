@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { RichTextContent, richContentToPlainText } from '@/components/rich-text-content';
+import { markFormSaved } from '@/components/unsaved-changes-confirm';
 import {
   getGetCurrentUserQueryKey,
   getGetPostQueryKey,
@@ -693,11 +694,13 @@ function HelpRequestForm() {
 
   async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError("");
     try {
       const result = await createRequest.mutateAsync({
         data: { subjectId: Number(subjectId), message: message.trim() },
       });
+      markFormSaved(form);
       setProtocol(result.protocol);
       setMessage("");
         await Promise.all([
@@ -1033,6 +1036,7 @@ function SuggestionWorkspace() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError('');
     const cleanTitle = title.trim();
     if (cleanTitle.length < 4) {
@@ -1048,6 +1052,7 @@ function SuggestionWorkspace() {
           message: details.trim(),
         },
       });
+      markFormSaved(form);
       setTitle('');
       setDetails('');
       setProtocol(result.protocol);

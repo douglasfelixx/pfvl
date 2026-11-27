@@ -23,6 +23,7 @@ import { CookieConsentManager, CookiePreferencesButton } from '@/components/cook
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RouteScrollManager } from '@/components/route-scroll-manager';
+import { UnsavedChangesGuard } from '@/components/unsaved-changes-confirm';
 import { AdminPage } from '@/pages/admin-page';
 import NotFound from '@/pages/not-found';
 import {
@@ -278,6 +279,7 @@ function PortalShell({ children }: { children: ReactNode }) {
   return (
     <CookieConsentManager>
     <div className="app-shell">
+      <UnsavedChangesGuard />
       <RouteScrollManager />
       <header className="site-header">
         <div className="site-header-inner">

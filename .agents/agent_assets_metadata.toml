@@ -476,3 +476,17 @@ mtime_ms = 1795795689934
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/09c9838f-30a1-48b7-8be2-9a7a6a357ec5/098e4261-8595-4301-89bd-47b18b79b5d5"
 storage_version_token = "1795795696412403"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "Yv1_jRnn6BE-JixmNnbdY"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-27-botao-publicacao-corrigido.zip"
+type = "unspecified"
+title = "ZIP atualizado para o Git"
+description = "Projeto com a correção mais recente do botão Salvar e publicar. ZIP validado, incluindo os arquivos versionados atuais e sem dependências ou arquivos locais."
+logical_id = "7ef8f317-7cb7-486c-b496-c3f395559529"
+content_hash = "sha256:3ca5a366ebce1e0081d02ec2ad0e5469f4ef051c92f61c687ca34b9d90c7ad29"
+size = 1196695
+mtime_ms = 1795796932762
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/7ef8f317-7cb7-486c-b496-c3f395559529/f99093f3-103a-417e-8542-6ced5c53eb11"
+storage_version_token = "1795796947727941"
+content_type = "application/octet-stream"

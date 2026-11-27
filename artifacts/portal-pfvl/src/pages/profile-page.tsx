@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { EmptyState, formatDate, LoadingState, QueryError } from "@/components/portal-ui";
+import { markFormSaved } from "@/components/unsaved-changes-confirm";
 import { translateText } from "@/lib/i18n";
 
 function ProfileContent() {
@@ -53,10 +54,12 @@ function ProfileContent() {
 
   async function submitTestimonial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setTestimonialError("");
     setTestimonialMessage("");
     try {
       await upsertTestimonial.mutateAsync({ data: { rating, body: body.trim() } });
+      markFormSaved(form);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGetMyTestimonialQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getListTestimonialsQueryKey() }),

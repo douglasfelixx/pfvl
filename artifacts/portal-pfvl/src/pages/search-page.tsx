@@ -99,7 +99,7 @@ export function SearchPage() {
         <span className="search-hero-mark" aria-hidden="true"><Search size={34} strokeWidth={1.35} /></span>
       </header>
 
-      <form className="global-search-form" onSubmit={submitSearch} data-testid="form-global-search">
+      <form className="global-search-form" data-unsaved-ignore="true" onSubmit={submitSearch} data-testid="form-global-search">
         <label className="global-search-input-wrap">
           <Search aria-hidden="true" size={20} />
           <span className="sr-only">{translateText('Termo de busca')}</span>

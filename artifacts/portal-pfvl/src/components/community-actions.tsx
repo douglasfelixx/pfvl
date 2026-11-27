@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
-import { useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
+import { markFormSaved, useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
 import { translateText } from "@/lib/i18n";
 import { refreshPostQueries } from "@/lib/post-query-refresh";
 
@@ -120,6 +120,7 @@ export function CreatePostForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setMessage("");
     const cleanTitle = title.trim();
     if (cleanTitle.length < 4) return setTitleError("Informe um título com pelo menos 4 caracteres.");
@@ -136,6 +137,7 @@ export function CreatePostForm({
         kind, category, tags,
         coverImageUrl: image.trim() || null, videoUrl: null, status: mode === "admin" ? status : "published",
       } });
+      markFormSaved(form);
       setTitle(""); setCategory(""); setBody(""); setTags([]); setImage(""); setStatus("published");
       onDirtyChange?.(false);
       setMessage(status === "draft" ? "Rascunho salvo." : "Publicação criada.");
@@ -145,7 +147,7 @@ export function CreatePostForm({
   }
   return (
     <AuthActionGate>
-      <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" noValidate onSubmit={submit}>
+      <form className="space-y-4 rounded-2xl border border-[#233a59]/15 bg-white p-5 sm:p-6" data-unsaved-ignore={mode === "admin" ? "true" : undefined} noValidate onSubmit={submit}>
         <div>
           <p className="eyebrow-pill">{translateText(mode === "community" ? "Nova conversa" : "Publicação do portal")}</p>
           <h2 className="mt-2 font-display text-xl font-semibold text-[#012140]">
@@ -223,52 +225,6 @@ export function CommunityCreatePanel() {
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }, [open]);
 
-  useEffect(() => {
-    if (!open || !dirty) return;
-    const currentUrl = window.location.href;
-    let allowUnload = false;
-    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (allowUnload) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const confirmInternalNavigation = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const anchor = target.closest("a[href]");
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
-      const destination = new URL(anchor.href, window.location.href);
-      if (destination.href === window.location.href) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      void confirmUnsavedChanges().then((confirmed) => {
-        if (!confirmed) return;
-        allowUnload = true;
-        window.location.assign(destination.href);
-      });
-    };
-    const confirmHistoryNavigation = (event: PopStateEvent) => {
-      event.stopImmediatePropagation();
-      const destinationUrl = window.location.href;
-      window.history.pushState(window.history.state, "", currentUrl);
-      void confirmUnsavedChanges().then((confirmed) => {
-        if (!confirmed) return;
-        allowUnload = true;
-        window.location.assign(destinationUrl);
-      });
-    };
-
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    window.addEventListener("popstate", confirmHistoryNavigation, true);
-    document.addEventListener("click", confirmInternalNavigation, true);
-    return () => {
-      window.removeEventListener("beforeunload", warnBeforeUnload);
-      window.removeEventListener("popstate", confirmHistoryNavigation, true);
-      document.removeEventListener("click", confirmInternalNavigation, true);
-    };
-  }, [confirmUnsavedChanges, dirty, open]);
-
   async function closeForm() {
     if (dirty && !await confirmUnsavedChanges()) return;
     setDirty(false);
@@ -302,20 +258,32 @@ function SignedInCommentComposer({ postId, parentCommentId, onCancel }: { postId
   const mutation = useCreateComment();
   const [body, setBody] = useState("");
   const [message, setMessage] = useState("");
+  const { confirm: confirmUnsavedChanges, dialog: unsavedChangesDialog } = useUnsavedChangesConfirm();
+
+  async function cancel() {
+    if (body.trim() && !await confirmUnsavedChanges()) return;
+    onCancel?.();
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     try {
       await mutation.mutateAsync({ postId, data: { body: body.trim(), parentCommentId } });
+      markFormSaved(form);
       setBody(""); setMessage("Sua resposta foi publicada.");
       if (parentCommentId !== null) clearReplyIntent(parentCommentId);
       await refreshPostQueries(client, postId);
     } catch (error) { setMessage(errorText(error)); }
   }
-  return <form className="space-y-3 rounded-2xl border border-[#233a59]/15 bg-white p-4" onSubmit={submit}>
-    <label className="block text-sm font-semibold text-[#012140]">{translateText(parentCommentId ? "Sua resposta" : "Escreva um comentário")}<textarea className={`${fieldClass} min-h-24 resize-y`} maxLength={5000} minLength={2} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
-    {message && <p className="text-xs text-[#233a59]" role="status">{translateText(message)}</p>}
-    <div className="flex gap-2"><button className="auth-header-primary" disabled={mutation.isPending} type="submit">{translateText(mutation.isPending ? "Enviando…" : "Enviar")}</button>{onCancel && <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" onClick={onCancel} type="button">{translateText("Cancelar")}</button>}</div>
-  </form>;
+  return <>
+    {unsavedChangesDialog}
+    <form className="space-y-3 rounded-2xl border border-[#233a59]/15 bg-white p-4" onSubmit={submit}>
+      <label className="block text-sm font-semibold text-[#012140]">{translateText(parentCommentId ? "Sua resposta" : "Escreva um comentário")}<textarea className={`${fieldClass} min-h-24 resize-y`} maxLength={5000} minLength={2} onChange={(event) => setBody(event.target.value)} required value={body} /></label>
+      {message && <p className="text-xs text-[#233a59]" role="status">{translateText(message)}</p>}
+      <div className="flex gap-2"><button className="auth-header-primary" disabled={mutation.isPending} type="submit">{translateText(mutation.isPending ? "Enviando…" : "Enviar")}</button>{onCancel && <button className="auth-header-link !border-[#233a59]/20 !text-[#233a59]" onClick={() => void cancel()} type="button">{translateText("Cancelar")}</button>}</div>
+    </form>
+  </>;
 }
 
 export function ReplyControl({ postId, commentId }: { postId: number; commentId: number }) {

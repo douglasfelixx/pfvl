@@ -143,7 +143,7 @@ function ClerkHeader() {
           </span>
         )}
       </Link>
-      <button className="auth-header-link" onClick={() => void signOut({ redirectUrl: "/" })} type="button">{translateText("Sair")}</button>
+      <button className="auth-header-link" data-testid="button-sign-out" onClick={() => void signOut({ redirectUrl: "/" })} type="button">{translateText("Sair")}</button>
     </div>
   );
 }
