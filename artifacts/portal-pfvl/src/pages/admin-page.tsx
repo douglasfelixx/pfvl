@@ -43,6 +43,7 @@ import {
   getListTestimonialsQueryKey,
   getListAdminSupportRequestsQueryKey,
   getListAdminSupportRequestStatusesQueryKey,
+  getListAdminPublicRoadmapStatusesQueryKey,
   getListAdminSupportSubjectsQueryKey,
   getListPublicRoadmapSuggestionsQueryKey,
   getListSupportSubjectsQueryKey,
@@ -55,6 +56,7 @@ import {
   useCreateAdminSuggestionCategory,
   useCreateAdminSupportRequestComment,
   useCreateAdminSupportRequestStatus,
+  useCreateAdminPublicRoadmapStatus,
   useCreateAdminTaxonomy,
   useDeleteComment,
   useDeleteAdminTaxonomy,
@@ -73,6 +75,7 @@ import {
   useCreateAdminSupportSubject,
   useListAdminSupportRequests,
   useListAdminSupportRequestStatuses,
+  useListAdminPublicRoadmapStatuses,
   useListAdminSupportSubjects,
   useUpdateAdminTestimonial,
   useUpdateAdminTaxonomy,
@@ -81,9 +84,11 @@ import {
   useUpdateAdminSupportRequest,
   useUpdateAdminSupportRequestStatus,
   useUpdateAdminSupportRequestRoadmap,
+  useUpdateAdminPublicRoadmapStatus,
   useUpdateAdminSuggestionCategory,
   useUpdateAdminSupportSubject,
   useReorderAdminSupportRequestStatuses,
+  useReorderAdminPublicRoadmapStatuses,
   useUpdatePost,
   type Post,
   type PostKind,
@@ -101,6 +106,7 @@ import {
   type SupportRequestStatusCatalogEntry,
   type SupportRequestSubject,
   type SupportRequestCategory,
+  type PublicRoadmapStatus,
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
 import { CreatePostForm, ImageUploadField } from "@/components/community-actions";
@@ -108,7 +114,7 @@ import { useUnsavedChangesConfirm } from "@/components/unsaved-changes-confirm";
 import { normalizeRichContent, richContentToPlainText } from "@/components/rich-text-content";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { formatDate, LoadingState, PageHeading, QueryError, Surface } from "@/components/portal-ui";
-import { translateText } from "@/lib/i18n";
+import { getLocale, translateText } from "@/lib/i18n";
 import {
   getPrivateStatusLabel,
   getPrivateStatusLabelFromRequest,
@@ -384,6 +390,12 @@ function AdminConsole() {
       },
     },
   );
+  const publicRoadmapStatuses = useListAdminPublicRoadmapStatuses({
+    query: {
+      queryKey: getListAdminPublicRoadmapStatusesQueryKey(),
+      enabled: profile.data?.role === "admin",
+    },
+  });
   const supportSubjects = useListAdminSupportSubjects({
     query: {
       queryKey: getListAdminSupportSubjectsQueryKey(),
@@ -1048,6 +1060,10 @@ function AdminConsole() {
               statusesLoading={suggestionStatuses.isLoading}
               statusesError={suggestionStatuses.isError}
               retryStatuses={() => void suggestionStatuses.refetch()}
+              publicStatuses={publicRoadmapStatuses.data ?? []}
+              publicStatusesLoading={publicRoadmapStatuses.isLoading}
+              publicStatusesError={publicRoadmapStatuses.isError}
+              retryPublicStatuses={() => void publicRoadmapStatuses.refetch()}
               requestsLoading={supportRequests.isLoading}
               requestsError={supportRequests.isError}
               retryRequests={() => void supportRequests.refetch()}
@@ -1167,6 +1183,10 @@ function AdminSuggestionsManager({
   statusesLoading,
   statusesError,
   retryStatuses,
+  publicStatuses,
+  publicStatusesLoading,
+  publicStatusesError,
+  retryPublicStatuses,
   requestsLoading,
   requestsError,
   retryRequests,
@@ -1181,6 +1201,10 @@ function AdminSuggestionsManager({
   statusesLoading: boolean;
   statusesError: boolean;
   retryStatuses: () => void;
+  publicStatuses: PublicRoadmapStatus[];
+  publicStatusesLoading: boolean;
+  publicStatusesError: boolean;
+  retryPublicStatuses: () => void;
   requestsLoading: boolean;
   requestsError: boolean;
   retryRequests: () => void;
@@ -1223,6 +1247,7 @@ function AdminSuggestionsManager({
         <SupportInbox
           requests={requests}
           statuses={statuses}
+          publicRoadmapStatuses={publicStatuses}
           classificationOptions={categories.map((category) => category.name)}
           filterBy="category"
           isLoading={requestsLoading}
@@ -1241,13 +1266,22 @@ function AdminSuggestionsManager({
           retry={retryCategories}
         />
       ) : (
-        <SupportRequestStatusesManager
-          requestType="suggestion"
-          statuses={statuses}
-          isLoading={statusesLoading}
-          isError={statusesError}
-          retry={retryStatuses}
-        />
+        <div className="space-y-8">
+          <SupportRequestStatusesManager
+            requestType="suggestion"
+            heading="Status privados"
+            statuses={statuses}
+            isLoading={statusesLoading}
+            isError={statusesError}
+            retry={retryStatuses}
+          />
+          <PublicRoadmapStatusesManager
+            statuses={publicStatuses}
+            isLoading={publicStatusesLoading}
+            isError={publicStatusesError}
+            retry={retryPublicStatuses}
+          />
+        </div>
       )}
     </div>
   );
@@ -1256,6 +1290,7 @@ function AdminSuggestionsManager({
 function SupportInbox({
   requests,
   statuses,
+  publicRoadmapStatuses = [],
   classificationOptions,
   filterBy,
   isLoading,
@@ -1268,6 +1303,7 @@ function SupportInbox({
 }: {
   requests: AdminSupportRequest[];
   statuses: SupportRequestStatusCatalogEntry[];
+  publicRoadmapStatuses?: PublicRoadmapStatus[];
   classificationOptions: string[];
   filterBy: "subject" | "category";
   isLoading: boolean;
@@ -1417,7 +1453,9 @@ function SupportInbox({
     return roadmapDrafts[request.id] ?? {
       title: request.roadmapTitle ?? "",
       description: request.roadmapDescription ?? "",
-      status: request.roadmapStatus ?? "planned",
+      status: request.roadmapStatus
+        ?? publicRoadmapStatuses.find((status) => status.active)?.key
+        ?? "",
     };
   }
 
@@ -1442,7 +1480,14 @@ function SupportInbox({
     }));
   }
 
-  async function saveRoadmap(request: AdminSupportRequest, approved: boolean) {
+  async function refreshRoadmapViews() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListPublicRoadmapSuggestionsQueryKey() }),
+    ]);
+  }
+
+  async function saveRoadmapCopy(request: AdminSupportRequest) {
     const draft = roadmapDraft(request);
     const title = draft.title.trim();
     const description = draft.description.trim();
@@ -1453,6 +1498,97 @@ function SupportInbox({
       }));
       return;
     }
+    setRoadmapFeedback((current) => ({ ...current, [request.id]: "" }));
+    try {
+      const saved = await updateRoadmap.mutateAsync({
+        requestId: request.id,
+        data: {
+          roadmapTitle: title,
+          roadmapDescription: description,
+        },
+      });
+      setRoadmapDrafts((current) => ({
+        ...current,
+        [request.id]: {
+          ...roadmapDraft(request),
+          title: saved.roadmapTitle ?? title,
+          description: saved.roadmapDescription ?? description,
+        },
+      }));
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Texto público salvo.",
+      }));
+      await refreshRoadmapViews();
+    } catch (error) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: getApiResponseError(error) ?? "Não foi possível salvar o texto público.",
+      }));
+    }
+  }
+
+  async function saveRoadmapStatus(request: AdminSupportRequest) {
+    const status = roadmapDraft(request).status;
+    if (status === request.roadmapStatus) return;
+    if (!publicRoadmapStatuses.some((option) => option.key === status && option.active)) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Escolha um estágio público ativo.",
+      }));
+      return;
+    }
+    setRoadmapFeedback((current) => ({ ...current, [request.id]: "" }));
+    try {
+      await updateRoadmap.mutateAsync({
+        requestId: request.id,
+        data: { roadmapStatus: status },
+      });
+      setRoadmapDrafts((current) => ({
+        ...current,
+        [request.id]: { ...roadmapDraft(request), status },
+      }));
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Estágio público salvo.",
+      }));
+      await refreshRoadmapViews();
+    } catch (error) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: getApiResponseError(error) ?? "Não foi possível salvar o estágio público.",
+      }));
+    }
+  }
+
+  async function setRoadmapPublication(
+    request: AdminSupportRequest,
+    approved: boolean,
+  ) {
+    const draft = roadmapDraft(request);
+    const title = draft.title.trim();
+    const description = draft.description.trim();
+    if (approved && (title.length < 4 || description.length < 10)) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Informe um título público e uma descrição com pelo menos 10 caracteres.",
+      }));
+      return;
+    }
+    if (approved && !request.roadmapStatus) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Salve um estágio público antes de publicar.",
+      }));
+      return;
+    }
+    if (approved && draft.status !== request.roadmapStatus) {
+      setRoadmapFeedback((current) => ({
+        ...current,
+        [request.id]: "Salve o estágio público antes de publicar.",
+      }));
+      return;
+    }
     if (
       approved &&
       request.approvedAt === null &&
@@ -1460,31 +1596,24 @@ function SupportInbox({
     ) {
       return;
     }
+
     setRoadmapFeedback((current) => ({ ...current, [request.id]: "" }));
     try {
-      await updateRoadmap.mutateAsync({
-        requestId: request.id,
-        data: {
-          approved,
-          roadmapTitle: title,
-          roadmapDescription: description,
-          roadmapStatus: draft.status,
-        },
-      });
-      setRoadmapDrafts((current) => {
-        const { [request.id]: _saved, ...remaining } = current;
-        return remaining;
-      });
+      const data = approved
+        ? { approved, roadmapTitle: title, roadmapDescription: description }
+        : { approved };
+      await updateRoadmap.mutateAsync({ requestId: request.id, data });
+      if (approved) {
+        setRoadmapDrafts((current) => ({
+          ...current,
+          [request.id]: { ...draft, title, description },
+        }));
+      }
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: approved
-          ? "Texto público salvo e publicado."
-          : "Texto público salvo como rascunho.",
+        [request.id]: approved ? "Melhoria publicada." : "Melhoria retirada do roadmap.",
       }));
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getListPublicRoadmapSuggestionsQueryKey() }),
-      ]);
+      await refreshRoadmapViews();
     } catch (error) {
       setRoadmapFeedback((current) => ({
         ...current,
@@ -1579,6 +1708,7 @@ function SupportInbox({
           <tbody className="divide-y divide-[#233a59]/10">
         {visibleRequestPage.map((request) => {
           const selectedStatus = drafts[request.id] ?? request.status;
+          const roadmapStatusDraft = roadmapDraft(request);
           const statusKey = `request:${request.id}`;
           return (
             <Fragment key={request.id}>
@@ -1651,9 +1781,25 @@ function SupportInbox({
                             onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
                             value={draft.status}
                           >
-                            <option value="planned">{translateText("Planejada")}</option>
-                            <option value="in_progress">{translateText("Em desenvolvimento")}</option>
-                            <option value="available">{translateText("Disponível")}</option>
+                            {!draft.status && (
+                              <option value="" disabled>{translateText("Selecione um estágio ativo")}</option>
+                            )}
+                            {draft.status && !publicRoadmapStatuses.some((status) => status.key === draft.status) && (
+                              <option value={draft.status} disabled>{draft.status}</option>
+                            )}
+                            {publicRoadmapStatuses.find((status) => status.key === draft.status && !status.active) && (
+                              <option value={draft.status} disabled>
+                                {`${publicRoadmapStatusLabel(publicRoadmapStatuses.find((status) => status.key === draft.status)!)} — ${translateText("inativo; mantido no histórico")}`}
+                              </option>
+                            )}
+                            {[...publicRoadmapStatuses]
+                              .filter((status) => status.active)
+                              .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
+                              .map((status) => (
+                                <option key={status.id} value={status.key}>
+                                  {publicRoadmapStatusLabel(status)}
+                                </option>
+                              ))}
                           </select>
                         </label>
                       </div>
@@ -1663,21 +1809,33 @@ function SupportInbox({
                     <button
                       className="rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]"
                       disabled={updateRoadmap.isPending}
-                      onClick={() => void saveRoadmap(request, Boolean(request.approvedAt))}
+                      onClick={() => void saveRoadmapCopy(request)}
                       type="button"
                     >
                       {translateText("Salvar texto público")}
                     </button>
                     <button
+                      className="rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]"
+                      disabled={
+                        updateRoadmap.isPending
+                        || roadmapStatusDraft.status === request.roadmapStatus
+                        || !publicRoadmapStatuses.some((status) => status.key === roadmapStatusDraft.status && status.active)
+                      }
+                      onClick={() => void saveRoadmapStatus(request)}
+                      type="button"
+                    >
+                      {translateText("Salvar estágio público")}
+                    </button>
+                    <button
                       className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
                       disabled={updateRoadmap.isPending}
-                      onClick={() => void saveRoadmap(request, !request.approvedAt)}
+                      onClick={() => void setRoadmapPublication(request, !request.approvedAt)}
                       type="button"
                     >
                       {translateText(request.approvedAt ? "Retirar do roadmap" : "Salvar e publicar")}
                     </button>
                     {roadmapFeedback[request.id] && (
-                      <span className={roadmapFeedback[request.id].startsWith("Texto público salvo") ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                      <span className={["Texto público salvo.", "Estágio público salvo.", "Melhoria publicada.", "Melhoria retirada do roadmap."].includes(roadmapFeedback[request.id]) ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
                         {translateText(roadmapFeedback[request.id])}
                       </span>
                     )}
@@ -1730,50 +1888,37 @@ function SupportInbox({
                     )}
                   </div>
                 </form>
+                {request.requestType === "suggestion" && (
+                  <PrivateStatusControl
+                    label="Status privado"
+                    request={request}
+                    statuses={statuses}
+                    selectedStatus={selectedStatus}
+                    feedback={feedback[request.id]}
+                    isSaving={updateRequest.isPending}
+                    onStatusChange={(next) => {
+                      setDrafts((current) => ({ ...current, [request.id]: next }));
+                      setFeedback((current) => ({ ...current, [request.id]: "" }));
+                    }}
+                    onSave={() => void saveStatus(request)}
+                  />
+                )}
               </section>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="text-xs font-semibold text-[#233a59]" htmlFor={`support-status-${request.id}`}>
-                  {translateText("Atualizar status")}
-                </label>
-                <select
-                  className={inputClass}
-                  id={`support-status-${request.id}`}
-                  onChange={(event) => {
-                    const next = event.target.value as SupportRequestStatus;
+              {request.requestType === "support" && (
+                <PrivateStatusControl
+                  label="Atualizar status"
+                  request={request}
+                  statuses={statuses}
+                  selectedStatus={selectedStatus}
+                  feedback={feedback[request.id]}
+                  isSaving={updateRequest.isPending}
+                  onStatusChange={(next) => {
                     setDrafts((current) => ({ ...current, [request.id]: next }));
                     setFeedback((current) => ({ ...current, [request.id]: "" }));
                   }}
-                  value={selectedStatus}
-                >
-                  {statuses
-                    .filter((status) => status.active || status.key === selectedStatus)
-                    .map((status) => (
-                      <option disabled={!status.active} key={status.id} value={status.key}>
-                        {getPrivateStatusLabel(status)}
-                      </option>
-                    ))}
-                  {!statuses.some((status) => status.key === selectedStatus) && (
-                    <option value={selectedStatus}>
-                      {getPrivateStatusLabelFromRequest(request)}
-                    </option>
-                  )}
-                </select>
-                {selectedStatus !== request.status && (
-                  <button
-                    className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
-                    disabled={updateRequest.isPending}
-                    onClick={() => void saveStatus(request)}
-                    type="button"
-                  >
-                    {translateText(updateRequest.isPending ? "Salvando…" : "Salvar")}
-                  </button>
-                )}
-                {feedback[request.id] && (
-                  <span className={feedback[request.id] === "Alterações salvas." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
-                    {translateText(feedback[request.id])}
-                  </span>
-                )}
-              </div>
+                  onSave={() => void saveStatus(request)}
+                />
+              )}
               <span className="sr-only" data-testid={`${statusKey}-status`}>{request.status}</span>
               </div>
                 </td>
@@ -1953,14 +2098,80 @@ function SuggestionCategoriesManager({
   );
 }
 
+function publicRoadmapStatusLabel(status: PublicRoadmapStatus) {
+  return getLocale() === "en-US" ? status.labelEn : status.label;
+}
+
+function PrivateStatusControl({
+  label,
+  request,
+  statuses,
+  selectedStatus,
+  feedback,
+  isSaving,
+  onStatusChange,
+  onSave,
+}: {
+  label: string;
+  request: AdminSupportRequest;
+  statuses: SupportRequestStatusCatalogEntry[];
+  selectedStatus: SupportRequestStatus;
+  feedback?: string;
+  isSaving: boolean;
+  onStatusChange: (status: SupportRequestStatus) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <label className="text-xs font-semibold text-[#233a59]" htmlFor={`support-status-${request.id}`}>
+        {translateText(label)}
+      </label>
+      <select
+        className={inputClass}
+        id={`support-status-${request.id}`}
+        onChange={(event) => onStatusChange(event.target.value as SupportRequestStatus)}
+        value={selectedStatus}
+      >
+        {statuses
+          .filter((status) => status.active || status.key === selectedStatus)
+          .map((status) => (
+            <option disabled={!status.active} key={status.id} value={status.key}>
+              {getPrivateStatusLabel(status)}
+            </option>
+          ))}
+        {!statuses.some((status) => status.key === selectedStatus) && (
+          <option value={selectedStatus}>{getPrivateStatusLabelFromRequest(request)}</option>
+        )}
+      </select>
+      {selectedStatus !== request.status && (
+        <button
+          className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
+          disabled={isSaving}
+          onClick={onSave}
+          type="button"
+        >
+          {translateText(isSaving ? "Salvando…" : "Salvar")}
+        </button>
+      )}
+      {feedback && (
+        <span className={feedback === "Alterações salvas." ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+          {translateText(feedback)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SupportRequestStatusesManager({
   requestType,
+  heading,
   statuses,
   isLoading,
   isError,
   retry,
 }: {
   requestType: "support" | "suggestion";
+  heading?: string;
   statuses: SupportRequestStatusCatalogEntry[];
   isLoading: boolean;
   isError: boolean;
@@ -2090,7 +2301,7 @@ function SupportRequestStatusesManager({
     <div className="space-y-4">
       <div>
         <h3 className="font-semibold text-[#012140]">
-          {translateText(requestType === "support" ? "Status de solicitações" : "Status de sugestões")}
+          {translateText(heading ?? (requestType === "support" ? "Status de solicitações" : "Status de sugestões"))}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {translateText("Edite os nomes em português e inglês e escolha a ordem. Status inativos ficam no histórico, mas não podem ser selecionados em novas atualizações.")}
@@ -2208,6 +2419,266 @@ function SupportRequestStatusesManager({
                 </button>
                 <button
                   aria-label={translateText("Mover status para baixo")}
+                  className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
+                  disabled={index === orderedStatuses.length - 1 || reorderStatuses.isPending}
+                  onClick={() => void moveStatus(index, 1)}
+                  type="button"
+                >
+                  <ChevronDown aria-hidden="true" size={17} />
+                </button>
+                {isDirty && (
+                  <button
+                    className="auth-header-primary !min-h-10 !px-3 !py-1.5 !text-sm"
+                    disabled={updateStatus.isPending}
+                    onClick={() => void saveStatus(status)}
+                    type="button"
+                  >
+                    {translateText(updateStatus.isPending ? "Salvando…" : "Salvar")}
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PublicRoadmapStatusesManager({
+  statuses,
+  isLoading,
+  isError,
+  retry,
+}: {
+  statuses: PublicRoadmapStatus[];
+  isLoading: boolean;
+  isError: boolean;
+  retry: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const createStatus = useCreateAdminPublicRoadmapStatus();
+  const updateStatus = useUpdateAdminPublicRoadmapStatus();
+  const reorderStatuses = useReorderAdminPublicRoadmapStatuses();
+  const [newLabel, setNewLabel] = useState("");
+  const [newLabelEn, setNewLabelEn] = useState("");
+  const [drafts, setDrafts] = useState<Record<number, {
+    label: string;
+    labelEn: string;
+    active: boolean;
+  }>>({});
+  const [feedback, setFeedback] = useState("");
+  const [error, setError] = useState("");
+  const orderedStatuses = [...statuses].sort(
+    (left, right) => left.sortOrder - right.sortOrder || left.id - right.id,
+  );
+
+  async function refresh() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListAdminPublicRoadmapStatusesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListPublicRoadmapSuggestionsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListAdminSupportRequestsQueryKey() }),
+    ]);
+  }
+
+  async function addStatus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeedback("");
+    setError("");
+    try {
+      await createStatus.mutateAsync({
+        data: { label: newLabel.trim(), labelEn: newLabelEn.trim() },
+      });
+      setNewLabel("");
+      setNewLabelEn("");
+      setFeedback(translateText("Estágio público criado."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError)
+          ?? translateText("Não foi possível criar o estágio público."),
+      );
+    }
+  }
+
+  async function saveStatus(status: PublicRoadmapStatus) {
+    const draft = drafts[status.id];
+    if (!draft) return;
+    setFeedback("");
+    setError("");
+    try {
+      await updateStatus.mutateAsync({
+        statusId: status.id,
+        data: {
+          label: draft.label.trim(),
+          labelEn: draft.labelEn.trim(),
+          active: draft.active,
+        },
+      });
+      setDrafts((current) => {
+        const { [status.id]: _saved, ...remaining } = current;
+        return remaining;
+      });
+      setFeedback(translateText("Estágio público atualizado."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError)
+          ?? translateText("Não foi possível atualizar o estágio público."),
+      );
+    }
+  }
+
+  async function moveStatus(index: number, offset: -1 | 1) {
+    const destination = index + offset;
+    if (destination < 0 || destination >= orderedStatuses.length) return;
+    const nextOrder = [...orderedStatuses];
+    [nextOrder[index], nextOrder[destination]] = [
+      nextOrder[destination],
+      nextOrder[index],
+    ];
+    setFeedback("");
+    setError("");
+    try {
+      await reorderStatuses.mutateAsync({
+        data: { statusIds: nextOrder.map((status) => status.id) },
+      });
+      setFeedback(translateText("Ordem dos estágios públicos atualizada."));
+      await refresh();
+    } catch (mutationError) {
+      setError(
+        getApiResponseError(mutationError)
+          ?? translateText("Não foi possível reordenar os estágios públicos."),
+      );
+    }
+  }
+
+  if (isLoading) return <LoadingState rows={3} />;
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <p>{translateText("Não foi possível carregar os estágios públicos.")}</p>
+        <button className="mt-2 font-semibold underline" onClick={retry} type="button">
+          {translateText("Tentar novamente")}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-[#012140]">{translateText("Status públicos")}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {translateText("Gerencie os estágios exibidos em Próximos passos. Desativar um estágio impede novas escolhas, mas mantém seu nome nos registros que já o utilizam.")}
+        </p>
+      </div>
+      <form
+        className="grid gap-2 rounded-xl bg-[#f7f8fa] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+        onSubmit={(event) => void addStatus(event)}
+      >
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Nome em português")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={80}
+            minLength={2}
+            onChange={(event) => setNewLabel(event.target.value)}
+            placeholder={translateText("Ex.: Em revisão")}
+            required
+            value={newLabel}
+          />
+        </label>
+        <label className="text-xs font-semibold text-[#233a59]">
+          {translateText("Nome em inglês")}
+          <input
+            className={`${inputClass} mt-1 block w-full`}
+            maxLength={80}
+            minLength={2}
+            onChange={(event) => setNewLabelEn(event.target.value)}
+            placeholder={translateText("Example: Under review")}
+            required
+            value={newLabelEn}
+          />
+        </label>
+        <button
+          className="auth-header-primary self-end"
+          disabled={createStatus.isPending}
+          type="submit"
+        >
+          {translateText(createStatus.isPending ? "Salvando…" : "Adicionar estágio")}
+        </button>
+      </form>
+      {feedback && <p className="text-sm text-emerald-700" role="status">{feedback}</p>}
+      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{translateText(error)}</p>}
+      <div className="space-y-2">
+        {orderedStatuses.map((status, index) => {
+          const draft = drafts[status.id] ?? {
+            label: status.label,
+            labelEn: status.labelEn,
+            active: status.active,
+          };
+          const isDirty =
+            draft.label !== status.label
+            || draft.labelEn !== status.labelEn
+            || draft.active !== status.active;
+          return (
+            <article
+              className="grid gap-3 rounded-xl border border-[#233a59]/15 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_145px_auto]"
+              key={status.id}
+            >
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome em português")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={80}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, label: event.target.value },
+                  }))}
+                  value={draft.label}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Nome em inglês")}
+                <input
+                  className={`${inputClass} mt-1 block w-full`}
+                  maxLength={80}
+                  minLength={2}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, labelEn: event.target.value },
+                  }))}
+                  value={draft.labelEn}
+                />
+              </label>
+              <label className="text-xs font-semibold text-[#233a59]">
+                {translateText("Disponibilidade")}
+                <select
+                  className={`${inputClass} mt-1 block w-full`}
+                  onChange={(event) => setDrafts((current) => ({
+                    ...current,
+                    [status.id]: { ...draft, active: event.target.value === "true" },
+                  }))}
+                  value={String(draft.active)}
+                >
+                  <option value="true">{translateText("Ativo")}</option>
+                  <option value="false">{translateText("Inativo")}</option>
+                </select>
+              </label>
+              <div className="flex items-end gap-1">
+                <button
+                  aria-label={translateText("Mover estágio para cima")}
+                  className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
+                  disabled={index === 0 || reorderStatuses.isPending}
+                  onClick={() => void moveStatus(index, -1)}
+                  type="button"
+                >
+                  <ChevronUp aria-hidden="true" size={17} />
+                </button>
+                <button
+                  aria-label={translateText("Mover estágio para baixo")}
                   className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
                   disabled={index === orderedStatuses.length - 1 || reorderStatuses.isPending}
                   onClick={() => void moveStatus(index, 1)}

@@ -5,7 +5,7 @@
  * API do portal PFVL para conteúdo público e participação autenticada
  * OpenAPI spec version: 0.1.0
  */
-import type { RoadmapStatus } from './roadmapStatus';
+import type { PublicRoadmapStatusKey } from './publicRoadmapStatusKey';
 
 export interface SupportRequestRoadmapApprovalInput {
   approved?: boolean;
@@ -19,5 +19,5 @@ export interface SupportRequestRoadmapApprovalInput {
      * @maxLength 5000
      */
   roadmapDescription?: string;
-  roadmapStatus?: RoadmapStatus;
+  roadmapStatus?: PublicRoadmapStatusKey;
 }

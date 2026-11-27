@@ -13,6 +13,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./pfvl.js";
+import { publicRoadmapStatusesTable } from "./public-roadmap-statuses.js";
 import { supportRequestStatusesTable } from "./support-request-statuses.js";
 
 export const supportRequestSubjectsTable = pgTable(
@@ -104,7 +105,7 @@ export const supportRequestsTable = pgTable(
     title: varchar("title", { length: 220 }),
     roadmapTitle: varchar("roadmap_title", { length: 220 }),
     roadmapDescription: text("roadmap_description"),
-    roadmapStatus: varchar("roadmap_status", { length: 24 }),
+    roadmapStatus: varchar("roadmap_status", { length: 40 }),
     categoryId: integer("category_id").references(
       () => supportRequestCategoriesTable.id,
       { onDelete: "restrict" },
@@ -136,10 +137,11 @@ export const supportRequestsTable = pgTable(
       foreignColumns: [supportRequestStatusesTable.id],
       name: "pfvl_support_requests_status_id_fk",
     }).onDelete("restrict"),
-    check(
-      "pfvl_support_requests_roadmap_status_check",
-      sql`${table.roadmapStatus} IS NULL OR ${table.roadmapStatus} IN ('planned', 'in_progress', 'available')`,
-    ),
+    foreignKey({
+      columns: [table.roadmapStatus],
+      foreignColumns: [publicRoadmapStatusesTable.key],
+      name: "pfvl_support_requests_roadmap_status_key_fk",
+    }).onDelete("restrict"),
     check(
       "pfvl_support_requests_public_roadmap_fields_check",
       sql`${table.approvedAt} IS NULL OR (${table.requestType} = 'suggestion' AND ${table.roadmapTitle} IS NOT NULL AND length(btrim(${table.roadmapTitle})) > 0 AND ${table.roadmapDescription} IS NOT NULL AND length(btrim(${table.roadmapDescription})) > 0 AND ${table.roadmapStatus} IS NOT NULL)`,
@@ -153,6 +155,7 @@ export const supportRequestsTable = pgTable(
       table.createdAt,
     ),
     index("pfvl_support_requests_status_id_idx").on(table.statusId),
+    index("pfvl_support_requests_roadmap_status_idx").on(table.roadmapStatus),
     index("pfvl_support_requests_roadmap_approved_at_idx")
       .on(table.approvedAt, table.id)
       .where(sql`${table.requestType} = 'suggestion' AND ${table.approvedAt} IS NOT NULL`),

@@ -10,3 +10,4 @@
 - [PFVL support protocols](pfvl-support-protocols.md) — Annual ticket numbers must use an atomic persistent counter and unique constraint, never counts of existing requests.
 - [Neon migration SQL](neon-migration-sql.md) — The Neon migration preparer can reject dollar-quoted blocks; favor plain SQL and test the temporary branch.
 - [PFVL responsive layout](pfvl-responsive-layout.md) — Center full-bleed sections within the viewport on mobile; negative-margin sizing produced uneven gutters in preview.
+- [PFVL roadmap status identity](pfvl-roadmap-status-identity.md) — Keep public stage keys stable so renames and reordering preserve suggestion history.

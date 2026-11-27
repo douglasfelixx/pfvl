@@ -22,5 +22,6 @@ export * from "./notifications.js";
 export * from "./taxonomy.js";
 export * from "./site-media.js";
 export * from "./testimonials.js";
+export * from "./public-roadmap-statuses.js";
 export * from "./support-request-statuses.js";
 export * from "./support-requests.js";

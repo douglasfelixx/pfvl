@@ -378,3 +378,31 @@ mtime_ms = 1795508070675
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/9c5fc264-7a37-4b38-bc4f-ca0530e9c0cb/49856aaa-9e02-4fd7-9c45-0ca2738e86c8"
 storage_version_token = "1795508089948431"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "yG-yAEpwsjUzfmnCIIHC3"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-24-correcoes.zip"
+type = "unspecified"
+title = "ZIP completo do PFVL para GitHub"
+description = "Arquivo atualizado com o projeto completo e as correções mais recentes. ZIP validado; não foi enviado diretamente ao GitHub."
+logical_id = "282f99c2-9e2e-412b-9b20-9bbd690935c7"
+content_hash = "sha256:899b4f1eb909c9fed3e35ccd9f3aafdf8cad140db02636cb67f17f54aea90dfe"
+size = 1186260
+mtime_ms = 1795560285334
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/282f99c2-9e2e-412b-9b20-9bbd690935c7/f29539d4-6079-4c92-a052-7b551e423f17"
+storage_version_token = "1795560298708516"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "OoKUOaqFSPkS3dyjZFq7J"
+uri = "file://PFVL-GitHub.zip"
+type = "unspecified"
+title = "PFVL sem seletores de idioma"
+description = "ZIP atualizado e validado: removeu a seleção de idioma do cabeçalho e do perfil, preservando os idiomas já salvos. Inclui README e a migração de status do atendimento."
+logical_id = "1f1c1240-956c-4e59-ae06-2abbfabf84d0"
+content_hash = "sha256:c4de765574114bd81f4c9479a03b3eb9eb7aacb67f5a76b9ab314f36d8b90972"
+size = 1181880
+mtime_ms = 1795739081945
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/1f1c1240-956c-4e59-ae06-2abbfabf84d0/32345c43-0351-44be-8dc2-ed9a9dfc770c"
+storage_version_token = "1795739088930540"
+content_type = "application/octet-stream"

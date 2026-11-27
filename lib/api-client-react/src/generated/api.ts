@@ -49,6 +49,10 @@ import type {
   PollVoteInput,
   PortalSearch,
   Post,
+  PublicRoadmapStatus,
+  PublicRoadmapStatusEdit,
+  PublicRoadmapStatusInput,
+  PublicRoadmapStatusOrder,
   PublicRoadmapSuggestion,
   SearchPortalParams,
   SiteMedia,
@@ -3229,6 +3233,348 @@ export const useUpdateAdminSupportRequestStatus = <TError = ErrorType<BadRequest
         TContext
       > => {
       return useMutation(getUpdateAdminSupportRequestStatusMutationOptions(options));
+    }
+
+export const getListAdminPublicRoadmapStatusesUrl = () => {
+
+
+
+
+  return `/api/admin/public-roadmap-statuses`
+}
+
+/**
+ * @summary Lista os estágios públicos do roadmap
+ */
+export const listAdminPublicRoadmapStatuses = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapStatus[]> => {
+
+  return customFetch<PublicRoadmapStatus[]>(getListAdminPublicRoadmapStatusesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminPublicRoadmapStatusesQueryKey = () => {
+    return [
+    `/api/admin/public-roadmap-statuses`
+    ] as const;
+    }
+
+
+export const getListAdminPublicRoadmapStatusesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminPublicRoadmapStatusesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>> = ({ signal }) => listAdminPublicRoadmapStatuses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminPublicRoadmapStatusesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>>
+export type ListAdminPublicRoadmapStatusesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Lista os estágios públicos do roadmap
+ */
+
+export function useListAdminPublicRoadmapStatuses<TData = Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminPublicRoadmapStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminPublicRoadmapStatusesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminPublicRoadmapStatusUrl = () => {
+
+
+
+
+  return `/api/admin/public-roadmap-statuses`
+}
+
+/**
+ * @summary Cria um estágio público
+ */
+export const createAdminPublicRoadmapStatus = async (publicRoadmapStatusInput: PublicRoadmapStatusInput, options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PublicRoadmapStatus>(getCreateAdminPublicRoadmapStatusUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(publicRoadmapStatusInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminPublicRoadmapStatusMutationKey = () => ['createAdminPublicRoadmapStatus'] as const;
+
+export const getCreateAdminPublicRoadmapStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>, TError,CreateAdminPublicRoadmapStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>, TError,CreateAdminPublicRoadmapStatusMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminPublicRoadmapStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>, CreateAdminPublicRoadmapStatusMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminPublicRoadmapStatus(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminPublicRoadmapStatusMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>>
+    export type CreateAdminPublicRoadmapStatusMutationBody = BodyType<PublicRoadmapStatusInput>
+    export type CreateAdminPublicRoadmapStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>
+    export type CreateAdminPublicRoadmapStatusMutationVariables = {data: BodyType<PublicRoadmapStatusInput>}
+
+    /**
+ * @summary Cria um estágio público
+ */
+export const useCreateAdminPublicRoadmapStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>, TError,CreateAdminPublicRoadmapStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminPublicRoadmapStatus>>,
+        TError,
+        CreateAdminPublicRoadmapStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminPublicRoadmapStatusMutationOptions(options));
+    }
+
+export const getReorderAdminPublicRoadmapStatusesUrl = () => {
+
+
+
+
+  return `/api/admin/public-roadmap-statuses/order`
+}
+
+/**
+ * @summary Reordena os estágios públicos
+ */
+export const reorderAdminPublicRoadmapStatuses = async (publicRoadmapStatusOrder: PublicRoadmapStatusOrder, options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapStatus[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PublicRoadmapStatus[]>(getReorderAdminPublicRoadmapStatusesUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(publicRoadmapStatusOrder)
+  }
+);}
+
+
+
+
+
+export const getReorderAdminPublicRoadmapStatusesMutationKey = () => ['reorderAdminPublicRoadmapStatuses'] as const;
+
+export const getReorderAdminPublicRoadmapStatusesMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>, TError,ReorderAdminPublicRoadmapStatusesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>, TError,ReorderAdminPublicRoadmapStatusesMutationVariables, TContext> => {
+
+const mutationKey = getReorderAdminPublicRoadmapStatusesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>, ReorderAdminPublicRoadmapStatusesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  reorderAdminPublicRoadmapStatuses(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderAdminPublicRoadmapStatusesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>>
+    export type ReorderAdminPublicRoadmapStatusesMutationBody = BodyType<PublicRoadmapStatusOrder>
+    export type ReorderAdminPublicRoadmapStatusesMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type ReorderAdminPublicRoadmapStatusesMutationVariables = {data: BodyType<PublicRoadmapStatusOrder>}
+
+    /**
+ * @summary Reordena os estágios públicos
+ */
+export const useReorderAdminPublicRoadmapStatuses = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>, TError,ReorderAdminPublicRoadmapStatusesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderAdminPublicRoadmapStatuses>>,
+        TError,
+        ReorderAdminPublicRoadmapStatusesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReorderAdminPublicRoadmapStatusesMutationOptions(options));
+    }
+
+export const getUpdateAdminPublicRoadmapStatusUrl = (statusId: number,) => {
+
+
+
+
+  return `/api/admin/public-roadmap-statuses/${statusId}`
+}
+
+/**
+ * @summary Renomeia ou ativa e desativa um estágio público
+ */
+export const updateAdminPublicRoadmapStatus = async (statusId: number,
+    publicRoadmapStatusEdit: PublicRoadmapStatusEdit, options?: Parameters<typeof customFetch>[1]): Promise<PublicRoadmapStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PublicRoadmapStatus>(getUpdateAdminPublicRoadmapStatusUrl(statusId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(publicRoadmapStatusEdit)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminPublicRoadmapStatusMutationKey = () => ['updateAdminPublicRoadmapStatus'] as const;
+
+export const getUpdateAdminPublicRoadmapStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>, TError,UpdateAdminPublicRoadmapStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>, TError,UpdateAdminPublicRoadmapStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminPublicRoadmapStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>, UpdateAdminPublicRoadmapStatusMutationVariables> = (props) => {
+          const {statusId,data} = props ?? {};
+
+          return  updateAdminPublicRoadmapStatus(statusId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminPublicRoadmapStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>>
+    export type UpdateAdminPublicRoadmapStatusMutationBody = BodyType<PublicRoadmapStatusEdit>
+    export type UpdateAdminPublicRoadmapStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>
+    export type UpdateAdminPublicRoadmapStatusMutationVariables = {statusId: number;data: BodyType<PublicRoadmapStatusEdit>}
+
+    /**
+ * @summary Renomeia ou ativa e desativa um estágio público
+ */
+export const useUpdateAdminPublicRoadmapStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>, TError,UpdateAdminPublicRoadmapStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminPublicRoadmapStatus>>,
+        TError,
+        UpdateAdminPublicRoadmapStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminPublicRoadmapStatusMutationOptions(options));
     }
 
 export const getUpdateAdminSupportRequestUrl = (requestId: number,) => {

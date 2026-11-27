@@ -7,6 +7,8 @@ import {
   CreateAdminSupportRequestCommentBody,
   CreateAdminSupportRequestCommentParams,
   CreateAdminSupportRequestCommentResponse,
+  CreateAdminPublicRoadmapStatusBody,
+  CreateAdminPublicRoadmapStatusResponse,
   CreateAdminSuggestionCategoryBody,
   CreateAdminSuggestionCategoryResponse,
   CreateAdminSupportSubjectBody,
@@ -19,10 +21,13 @@ import {
   ListAdminSupportRequestsResponse,
   ListAdminSupportRequestStatusesQueryParams,
   ListAdminSupportRequestStatusesResponse,
+  ListAdminPublicRoadmapStatusesResponse,
   ListAdminSuggestionCategoriesResponse,
   ListAdminSupportSubjectsResponse,
   ListMySupportRequestsResponse,
   ListMySuggestionsResponse,
+  ReorderAdminPublicRoadmapStatusesBody,
+  ReorderAdminPublicRoadmapStatusesResponse,
   ListSuggestionCategoriesResponse,
   ListSupportSubjectsResponse,
   UpdateAdminSuggestionCategoryBody,
@@ -37,6 +42,9 @@ import {
   UpdateAdminSupportRequestRoadmapBody,
   UpdateAdminSupportRequestRoadmapParams,
   UpdateAdminSupportRequestRoadmapResponse,
+  UpdateAdminPublicRoadmapStatusBody,
+  UpdateAdminPublicRoadmapStatusParams,
+  UpdateAdminPublicRoadmapStatusResponse,
   UpdateAdminSupportSubjectBody,
   UpdateAdminSupportSubjectParams,
   UpdateAdminSupportSubjectResponse,
@@ -50,6 +58,7 @@ import {
   eq,
   inArray,
   notificationsTable,
+  publicRoadmapStatusesTable,
   sql,
   supportRequestCategoriesTable,
   supportRequestCommentsTable,
@@ -115,6 +124,29 @@ const defaultRequestStatuses: Record<
     { key: "not_approved", label: "Não aprovada", labelEn: "Not approved", isInitial: false, sortOrder: 30 },
   ],
 };
+
+const defaultPublicRoadmapStatuses = [
+  { key: "planned", label: "Planejada", labelEn: "Planned", sortOrder: 0 },
+  {
+    key: "in_progress",
+    label: "Em desenvolvimento",
+    labelEn: "In development",
+    sortOrder: 10,
+  },
+  { key: "available", label: "Disponível", labelEn: "Available", sortOrder: 20 },
+] as const;
+
+async function ensureDefaultPublicRoadmapStatuses() {
+  await db
+    .insert(publicRoadmapStatusesTable)
+    .values(
+      defaultPublicRoadmapStatuses.map((status) => ({
+        ...status,
+        active: true,
+      })),
+    )
+    .onConflictDoNothing();
+}
 
 async function ensureDefaultRequestStatuses(requestType?: RequestFlow) {
   const flows: RequestFlow[] = requestType
@@ -483,6 +515,7 @@ router.get(
 router.get(
   "/roadmap/suggestions",
   async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    await ensureDefaultPublicRoadmapStatuses();
     const suggestions = await db
       .select({
         id: supportRequestsTable.id,
@@ -490,9 +523,16 @@ router.get(
         categoryName: supportRequestsTable.categoryName,
         description: supportRequestsTable.roadmapDescription,
         status: supportRequestsTable.roadmapStatus,
+        statusLabel: publicRoadmapStatusesTable.label,
+        statusLabelEn: publicRoadmapStatusesTable.labelEn,
+        statusOrder: publicRoadmapStatusesTable.sortOrder,
         approvedAt: supportRequestsTable.approvedAt,
       })
       .from(supportRequestsTable)
+      .innerJoin(
+        publicRoadmapStatusesTable,
+        eq(supportRequestsTable.roadmapStatus, publicRoadmapStatusesTable.key),
+      )
       .where(
         and(
           eq(supportRequestsTable.requestType, "suggestion"),
@@ -502,7 +542,11 @@ router.get(
           isNotNull(supportRequestsTable.roadmapStatus),
         ),
       )
-      .orderBy(asc(supportRequestsTable.approvedAt), asc(supportRequestsTable.id));
+      .orderBy(
+        asc(publicRoadmapStatusesTable.sortOrder),
+        asc(supportRequestsTable.approvedAt),
+        asc(supportRequestsTable.id),
+      );
     res.json(ListPublicRoadmapSuggestionsResponse.parse(suggestions));
   },
 );
@@ -1035,6 +1079,183 @@ router.patch(
 );
 
 router.get(
+  "/admin/public-roadmap-statuses",
+  requirePfvlUser,
+  requireAdmin,
+  async (_req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    await ensureDefaultPublicRoadmapStatuses();
+    const statuses = await db
+      .select()
+      .from(publicRoadmapStatusesTable)
+      .orderBy(
+        asc(publicRoadmapStatusesTable.sortOrder),
+        asc(publicRoadmapStatusesTable.id),
+      );
+    res.json(ListAdminPublicRoadmapStatusesResponse.parse(statuses));
+  },
+);
+
+router.post(
+  "/admin/public-roadmap-statuses",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = CreateAdminPublicRoadmapStatusBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const label = parsed.data.label.trim().replace(/\s+/g, " ");
+    const labelEn = parsed.data.labelEn.trim().replace(/\s+/g, " ");
+    if (label.length < 2 || labelEn.length < 2) {
+      res.status(400).json({ error: "Informe o nome do estágio em português e em inglês." });
+      return;
+    }
+    await ensureDefaultPublicRoadmapStatuses();
+    const [maxOrder] = await db
+      .select({
+        value: sql<number>`coalesce(max(${publicRoadmapStatusesTable.sortOrder}), -10)::int`.mapWith(
+          Number,
+        ),
+      })
+      .from(publicRoadmapStatusesTable);
+    const key = `custom_${randomUUID().replaceAll("-", "").slice(0, 24)}`;
+    try {
+      const [created] = await db
+        .insert(publicRoadmapStatusesTable)
+        .values({
+          key,
+          label,
+          labelEn,
+          active: true,
+          sortOrder: (maxOrder?.value ?? -10) + 10,
+        })
+        .returning();
+      res
+        .status(201)
+        .json(CreateAdminPublicRoadmapStatusResponse.parse(created));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "Já existe um estágio público com esse nome." });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.patch(
+  "/admin/public-roadmap-statuses/order",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const parsed = ReorderAdminPublicRoadmapStatusesBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    await ensureDefaultPublicRoadmapStatuses();
+    const existing = await db
+      .select({ id: publicRoadmapStatusesTable.id })
+      .from(publicRoadmapStatusesTable)
+      .orderBy(
+        asc(publicRoadmapStatusesTable.sortOrder),
+        asc(publicRoadmapStatusesTable.id),
+      );
+    const requestedIds = new Set(parsed.data.statusIds);
+    if (
+      requestedIds.size !== existing.length ||
+      existing.some((status) => !requestedIds.has(status.id))
+    ) {
+      res.status(400).json({ error: "A lista deve conter todos os estágios públicos, sem duplicatas." });
+      return;
+    }
+    const reordered = await db.transaction(async (tx) => {
+      for (const [index, id] of parsed.data.statusIds.entries()) {
+        await tx
+          .update(publicRoadmapStatusesTable)
+          .set({ sortOrder: index * 10, updatedAt: new Date() })
+          .where(eq(publicRoadmapStatusesTable.id, id));
+      }
+      return tx
+        .select()
+        .from(publicRoadmapStatusesTable)
+        .orderBy(
+          asc(publicRoadmapStatusesTable.sortOrder),
+          asc(publicRoadmapStatusesTable.id),
+        );
+    });
+    res.json(ReorderAdminPublicRoadmapStatusesResponse.parse(reordered));
+  },
+);
+
+router.patch(
+  "/admin/public-roadmap-statuses/:statusId",
+  requirePfvlUser,
+  requireAdmin,
+  async (req: ExpressRequest, res: ExpressResponse): Promise<void> => {
+    const params = UpdateAdminPublicRoadmapStatusParams.safeParse(req.params);
+    const parsed = UpdateAdminPublicRoadmapStatusBody.safeParse(req.body);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    await ensureDefaultPublicRoadmapStatuses();
+    const [existing] = await db
+      .select({ id: publicRoadmapStatusesTable.id })
+      .from(publicRoadmapStatusesTable)
+      .where(eq(publicRoadmapStatusesTable.id, params.data.statusId))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Estágio público não encontrado." });
+      return;
+    }
+    const changes: Partial<typeof publicRoadmapStatusesTable.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (parsed.data.label !== undefined) {
+      const label = parsed.data.label.trim().replace(/\s+/g, " ");
+      if (label.length < 2) {
+        res.status(400).json({ error: "O nome em português precisa ter pelo menos 2 caracteres." });
+        return;
+      }
+      changes.label = label;
+    }
+    if (parsed.data.labelEn !== undefined) {
+      const labelEn = parsed.data.labelEn.trim().replace(/\s+/g, " ");
+      if (labelEn.length < 2) {
+        res.status(400).json({ error: "O nome em inglês precisa ter pelo menos 2 caracteres." });
+        return;
+      }
+      changes.labelEn = labelEn;
+    }
+    if (parsed.data.active !== undefined) changes.active = parsed.data.active;
+    try {
+      const [updated] = await db
+        .update(publicRoadmapStatusesTable)
+        .set(changes)
+        .where(eq(publicRoadmapStatusesTable.id, params.data.statusId))
+        .returning();
+      if (!updated) {
+        res.status(404).json({ error: "Estágio público não encontrado." });
+        return;
+      }
+      res.json(UpdateAdminPublicRoadmapStatusResponse.parse(updated));
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "Já existe um estágio público com esse nome." });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.get(
   "/admin/support-requests",
   requirePfvlUser,
   requireAdmin,
@@ -1199,6 +1420,7 @@ router.patch(
       return;
     }
 
+    await ensureDefaultPublicRoadmapStatuses();
     const admin = getPfvlUser(req);
     const result = await db.transaction(async (tx) => {
       const [existing] = await tx
@@ -1222,14 +1444,33 @@ router.patch(
       const roadmapTitle = parsed.data.roadmapTitle?.trim() ?? existing.roadmapTitle;
       const roadmapDescription =
         parsed.data.roadmapDescription?.trim() ?? existing.roadmapDescription;
-      const roadmapStatus =
-        parsed.data.roadmapStatus ?? existing.roadmapStatus ?? "planned";
+      const roadmapStatus = parsed.data.roadmapStatus ?? existing.roadmapStatus;
       const isApproved = parsed.data.approved ?? wasApproved;
+      if (
+        parsed.data.roadmapStatus !== undefined &&
+        parsed.data.roadmapStatus !== existing.roadmapStatus
+      ) {
+        const [activeStatus] = await tx
+          .select({ key: publicRoadmapStatusesTable.key })
+          .from(publicRoadmapStatusesTable)
+          .where(
+            and(
+              eq(publicRoadmapStatusesTable.key, parsed.data.roadmapStatus),
+              eq(publicRoadmapStatusesTable.active, true),
+            ),
+          )
+          .limit(1);
+        if (!activeStatus) return { kind: "invalid_public_status" as const };
+      }
       if (
         isApproved &&
         (!roadmapTitle || !roadmapDescription || !roadmapStatus)
       ) {
-        return { kind: "missing_public_copy" as const };
+        return {
+          kind: !roadmapStatus
+            ? "missing_public_status" as const
+            : "missing_public_copy" as const,
+        };
       }
       if (
         parsed.data.roadmapTitle !== undefined &&
@@ -1288,8 +1529,16 @@ router.patch(
       res.status(404).json({ error: "Sugestão não encontrada" });
       return;
     }
+    if (result.kind === "invalid_public_status") {
+      res.status(400).json({ error: "Escolha um estágio público ativo." });
+      return;
+    }
     if (result.kind === "missing_public_copy") {
-      res.status(400).json({ error: "Preencha o título, a descrição pública e o estágio antes de publicar." });
+      res.status(400).json({ error: "Preencha o título e a descrição pública antes de publicar." });
+      return;
+    }
+    if (result.kind === "missing_public_status") {
+      res.status(400).json({ error: "Escolha e salve um estágio público antes de publicar." });
       return;
     }
     if (result.kind === "invalid_title") {

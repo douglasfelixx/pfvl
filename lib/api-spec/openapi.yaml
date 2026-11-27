@@ -817,6 +817,107 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/public-roadmap-statuses:
+    get:
+      operationId: listAdminPublicRoadmapStatuses
+      tags: [admin]
+      summary: Lista os estágios públicos do roadmap
+      responses:
+        "200":
+          description: Estágios públicos ativos e históricos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PublicRoadmapStatus" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createAdminPublicRoadmapStatus
+      tags: [admin]
+      summary: Cria um estágio público
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicRoadmapStatusInput" }
+      responses:
+        "201":
+          description: Estágio público criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicRoadmapStatus" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Já existe um estágio com esse nome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/public-roadmap-statuses/order:
+    patch:
+      operationId: reorderAdminPublicRoadmapStatuses
+      tags: [admin]
+      summary: Reordena os estágios públicos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicRoadmapStatusOrder" }
+      responses:
+        "200":
+          description: Estágios públicos reordenados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PublicRoadmapStatus" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/public-roadmap-statuses/{statusId}:
+    patch:
+      operationId: updateAdminPublicRoadmapStatus
+      tags: [admin]
+      summary: Renomeia ou ativa e desativa um estágio público
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublicRoadmapStatusEdit" }
+      responses:
+        "200":
+          description: Estágio público atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicRoadmapStatus" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Já existe um estágio com esse nome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/support-requests/{requestId}:
     patch:
       operationId: updateAdminSupportRequest
@@ -1666,6 +1767,45 @@ components:
       minLength: 1
       maxLength: 40
       pattern: "^[a-z0-9_-]+$"
+    PublicRoadmapStatusKey:
+      type: string
+      minLength: 1
+      maxLength: 40
+      pattern: "^[a-z0-9_-]+$"
+    PublicRoadmapStatus:
+      type: object
+      properties:
+        id: { type: integer }
+        key: { $ref: "#/components/schemas/PublicRoadmapStatusKey" }
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+        active: { type: boolean }
+        sortOrder: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, key, label, labelEn, active, sortOrder, createdAt, updatedAt]
+    PublicRoadmapStatusInput:
+      type: object
+      properties:
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+      required: [label, labelEn]
+    PublicRoadmapStatusEdit:
+      type: object
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 2, maxLength: 80 }
+        labelEn: { type: string, minLength: 2, maxLength: 80 }
+        active: { type: boolean }
+    PublicRoadmapStatusOrder:
+      type: object
+      properties:
+        statusIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+      required: [statusIds]
     SupportRequestType:
       type: string
       enum: [support, suggestion]
@@ -1817,9 +1957,12 @@ components:
         title: { type: string }
         categoryName: { type: ["string", "null"] }
         description: { type: string }
-        status: { $ref: "#/components/schemas/RoadmapStatus" }
+        status: { $ref: "#/components/schemas/PublicRoadmapStatusKey" }
+        statusLabel: { type: string, minLength: 2, maxLength: 80 }
+        statusLabelEn: { type: string, minLength: 2, maxLength: 80 }
+        statusOrder: { type: integer, minimum: 0 }
         approvedAt: { type: string, format: date-time }
-      required: [id, title, categoryName, description, status, approvedAt]
+      required: [id, title, categoryName, description, status, statusLabel, statusLabelEn, statusOrder, approvedAt]
     AdminSupportRequest:
       type: object
       properties:
@@ -1830,7 +1973,7 @@ components:
         title: { type: ["string", "null"] }
         roadmapTitle: { type: ["string", "null"] }
         roadmapDescription: { type: ["string", "null"] }
-        roadmapStatus: { type: ["string", "null"], enum: [planned, in_progress, available, null] }
+        roadmapStatus: { type: ["string", "null"], minLength: 1, maxLength: 40, pattern: "^[a-z0-9_-]+$" }
         categoryName: { type: ["string", "null"] }
         approvedAt: { type: ["string", "null"], format: date-time }
         requesterName: { type: string }
@@ -1862,7 +2005,7 @@ components:
         approved: { type: boolean }
         roadmapTitle: { type: string, minLength: 4, maxLength: 220 }
         roadmapDescription: { type: string, minLength: 10, maxLength: 5000 }
-        roadmapStatus: { $ref: "#/components/schemas/RoadmapStatus" }
+        roadmapStatus: { $ref: "#/components/schemas/PublicRoadmapStatusKey" }
     SupportRequestRoadmapApprovalResponse:
       type: object
       properties:
@@ -1870,11 +2013,8 @@ components:
         approvedAt: { type: ["string", "null"], format: date-time }
         roadmapTitle: { type: ["string", "null"] }
         roadmapDescription: { type: ["string", "null"] }
-        roadmapStatus: { type: ["string", "null"], enum: [planned, in_progress, available, null] }
+        roadmapStatus: { type: ["string", "null"], minLength: 1, maxLength: 40, pattern: "^[a-z0-9_-]+$" }
       required: [id, approvedAt, roadmapTitle, roadmapDescription, roadmapStatus]
-    RoadmapStatus:
-      type: string
-      enum: [planned, in_progress, available]
     AdminSupportRequestsList:
       type: object
       properties:

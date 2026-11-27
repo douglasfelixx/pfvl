@@ -539,12 +539,29 @@ export const ListSuggestionCategoriesResponse = zod.array(ListSuggestionCategori
  * Retorna somente o texto próprio aprovado para publicação, sua categoria, estágio e data de aprovação; nunca inclui mensagem original ou respostas privadas.
  * @summary Lista sugestões aprovadas para o roadmap público
  */
+export const listPublicRoadmapSuggestionsResponseStatusMax = 40;
+
+
+export const listPublicRoadmapSuggestionsResponseStatusRegExp = new RegExp('^[a-z0-9_-]+$');
+export const listPublicRoadmapSuggestionsResponseStatusLabelMin = 2;
+export const listPublicRoadmapSuggestionsResponseStatusLabelMax = 80;
+
+export const listPublicRoadmapSuggestionsResponseStatusLabelEnMin = 2;
+export const listPublicRoadmapSuggestionsResponseStatusLabelEnMax = 80;
+
+export const listPublicRoadmapSuggestionsResponseStatusOrderMin = 0;
+
+
+
 export const ListPublicRoadmapSuggestionsResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "categoryName": zod.string().nullable(),
   "description": zod.string(),
-  "status": zod.enum(['planned', 'in_progress', 'available']),
+  "status": zod.string().min(1).max(listPublicRoadmapSuggestionsResponseStatusMax).regex(listPublicRoadmapSuggestionsResponseStatusRegExp),
+  "statusLabel": zod.string().min(listPublicRoadmapSuggestionsResponseStatusLabelMin).max(listPublicRoadmapSuggestionsResponseStatusLabelMax),
+  "statusLabelEn": zod.string().min(listPublicRoadmapSuggestionsResponseStatusLabelEnMin).max(listPublicRoadmapSuggestionsResponseStatusLabelEnMax),
+  "statusOrder": zod.number().int().min(listPublicRoadmapSuggestionsResponseStatusOrderMin),
   "approvedAt": zod.coerce.date()
 })
 export const ListPublicRoadmapSuggestionsResponse = zod.array(ListPublicRoadmapSuggestionsResponseItem)
@@ -769,6 +786,10 @@ export const UpdateAdminSupportSubjectResponse = zod.object({
  * @summary Lista solicitações para o painel
  */
 export const listAdminSupportRequestsResponseRequestsItemProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const listAdminSupportRequestsResponseRequestsItemRoadmapStatusMax = 40;
+
+
+export const listAdminSupportRequestsResponseRequestsItemRoadmapStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 export const listAdminSupportRequestsResponseRequestsItemStatusMax = 40;
 
 
@@ -784,7 +805,7 @@ export const ListAdminSupportRequestsResponse = zod.object({
   "title": zod.string().nullable(),
   "roadmapTitle": zod.string().nullable(),
   "roadmapDescription": zod.string().nullable(),
-  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable(),
+  "roadmapStatus": zod.string().min(1).max(listAdminSupportRequestsResponseRequestsItemRoadmapStatusMax).regex(listAdminSupportRequestsResponseRequestsItemRoadmapStatusRegExp).nullable(),
   "categoryName": zod.string().nullable(),
   "approvedAt": zod.coerce.date().nullable(),
   "requesterName": zod.string(),
@@ -980,6 +1001,166 @@ export const UpdateAdminSupportRequestStatusResponse = zod.object({
 
 
 /**
+ * @summary Lista os estágios públicos do roadmap
+ */
+export const listAdminPublicRoadmapStatusesResponseKeyMax = 40;
+
+
+export const listAdminPublicRoadmapStatusesResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const listAdminPublicRoadmapStatusesResponseLabelMin = 2;
+export const listAdminPublicRoadmapStatusesResponseLabelMax = 80;
+
+export const listAdminPublicRoadmapStatusesResponseLabelEnMin = 2;
+export const listAdminPublicRoadmapStatusesResponseLabelEnMax = 80;
+
+export const listAdminPublicRoadmapStatusesResponseSortOrderMin = 0;
+
+
+
+export const ListAdminPublicRoadmapStatusesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "key": zod.string().min(1).max(listAdminPublicRoadmapStatusesResponseKeyMax).regex(listAdminPublicRoadmapStatusesResponseKeyRegExp),
+  "label": zod.string().min(listAdminPublicRoadmapStatusesResponseLabelMin).max(listAdminPublicRoadmapStatusesResponseLabelMax),
+  "labelEn": zod.string().min(listAdminPublicRoadmapStatusesResponseLabelEnMin).max(listAdminPublicRoadmapStatusesResponseLabelEnMax),
+  "active": zod.boolean(),
+  "sortOrder": zod.number().int().min(listAdminPublicRoadmapStatusesResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminPublicRoadmapStatusesResponse = zod.array(ListAdminPublicRoadmapStatusesResponseItem)
+
+
+/**
+ * @summary Cria um estágio público
+ */
+export const createAdminPublicRoadmapStatusBodyLabelMin = 2;
+export const createAdminPublicRoadmapStatusBodyLabelMax = 80;
+
+export const createAdminPublicRoadmapStatusBodyLabelEnMin = 2;
+export const createAdminPublicRoadmapStatusBodyLabelEnMax = 80;
+
+
+
+export const CreateAdminPublicRoadmapStatusBody = zod.object({
+  "label": zod.string().min(createAdminPublicRoadmapStatusBodyLabelMin).max(createAdminPublicRoadmapStatusBodyLabelMax),
+  "labelEn": zod.string().min(createAdminPublicRoadmapStatusBodyLabelEnMin).max(createAdminPublicRoadmapStatusBodyLabelEnMax)
+})
+
+export const createAdminPublicRoadmapStatusResponseKeyMax = 40;
+
+
+export const createAdminPublicRoadmapStatusResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const createAdminPublicRoadmapStatusResponseLabelMin = 2;
+export const createAdminPublicRoadmapStatusResponseLabelMax = 80;
+
+export const createAdminPublicRoadmapStatusResponseLabelEnMin = 2;
+export const createAdminPublicRoadmapStatusResponseLabelEnMax = 80;
+
+export const createAdminPublicRoadmapStatusResponseSortOrderMin = 0;
+
+
+
+export const CreateAdminPublicRoadmapStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "key": zod.string().min(1).max(createAdminPublicRoadmapStatusResponseKeyMax).regex(createAdminPublicRoadmapStatusResponseKeyRegExp),
+  "label": zod.string().min(createAdminPublicRoadmapStatusResponseLabelMin).max(createAdminPublicRoadmapStatusResponseLabelMax),
+  "labelEn": zod.string().min(createAdminPublicRoadmapStatusResponseLabelEnMin).max(createAdminPublicRoadmapStatusResponseLabelEnMax),
+  "active": zod.boolean(),
+  "sortOrder": zod.number().int().min(createAdminPublicRoadmapStatusResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Reordena os estágios públicos
+ */
+
+
+
+
+export const ReorderAdminPublicRoadmapStatusesBody = zod.object({
+  "statusIds": zod.array(zod.number().int().min(1)).min(1)
+})
+
+export const reorderAdminPublicRoadmapStatusesResponseKeyMax = 40;
+
+
+export const reorderAdminPublicRoadmapStatusesResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const reorderAdminPublicRoadmapStatusesResponseLabelMin = 2;
+export const reorderAdminPublicRoadmapStatusesResponseLabelMax = 80;
+
+export const reorderAdminPublicRoadmapStatusesResponseLabelEnMin = 2;
+export const reorderAdminPublicRoadmapStatusesResponseLabelEnMax = 80;
+
+export const reorderAdminPublicRoadmapStatusesResponseSortOrderMin = 0;
+
+
+
+export const ReorderAdminPublicRoadmapStatusesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "key": zod.string().min(1).max(reorderAdminPublicRoadmapStatusesResponseKeyMax).regex(reorderAdminPublicRoadmapStatusesResponseKeyRegExp),
+  "label": zod.string().min(reorderAdminPublicRoadmapStatusesResponseLabelMin).max(reorderAdminPublicRoadmapStatusesResponseLabelMax),
+  "labelEn": zod.string().min(reorderAdminPublicRoadmapStatusesResponseLabelEnMin).max(reorderAdminPublicRoadmapStatusesResponseLabelEnMax),
+  "active": zod.boolean(),
+  "sortOrder": zod.number().int().min(reorderAdminPublicRoadmapStatusesResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ReorderAdminPublicRoadmapStatusesResponse = zod.array(ReorderAdminPublicRoadmapStatusesResponseItem)
+
+
+/**
+ * @summary Renomeia ou ativa e desativa um estágio público
+ */
+
+
+
+export const UpdateAdminPublicRoadmapStatusParams = zod.object({
+  "statusId": zod.coerce.number().int().min(1)
+})
+
+export const updateAdminPublicRoadmapStatusBodyLabelMin = 2;
+export const updateAdminPublicRoadmapStatusBodyLabelMax = 80;
+
+export const updateAdminPublicRoadmapStatusBodyLabelEnMin = 2;
+export const updateAdminPublicRoadmapStatusBodyLabelEnMax = 80;
+
+
+
+export const UpdateAdminPublicRoadmapStatusBody = zod.object({
+  "label": zod.string().min(updateAdminPublicRoadmapStatusBodyLabelMin).max(updateAdminPublicRoadmapStatusBodyLabelMax).optional(),
+  "labelEn": zod.string().min(updateAdminPublicRoadmapStatusBodyLabelEnMin).max(updateAdminPublicRoadmapStatusBodyLabelEnMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const updateAdminPublicRoadmapStatusResponseKeyMax = 40;
+
+
+export const updateAdminPublicRoadmapStatusResponseKeyRegExp = new RegExp('^[a-z0-9_-]+$');
+export const updateAdminPublicRoadmapStatusResponseLabelMin = 2;
+export const updateAdminPublicRoadmapStatusResponseLabelMax = 80;
+
+export const updateAdminPublicRoadmapStatusResponseLabelEnMin = 2;
+export const updateAdminPublicRoadmapStatusResponseLabelEnMax = 80;
+
+export const updateAdminPublicRoadmapStatusResponseSortOrderMin = 0;
+
+
+
+export const UpdateAdminPublicRoadmapStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "key": zod.string().min(1).max(updateAdminPublicRoadmapStatusResponseKeyMax).regex(updateAdminPublicRoadmapStatusResponseKeyRegExp),
+  "label": zod.string().min(updateAdminPublicRoadmapStatusResponseLabelMin).max(updateAdminPublicRoadmapStatusResponseLabelMax),
+  "labelEn": zod.string().min(updateAdminPublicRoadmapStatusResponseLabelEnMin).max(updateAdminPublicRoadmapStatusResponseLabelEnMax),
+  "active": zod.boolean(),
+  "sortOrder": zod.number().int().min(updateAdminPublicRoadmapStatusResponseSortOrderMin),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Atualiza o status de uma solicitação
  */
 export const UpdateAdminSupportRequestParams = zod.object({
@@ -997,6 +1178,10 @@ export const UpdateAdminSupportRequestBody = zod.object({
 })
 
 export const updateAdminSupportRequestResponseProtocolRegExp = new RegExp('^[0-9]{12}$');
+export const updateAdminSupportRequestResponseRoadmapStatusMax = 40;
+
+
+export const updateAdminSupportRequestResponseRoadmapStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 export const updateAdminSupportRequestResponseStatusMax = 40;
 
 
@@ -1011,7 +1196,7 @@ export const UpdateAdminSupportRequestResponse = zod.object({
   "title": zod.string().nullable(),
   "roadmapTitle": zod.string().nullable(),
   "roadmapDescription": zod.string().nullable(),
-  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable(),
+  "roadmapStatus": zod.string().min(1).max(updateAdminSupportRequestResponseRoadmapStatusMax).regex(updateAdminSupportRequestResponseRoadmapStatusRegExp).nullable(),
   "categoryName": zod.string().nullable(),
   "approvedAt": zod.coerce.date().nullable(),
   "requesterName": zod.string(),
@@ -1044,21 +1229,31 @@ export const updateAdminSupportRequestRoadmapBodyRoadmapTitleMax = 220;
 export const updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMin = 10;
 export const updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMax = 5000;
 
+export const updateAdminSupportRequestRoadmapBodyRoadmapStatusMax = 40;
+
+
+export const updateAdminSupportRequestRoadmapBodyRoadmapStatusRegExp = new RegExp('^[a-z0-9_-]+$');
 
 
 export const UpdateAdminSupportRequestRoadmapBody = zod.object({
   "approved": zod.boolean().optional(),
   "roadmapTitle": zod.string().min(updateAdminSupportRequestRoadmapBodyRoadmapTitleMin).max(updateAdminSupportRequestRoadmapBodyRoadmapTitleMax).optional(),
   "roadmapDescription": zod.string().min(updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMin).max(updateAdminSupportRequestRoadmapBodyRoadmapDescriptionMax).optional(),
-  "roadmapStatus": zod.enum(['planned', 'in_progress', 'available']).optional()
+  "roadmapStatus": zod.string().min(1).max(updateAdminSupportRequestRoadmapBodyRoadmapStatusMax).regex(updateAdminSupportRequestRoadmapBodyRoadmapStatusRegExp).optional()
 })
+
+export const updateAdminSupportRequestRoadmapResponseRoadmapStatusMax = 40;
+
+
+export const updateAdminSupportRequestRoadmapResponseRoadmapStatusRegExp = new RegExp('^[a-z0-9_-]+$');
+
 
 export const UpdateAdminSupportRequestRoadmapResponse = zod.object({
   "id": zod.number().int(),
   "approvedAt": zod.coerce.date().nullable(),
   "roadmapTitle": zod.string().nullable(),
   "roadmapDescription": zod.string().nullable(),
-  "roadmapStatus": zod.union([zod.literal('planned'),zod.literal('in_progress'),zod.literal('available'),zod.literal(null)]).nullable()
+  "roadmapStatus": zod.string().min(1).max(updateAdminSupportRequestRoadmapResponseRoadmapStatusMax).regex(updateAdminSupportRequestRoadmapResponseRoadmapStatusRegExp).nullable()
 })
 
 

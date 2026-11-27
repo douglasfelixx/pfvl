@@ -303,6 +303,68 @@ export interface UpdateMyProfileInput {
  */
 export type SupportRequestStatus = string;
 
+/**
+ * @minLength 1
+ * @maxLength 40
+ * @pattern ^[a-z0-9_-]+$
+ */
+export type PublicRoadmapStatusKey = string;
+
+export interface PublicRoadmapStatus {
+  id: number;
+  key: PublicRoadmapStatusKey;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn: string;
+  active: boolean;
+  /** @minimum 0 */
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicRoadmapStatusInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn: string;
+}
+
+export interface PublicRoadmapStatusEdit {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  label?: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  labelEn?: string;
+  active?: boolean;
+}
+
+export interface PublicRoadmapStatusOrder {
+  /**
+     * @minItems 1
+     * @items.minimum 1
+     */
+  statusIds: number[];
+}
+
 export type SupportRequestType = typeof SupportRequestType[keyof typeof SupportRequestType];
 
 
@@ -491,22 +553,25 @@ export interface MySupportRequest {
   updatedAt: string;
 }
 
-export type RoadmapStatus = typeof RoadmapStatus[keyof typeof RoadmapStatus];
-
-
-export const RoadmapStatus = {
-  planned: 'planned',
-  in_progress: 'in_progress',
-  available: 'available',
-} as const;
-
 export interface PublicRoadmapSuggestion {
   id: number;
   title: string;
   /** @nullable */
   categoryName: string | null;
   description: string;
-  status: RoadmapStatus;
+  status: PublicRoadmapStatusKey;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  statusLabel: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  statusLabelEn: string;
+  /** @minimum 0 */
+  statusOrder: number;
   approvedAt: string;
 }
 
@@ -516,18 +581,6 @@ export type AdminSupportRequestRequestType = typeof AdminSupportRequestRequestTy
 export const AdminSupportRequestRequestType = {
   support: 'support',
   suggestion: 'suggestion',
-} as const;
-
-/**
- * @nullable
- */
-export type AdminSupportRequestRoadmapStatus = typeof AdminSupportRequestRoadmapStatus[keyof typeof AdminSupportRequestRoadmapStatus] | null;
-
-
-export const AdminSupportRequestRoadmapStatus = {
-  planned: 'planned',
-  in_progress: 'in_progress',
-  available: 'available',
 } as const;
 
 export interface AdminSupportRequest {
@@ -542,8 +595,13 @@ export interface AdminSupportRequest {
   roadmapTitle: string | null;
   /** @nullable */
   roadmapDescription: string | null;
-  /** @nullable */
-  roadmapStatus: AdminSupportRequestRoadmapStatus;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     * @nullable
+     * @pattern ^[a-z0-9_-]+$
+     */
+  roadmapStatus: string | null;
   /** @nullable */
   categoryName: string | null;
   /** @nullable */
@@ -583,20 +641,8 @@ export interface SupportRequestRoadmapApprovalInput {
      * @maxLength 5000
      */
   roadmapDescription?: string;
-  roadmapStatus?: RoadmapStatus;
+  roadmapStatus?: PublicRoadmapStatusKey;
 }
-
-/**
- * @nullable
- */
-export type SupportRequestRoadmapApprovalResponseRoadmapStatus = typeof SupportRequestRoadmapApprovalResponseRoadmapStatus[keyof typeof SupportRequestRoadmapApprovalResponseRoadmapStatus] | null;
-
-
-export const SupportRequestRoadmapApprovalResponseRoadmapStatus = {
-  planned: 'planned',
-  in_progress: 'in_progress',
-  available: 'available',
-} as const;
 
 export interface SupportRequestRoadmapApprovalResponse {
   id: number;
@@ -606,8 +652,13 @@ export interface SupportRequestRoadmapApprovalResponse {
   roadmapTitle: string | null;
   /** @nullable */
   roadmapDescription: string | null;
-  /** @nullable */
-  roadmapStatus: SupportRequestRoadmapApprovalResponseRoadmapStatus;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     * @nullable
+     * @pattern ^[a-z0-9_-]+$
+     */
+  roadmapStatus: string | null;
 }
 
 export interface AdminSupportRequestsList {

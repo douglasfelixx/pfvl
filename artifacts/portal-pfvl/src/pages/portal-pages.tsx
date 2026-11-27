@@ -53,6 +53,7 @@ import { Link, useLocation, useParams, useSearch } from 'wouter';
 import { AuthActionGate, useSearchAccountId } from '@/components/auth-ui';
 import { getLocale, translateText } from '@/lib/i18n';
 import { getPrivateStatusLabelFromRequest } from '@/lib/private-status-label';
+import { scrollToElementBelowHeader } from '@/components/scroll-utils';
 import {
   CommentComposer,
   CommunityCreatePanel,
@@ -361,7 +362,8 @@ export function PostDetailPage() {
       window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
       if (!exists) {
         window.requestAnimationFrame(() => {
-          document.getElementById('comments')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          const target = document.getElementById('comments');
+          if (target) scrollToElementBelowHeader(target, 'smooth');
         });
         return;
       }
@@ -370,7 +372,8 @@ export function PostDetailPage() {
     }
     if (targetId !== 'comments' && !/^comment-\d+$/.test(targetId)) return;
     window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const target = document.getElementById(targetId);
+      if (target) scrollToElementBelowHeader(target, "smooth");
     });
   }, [comments.data, location, post.data]);
   const roots = (comments.data ?? []).filter((comment) => !comment.parentCommentId);
@@ -876,12 +879,6 @@ export function SuggestionsPage() {
   );
 }
 
-const roadmapStatusLabel: Record<PublicRoadmapSuggestion["status"], string> = {
-  planned: "Planejada",
-  in_progress: "Em desenvolvimento",
-  available: "Disponível",
-};
-
 function PublicSuggestionRoadmap() {
   const suggestions = useListPublicRoadmapSuggestions({
     query: {
@@ -889,11 +886,35 @@ function PublicSuggestionRoadmap() {
       refetchInterval: 60_000,
     },
   });
+  const statusGroups = useMemo(() => {
+    const groups = new Map<string, {
+      status: string;
+      label: string;
+      labelEn: string;
+      sortOrder: number;
+      suggestions: PublicRoadmapSuggestion[];
+    }>();
+    for (const suggestion of suggestions.data ?? []) {
+      const group = groups.get(suggestion.status) ?? {
+        status: suggestion.status,
+        label: suggestion.statusLabel,
+        labelEn: suggestion.statusLabelEn,
+        sortOrder: suggestion.statusOrder,
+        suggestions: [],
+      };
+      group.suggestions.push(suggestion);
+      groups.set(suggestion.status, group);
+    }
+    return [...groups.values()].sort(
+      (left, right) => left.sortOrder - right.sortOrder || left.status.localeCompare(right.status),
+    );
+  }, [suggestions.data]);
   useEffect(() => {
     const targetId = window.location.hash.slice(1);
     if (!suggestions.data || !/^roadmap-\d+$/.test(targetId)) return;
     window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const target = document.getElementById(targetId);
+      if (target) scrollToElementBelowHeader(target, "smooth");
     });
   }, [suggestions.data]);
 
@@ -910,13 +931,7 @@ function PublicSuggestionRoadmap() {
         <QueryError retry={() => void suggestions.refetch()} />
       ) : suggestions.data?.length ? (
         <div className="space-y-6">
-          {([
-            { status: "planned", suggestions: suggestions.data.filter((item) => item.status === "planned") },
-            { status: "in_progress", suggestions: suggestions.data.filter((item) => item.status === "in_progress") },
-            { status: "available", suggestions: suggestions.data.filter((item) => item.status === "available") },
-          ] as const)
-            .filter((group) => group.suggestions.length > 0)
-            .map((group) => (
+          {statusGroups.map((group) => (
               <section
                 aria-labelledby={`roadmap-stage-${group.status}`}
                 data-testid={`roadmap-stage-${group.status}`}
@@ -926,7 +941,7 @@ function PublicSuggestionRoadmap() {
                   className="mb-3 font-display text-lg font-semibold text-[#012140]"
                   id={`roadmap-stage-${group.status}`}
                 >
-                  {translateText(roadmapStatusLabel[group.status])}
+                  {getLocale() === "en-US" ? group.labelEn : group.label}
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {group.suggestions.map((suggestion) => (
@@ -934,7 +949,7 @@ function PublicSuggestionRoadmap() {
                   ))}
                 </div>
               </section>
-            ))}
+          ))}
         </div>
       ) : (
         <EmptyState
@@ -958,7 +973,7 @@ function PublicRoadmapCard({ suggestion }: { suggestion: PublicRoadmapSuggestion
     <article id={`roadmap-${suggestion.id}`} className="flex h-full flex-col rounded-xl border border-[#233a59]/12 bg-white p-4 shadow-sm scroll-mt-24 sm:p-5" data-testid={`card-public-roadmap-${suggestion.id}`}>
       <div className="flex items-center justify-between gap-2">
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
-          {translateText(roadmapStatusLabel[suggestion.status])}
+          {getLocale() === "en-US" ? suggestion.statusLabelEn : suggestion.statusLabel}
         </span>
         <span className="text-xs text-muted-foreground">
           {translateText("Aprovada em")} <time dateTime={suggestion.approvedAt}>{formatDate(suggestion.approvedAt)}</time>
@@ -1005,7 +1020,7 @@ function SuggestionWorkspace() {
       const target = window.matchMedia("(min-width: 1024px)").matches
         ? document.querySelector<HTMLElement>(`[data-testid="my-suggestion-row-${suggestion.id}"]`)
         : document.querySelector<HTMLElement>(`[data-testid="my-suggestion-card-${suggestion.id}"]`);
-      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (target) scrollToElementBelowHeader(target, "smooth");
     });
   }, [expandedSuggestionId, suggestions.data]);
   const mutation = useCreateMySuggestion();

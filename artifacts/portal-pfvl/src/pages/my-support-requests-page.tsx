@@ -7,6 +7,7 @@ import { AuthActionGate } from "@/components/auth-ui";
 import { EmptyState, formatDate, LoadingState, PageHeading } from "@/components/portal-ui";
 import { translateText } from "@/lib/i18n";
 import { getPrivateStatusLabelFromRequest } from "@/lib/private-status-label";
+import { scrollToElementBelowHeader } from "@/components/scroll-utils";
 
 function getStatusAppearance(status: string) {
   if (status === "completed") {
@@ -126,7 +127,8 @@ function SupportRequestsContent() {
   useEffect(() => {
     if (expandedRequestId === null) return;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(`support-request-${expandedRequestId}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+      const target = document.getElementById(`support-request-${expandedRequestId}`);
+      if (target) scrollToElementBelowHeader(target, "smooth");
     });
     return () => window.cancelAnimationFrame(frame);
   }, [expandedRequestId]);

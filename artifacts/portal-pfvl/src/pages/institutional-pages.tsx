@@ -11,6 +11,7 @@ import legalTermsEnglishHtml from '@/content/legal-terms.en.html?raw';
 import { AuthActionGate } from '@/components/auth-ui';
 import { ProductAppLink } from '@/components/homepage-composition';
 import { PageHeading, Surface } from '@/components/portal-ui';
+import { scrollToElementBelowHeader } from '@/components/scroll-utils';
 import { useI18n, translateText } from '@/lib/i18n';
 
 export function PresentationPage() {
@@ -226,7 +227,8 @@ function LegalDocumentPage({ kind }: { kind: 'privacy' | 'terms' }) {
     }
 
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ block: 'start' });
+      const target = document.getElementById(targetId);
+      if (target) scrollToElementBelowHeader(target);
     });
 
     return () => window.cancelAnimationFrame(frame);

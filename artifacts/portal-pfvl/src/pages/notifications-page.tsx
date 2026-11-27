@@ -33,6 +33,9 @@ function notificationCategory(notification: Notification): string {
     try {
       const path = new URL(notification.href, window.location.origin).pathname;
       if (path === "/help/requests") return "Solicitação de atendimento";
+      if (notification.type === "comment_reply" && path === "/suggestions") {
+        return "Atualização de andamento";
+      }
     } catch {
       // Keep the standard category if a stored destination is malformed.
     }
