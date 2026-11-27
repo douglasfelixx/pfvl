@@ -1720,16 +1720,22 @@ function SupportInbox({
             || !publicRoadmapStatuses.some(
               (status) => status.key === roadmapStatusDraft.status && status.active,
             );
+          const hasPublicCopyChanges =
+            roadmapStatusDraft.title.trim() !== (request.roadmapTitle ?? "").trim()
+            || roadmapStatusDraft.description.trim() !== (request.roadmapDescription ?? "").trim();
+          const hasPublicStatusChanges =
+            roadmapStatusDraft.status !== (request.roadmapStatus ?? "");
+          const hasSavedPublicCopy =
+            (request.roadmapTitle ?? "").trim().length >= 4
+            && (request.roadmapDescription ?? "").trim().length >= 10
+            && Boolean(request.roadmapStatus);
           const isRoadmapPublicationDisabled =
             updateRoadmap.isPending
             || (
               !request.approvedAt
-              && (
-                roadmapStatusDraft.title.trim().length < 4
-                || roadmapStatusDraft.description.trim().length < 10
-                || !request.roadmapStatus
-                || roadmapStatusDraft.status !== request.roadmapStatus
-              )
+              && !hasPublicCopyChanges
+              && !hasPublicStatusChanges
+              && !hasSavedPublicCopy
             );
           const statusKey = `request:${request.id}`;
           return (
