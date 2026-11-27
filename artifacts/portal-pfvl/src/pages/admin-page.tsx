@@ -1223,7 +1223,7 @@ function AdminSuggestionsManager({
         <p className="text-xs font-bold uppercase tracking-[.14em] text-[#233a59]/65">{translateText("Caixa de entrada privada")}</p>
         <h2 className="mt-1 font-display text-xl font-semibold text-[#012140]">{translateText("Sugestões")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{translateText("As novas sugestões são privadas: somente a pessoa que enviou e a equipe administrativa podem acessá-las.")}</p>
-        <p className="mt-2 rounded-lg bg-[#f7f8fa] p-3 text-xs leading-5 text-[#233a59]">{translateText("O roadmap usa um título, uma descrição e um estágio próprios. A mensagem original, as respostas e os dados da conta não são publicados.")}</p>
+        <p className="mt-2 rounded-lg bg-[#f7f8fa] p-3 text-xs leading-5 text-[#233a59]">{translateText("O roadmap usa título, descrição e status próprios. A mensagem original, as respostas e os dados da conta não são publicados.")}</p>
       </div>
       <div aria-label={translateText("Seções de sugestões")} className="flex flex-wrap gap-2 border-b border-[#233a59]/10 pb-3" role="tablist">
         {([
@@ -1534,7 +1534,7 @@ function SupportInbox({
     if (!publicRoadmapStatuses.some((option) => option.key === status && option.active)) {
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: "Escolha um estágio público ativo.",
+        [request.id]: "Escolha um status público ativo.",
       }));
       return;
     }
@@ -1550,13 +1550,13 @@ function SupportInbox({
       }));
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: "Estágio público salvo.",
+        [request.id]: "Status público salvo.",
       }));
       await refreshRoadmapViews();
     } catch (error) {
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: getApiResponseError(error) ?? "Não foi possível salvar o estágio público.",
+        [request.id]: getApiResponseError(error) ?? "Não foi possível salvar o status público.",
       }));
     }
   }
@@ -1578,14 +1578,14 @@ function SupportInbox({
     if (approved && !request.roadmapStatus) {
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: "Salve um estágio público antes de publicar.",
+        [request.id]: "Salve um status público antes de publicar.",
       }));
       return;
     }
     if (approved && draft.status !== request.roadmapStatus) {
       setRoadmapFeedback((current) => ({
         ...current,
-        [request.id]: "Salve o estágio público antes de publicar.",
+        [request.id]: "Salve o status público antes de publicar.",
       }));
       return;
     }
@@ -1636,7 +1636,7 @@ function SupportInbox({
 
   return (
     <div className="space-y-4">
-      <div aria-label={translateText("Resumo de solicitações")} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div aria-label={translateText(filterBy === "subject" ? "Resumo de solicitações" : "Resumo de sugestões")} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {statusCounts.map((status) => (
           <div className="flex items-center justify-between rounded-xl border border-[#233a59]/10 bg-[#f7f8fa] px-4 py-3" key={status.key}>
             <span className="text-sm text-muted-foreground">{status.label}</span>
@@ -1709,6 +1709,12 @@ function SupportInbox({
         {visibleRequestPage.map((request) => {
           const selectedStatus = drafts[request.id] ?? request.status;
           const roadmapStatusDraft = roadmapDraft(request);
+          const isPublicStatusSaveDisabled =
+            updateRoadmap.isPending
+            || roadmapStatusDraft.status === request.roadmapStatus
+            || !publicRoadmapStatuses.some(
+              (status) => status.key === roadmapStatusDraft.status && status.active,
+            );
           const statusKey = `request:${request.id}`;
           return (
             <Fragment key={request.id}>
@@ -1738,7 +1744,9 @@ function SupportInbox({
                 <td className="bg-[#fcfcfd] px-4 py-4" colSpan={5}>
               <div className="support-request-details" id={`support-request-detail-${request.id}`} data-testid={`support-request-details-${request.id}`}>
                 <p className="text-xs text-muted-foreground">
-                  {request.subjectName}{request.categoryName ? ` · ${request.categoryName}` : ""} · {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
+                  {request.requestType === "suggestion"
+                    ? request.categoryName ?? "—"
+                    : `${request.subjectName}${request.categoryName ? ` · ${request.categoryName}` : ""}`} · {request.requesterName} · <a className="underline" href={`mailto:${request.requesterEmail}`}>{request.requesterEmail}</a> · {formatDate(request.createdAt)}
                 </p>
                 <p className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-[#f7f8fa] p-3 text-sm leading-6 text-[#233a59]">{request.message}</p>
               {request.requestType === "suggestion" && (
@@ -1775,14 +1783,14 @@ function SupportInbox({
                           />
                         </label>
                         <label className="block text-xs font-semibold text-[#233a59]">
-                          {translateText("Estágio público")}
+                          {translateText("Status público")}
                           <select
                             className={`${inputClass} mt-1 block w-full sm:w-auto`}
                             onChange={(event) => stageRoadmapDraft(request, "status", event.target.value)}
                             value={draft.status}
                           >
                             {!draft.status && (
-                              <option value="" disabled>{translateText("Selecione um estágio ativo")}</option>
+                              <option value="" disabled>{translateText("Selecione um status ativo")}</option>
                             )}
                             {draft.status && !publicRoadmapStatuses.some((status) => status.key === draft.status) && (
                               <option value={draft.status} disabled>{draft.status}</option>
@@ -1807,7 +1815,7 @@ function SupportInbox({
                   })()}
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      className="rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]"
+                      className={`roadmap-secondary-button ${updateRoadmap.isPending ? "roadmap-secondary-button-disabled" : "roadmap-secondary-button-copy-ready"}`}
                       disabled={updateRoadmap.isPending}
                       onClick={() => void saveRoadmapCopy(request)}
                       type="button"
@@ -1815,16 +1823,12 @@ function SupportInbox({
                       {translateText("Salvar texto público")}
                     </button>
                     <button
-                      className="rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]"
-                      disabled={
-                        updateRoadmap.isPending
-                        || roadmapStatusDraft.status === request.roadmapStatus
-                        || !publicRoadmapStatuses.some((status) => status.key === roadmapStatusDraft.status && status.active)
-                      }
+                      className={`roadmap-secondary-button ${isPublicStatusSaveDisabled ? "roadmap-secondary-button-disabled" : "roadmap-secondary-button-ready"}`}
+                      disabled={isPublicStatusSaveDisabled}
                       onClick={() => void saveRoadmapStatus(request)}
                       type="button"
                     >
-                      {translateText("Salvar estágio público")}
+                      {translateText("Salvar status público")}
                     </button>
                     <button
                       className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
@@ -1835,7 +1839,7 @@ function SupportInbox({
                       {translateText(request.approvedAt ? "Retirar do roadmap" : "Salvar e publicar")}
                     </button>
                     {roadmapFeedback[request.id] && (
-                      <span className={["Texto público salvo.", "Estágio público salvo.", "Melhoria publicada.", "Melhoria retirada do roadmap."].includes(roadmapFeedback[request.id]) ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
+                      <span className={["Texto público salvo.", "Status público salvo.", "Melhoria publicada.", "Melhoria retirada do roadmap."].includes(roadmapFeedback[request.id]) ? "text-xs text-emerald-700" : "text-xs text-red-700"} role="status">
                         {translateText(roadmapFeedback[request.id])}
                       </span>
                     )}
@@ -1859,7 +1863,7 @@ function SupportInbox({
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">{translateText("Nenhuma atualização enviada à pessoa solicitante.")}</p>
                 )}
-                <form className="mt-3 space-y-2" onSubmit={(event) => {
+                <form className="suggestion-update-form mt-3" onSubmit={(event) => {
                   event.preventDefault();
                   void saveComment(request);
                 }}>
@@ -1873,7 +1877,23 @@ function SupportInbox({
                       value={commentDrafts[request.id] ?? ""}
                     />
                   </label>
-                  <div className="flex flex-wrap items-center gap-3">
+                  {request.requestType === "suggestion" && (
+                    <PrivateStatusControl
+                      label="Status privado"
+                      className="suggestion-private-status-control"
+                      request={request}
+                      statuses={statuses}
+                      selectedStatus={selectedStatus}
+                      feedback={feedback[request.id]}
+                      isSaving={updateRequest.isPending}
+                      onStatusChange={(next) => {
+                        setDrafts((current) => ({ ...current, [request.id]: next }));
+                        setFeedback((current) => ({ ...current, [request.id]: "" }));
+                      }}
+                      onSave={() => void saveStatus(request)}
+                    />
+                  )}
+                  <div className="suggestion-update-submit flex flex-wrap items-center gap-3">
                     <button
                       className="auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"
                       disabled={!commentDrafts[request.id]?.trim() || createComment.isPending}
@@ -1888,21 +1908,6 @@ function SupportInbox({
                     )}
                   </div>
                 </form>
-                {request.requestType === "suggestion" && (
-                  <PrivateStatusControl
-                    label="Status privado"
-                    request={request}
-                    statuses={statuses}
-                    selectedStatus={selectedStatus}
-                    feedback={feedback[request.id]}
-                    isSaving={updateRequest.isPending}
-                    onStatusChange={(next) => {
-                      setDrafts((current) => ({ ...current, [request.id]: next }));
-                      setFeedback((current) => ({ ...current, [request.id]: "" }));
-                    }}
-                    onSave={() => void saveStatus(request)}
-                  />
-                )}
               </section>
               {request.requestType === "support" && (
                 <PrivateStatusControl
@@ -2104,6 +2109,7 @@ function publicRoadmapStatusLabel(status: PublicRoadmapStatus) {
 
 function PrivateStatusControl({
   label,
+  className = "mt-3",
   request,
   statuses,
   selectedStatus,
@@ -2113,6 +2119,7 @@ function PrivateStatusControl({
   onSave,
 }: {
   label: string;
+  className?: string;
   request: AdminSupportRequest;
   statuses: SupportRequestStatusCatalogEntry[];
   selectedStatus: SupportRequestStatus;
@@ -2122,7 +2129,7 @@ function PrivateStatusControl({
   onSave: () => void;
 }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
+    <div className={`${className} flex flex-wrap items-center gap-2`}>
       <label className="text-xs font-semibold text-[#233a59]" htmlFor={`support-status-${request.id}`}>
         {translateText(label)}
       </label>
@@ -2491,12 +2498,12 @@ function PublicRoadmapStatusesManager({
       });
       setNewLabel("");
       setNewLabelEn("");
-      setFeedback(translateText("Estágio público criado."));
+      setFeedback(translateText("Status público criado."));
       await refresh();
     } catch (mutationError) {
       setError(
         getApiResponseError(mutationError)
-          ?? translateText("Não foi possível criar o estágio público."),
+          ?? translateText("Não foi possível criar o status público."),
       );
     }
   }
@@ -2519,12 +2526,12 @@ function PublicRoadmapStatusesManager({
         const { [status.id]: _saved, ...remaining } = current;
         return remaining;
       });
-      setFeedback(translateText("Estágio público atualizado."));
+      setFeedback(translateText("Status público atualizado."));
       await refresh();
     } catch (mutationError) {
       setError(
         getApiResponseError(mutationError)
-          ?? translateText("Não foi possível atualizar o estágio público."),
+          ?? translateText("Não foi possível atualizar o status público."),
       );
     }
   }
@@ -2543,12 +2550,12 @@ function PublicRoadmapStatusesManager({
       await reorderStatuses.mutateAsync({
         data: { statusIds: nextOrder.map((status) => status.id) },
       });
-      setFeedback(translateText("Ordem dos estágios públicos atualizada."));
+      setFeedback(translateText("Ordem dos status públicos atualizada."));
       await refresh();
     } catch (mutationError) {
       setError(
         getApiResponseError(mutationError)
-          ?? translateText("Não foi possível reordenar os estágios públicos."),
+          ?? translateText("Não foi possível reordenar os status públicos."),
       );
     }
   }
@@ -2557,7 +2564,7 @@ function PublicRoadmapStatusesManager({
   if (isError) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-        <p>{translateText("Não foi possível carregar os estágios públicos.")}</p>
+        <p>{translateText("Não foi possível carregar os status públicos.")}</p>
         <button className="mt-2 font-semibold underline" onClick={retry} type="button">
           {translateText("Tentar novamente")}
         </button>
@@ -2570,7 +2577,7 @@ function PublicRoadmapStatusesManager({
       <div>
         <h3 className="font-semibold text-[#012140]">{translateText("Status públicos")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {translateText("Gerencie os estágios exibidos em Próximos passos. Desativar um estágio impede novas escolhas, mas mantém seu nome nos registros que já o utilizam.")}
+          {translateText("Gerencie os status exibidos em Próximos passos. Desativar um status impede novas escolhas, mas mantém seu nome nos registros que já o utilizam.")}
         </p>
       </div>
       <form
@@ -2606,7 +2613,7 @@ function PublicRoadmapStatusesManager({
           disabled={createStatus.isPending}
           type="submit"
         >
-          {translateText(createStatus.isPending ? "Salvando…" : "Adicionar estágio")}
+          {translateText(createStatus.isPending ? "Salvando…" : "Adicionar status")}
         </button>
       </form>
       {feedback && <p className="text-sm text-emerald-700" role="status">{feedback}</p>}
@@ -2669,7 +2676,7 @@ function PublicRoadmapStatusesManager({
               </label>
               <div className="flex items-end gap-1">
                 <button
-                  aria-label={translateText("Mover estágio para cima")}
+                  aria-label={translateText("Mover status para cima")}
                   className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
                   disabled={index === 0 || reorderStatuses.isPending}
                   onClick={() => void moveStatus(index, -1)}
@@ -2678,7 +2685,7 @@ function PublicRoadmapStatusesManager({
                   <ChevronUp aria-hidden="true" size={17} />
                 </button>
                 <button
-                  aria-label={translateText("Mover estágio para baixo")}
+                  aria-label={translateText("Mover status para baixo")}
                   className="inline-flex min-h-10 w-10 items-center justify-center rounded-lg border border-[#233a59]/15 text-[#233a59] hover:bg-[#f7f8fa] disabled:opacity-40"
                   disabled={index === orderedStatuses.length - 1 || reorderStatuses.isPending}
                   onClick={() => void moveStatus(index, 1)}

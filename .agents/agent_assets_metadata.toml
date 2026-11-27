@@ -434,3 +434,17 @@ mtime_ms = 1795758204672
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/3fb478c5-8361-444d-bf69-bfbd66a9ab9b/495b96a3-b744-4408-aa13-79942d6d8197"
 storage_version_token = "1795758215535606"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "BY-EnRTsD03KhiapYpLXo"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-27-menu-corrigido.zip"
+type = "unspecified"
+title = "ZIP atualizado para GitHub"
+description = "Projeto completo com a correção final do cabeçalho mobile, pronto para envio manual."
+logical_id = "a2e577b3-085e-4d42-a91d-d0a8df027787"
+content_hash = "sha256:57b31bf1b7f72621ee59a2ecc343b24e8408b4e7ee6ca26fb2f30018481b7471"
+size = 1224417
+mtime_ms = 1795758806223
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/a2e577b3-085e-4d42-a91d-d0a8df027787/2f5d7d83-993c-44af-bffb-ac0b9788bf29"
+storage_version_token = "1795758812108828"
+content_type = "application/octet-stream"

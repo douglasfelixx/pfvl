@@ -1136,7 +1136,7 @@ router.post(
         .json(CreateAdminPublicRoadmapStatusResponse.parse(created));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        res.status(409).json({ error: "Já existe um estágio público com esse nome." });
+        res.status(409).json({ error: "Já existe um status público com esse nome." });
         return;
       }
       throw error;
@@ -1167,7 +1167,7 @@ router.patch(
       requestedIds.size !== existing.length ||
       existing.some((status) => !requestedIds.has(status.id))
     ) {
-      res.status(400).json({ error: "A lista deve conter todos os estágios públicos, sem duplicatas." });
+      res.status(400).json({ error: "A lista deve conter todos os status públicos, sem duplicatas." });
       return;
     }
     const reordered = await db.transaction(async (tx) => {
@@ -1211,7 +1211,7 @@ router.patch(
       .where(eq(publicRoadmapStatusesTable.id, params.data.statusId))
       .limit(1);
     if (!existing) {
-      res.status(404).json({ error: "Estágio público não encontrado." });
+      res.status(404).json({ error: "Status público não encontrado." });
       return;
     }
     const changes: Partial<typeof publicRoadmapStatusesTable.$inferInsert> = {
@@ -1241,13 +1241,13 @@ router.patch(
         .where(eq(publicRoadmapStatusesTable.id, params.data.statusId))
         .returning();
       if (!updated) {
-        res.status(404).json({ error: "Estágio público não encontrado." });
+        res.status(404).json({ error: "Status público não encontrado." });
         return;
       }
       res.json(UpdateAdminPublicRoadmapStatusResponse.parse(updated));
     } catch (error) {
       if (isUniqueViolation(error)) {
-        res.status(409).json({ error: "Já existe um estágio público com esse nome." });
+        res.status(409).json({ error: "Já existe um status público com esse nome." });
         return;
       }
       throw error;
@@ -1530,7 +1530,7 @@ router.patch(
       return;
     }
     if (result.kind === "invalid_public_status") {
-      res.status(400).json({ error: "Escolha um estágio público ativo." });
+      res.status(400).json({ error: "Escolha um status público ativo." });
       return;
     }
     if (result.kind === "missing_public_copy") {
@@ -1538,7 +1538,7 @@ router.patch(
       return;
     }
     if (result.kind === "missing_public_status") {
-      res.status(400).json({ error: "Escolha e salve um estágio público antes de publicar." });
+      res.status(400).json({ error: "Escolha e salve um status público antes de publicar." });
       return;
     }
     if (result.kind === "invalid_title") {
