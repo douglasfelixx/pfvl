@@ -12,16 +12,13 @@ import {
   useGetMyTestimonial,
   useListMyCommunityPosts,
   useUpsertMyTestimonial,
-  useUpdateMyProfile,
 } from "@workspace/api-client-react";
 import { AuthActionGate } from "@/components/auth-ui";
-import { CountryFlag } from "@/components/country-flag";
 import { EmptyState, formatDate, LoadingState, QueryError } from "@/components/portal-ui";
-import { useI18n, translateText } from "@/lib/i18n";
+import { translateText } from "@/lib/i18n";
 
 function ProfileContent() {
   const { isSignedIn } = useAuth();
-  const { setLocale } = useI18n();
   const queryClient = useQueryClient();
   const profile = useGetCurrentUser({
     query: { enabled: isSignedIn === true, queryKey: getGetCurrentUserQueryKey() },
@@ -36,13 +33,10 @@ function ProfileContent() {
   const testimonial = useGetMyTestimonial({
     query: { enabled: isSignedIn === true, queryKey: getGetMyTestimonialQueryKey() },
   });
-  const updateProfile = useUpdateMyProfile();
   const upsertTestimonial = useUpsertMyTestimonial();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [body, setBody] = useState("");
-  const [languageMessage, setLanguageMessage] = useState("");
-  const [languageError, setLanguageError] = useState("");
   const [testimonialMessage, setTestimonialMessage] = useState("");
   const [testimonialError, setTestimonialError] = useState("");
 
@@ -56,19 +50,6 @@ function ProfileContent() {
       setBody("");
     }
   }, [testimonial.data?.testimonial?.id, testimonial.data?.testimonial?.updatedAt]);
-
-  async function saveLanguage(next: "pt-BR" | "en-US") {
-    setLanguageError("");
-    setLanguageMessage("");
-    try {
-      await updateProfile.mutateAsync({ data: { preferredLanguage: next } });
-      await queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
-      setLocale(next);
-      setLanguageMessage(translateText("Idioma salvo com sucesso."));
-    } catch {
-      setLanguageError(translateText("Não foi possível salvar o idioma. Tente novamente."));
-    }
-  }
 
   async function submitTestimonial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -155,25 +136,6 @@ function ProfileContent() {
         </main>
 
         <aside className="profile-side-column">
-          <section className="profile-panel language-panel">
-            <p className="profile-eyebrow">{translateText("Preferências")}</p>
-            <h2>{translateText("Idioma da interface")}</h2>
-            <p className="profile-muted">{translateText("A escolha salva acompanha você em novos acessos.")}</p>
-            <div className="profile-language-options" role="group" aria-label={translateText("Idioma da interface")}>
-              <button type="button" aria-label={translateText("Português (Brasil)")} title={translateText("Português (Brasil)")} data-testid="button-language-pt" aria-pressed={profile.data.preferredLanguage === "pt-BR"} disabled={updateProfile.isPending} onClick={() => void saveLanguage("pt-BR")}>
-                <CountryFlag country="BR" />
-                <span>{translateText("Português (Brasil)")}</span>
-              </button>
-              <button type="button" aria-label={translateText("English (United States)")} title={translateText("English (United States)")} data-testid="button-language-en" aria-pressed={profile.data.preferredLanguage === "en-US"} disabled={updateProfile.isPending} onClick={() => void saveLanguage("en-US")}>
-                <CountryFlag country="US" />
-                <span>{translateText("English (United States)")}</span>
-              </button>
-            </div>
-            {updateProfile.isPending && <p className="profile-feedback" role="status">{translateText("Salvando idioma…")}</p>}
-            {languageMessage && <p className="profile-feedback" role="status">{languageMessage}</p>}
-            {languageError && <p className="profile-error" role="alert">{languageError}</p>}
-          </section>
-
           <section className="profile-panel testimonial-form-panel">
             <p className="profile-eyebrow">{translateText("Sua experiência")}</p>
             <h2>{translateText("Como foi sua experiência com o PFVL?")}</h2>
