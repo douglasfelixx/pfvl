@@ -1453,9 +1453,7 @@ function SupportInbox({
     return roadmapDrafts[request.id] ?? {
       title: request.roadmapTitle ?? "",
       description: request.roadmapDescription ?? "",
-      status: request.roadmapStatus
-        ?? publicRoadmapStatuses.find((status) => status.active)?.key
-        ?? "",
+      status: request.roadmapStatus ?? "",
     };
   }
 
@@ -1709,11 +1707,29 @@ function SupportInbox({
         {visibleRequestPage.map((request) => {
           const selectedStatus = drafts[request.id] ?? request.status;
           const roadmapStatusDraft = roadmapDraft(request);
+          const isPublicCopySaveDisabled =
+            updateRoadmap.isPending
+            || (
+              roadmapStatusDraft.title.trim() === (request.roadmapTitle ?? "").trim()
+              && roadmapStatusDraft.description.trim() === (request.roadmapDescription ?? "").trim()
+            );
           const isPublicStatusSaveDisabled =
             updateRoadmap.isPending
+            || !roadmapStatusDraft.status
             || roadmapStatusDraft.status === request.roadmapStatus
             || !publicRoadmapStatuses.some(
               (status) => status.key === roadmapStatusDraft.status && status.active,
+            );
+          const isRoadmapPublicationDisabled =
+            updateRoadmap.isPending
+            || (
+              !request.approvedAt
+              && (
+                roadmapStatusDraft.title.trim().length < 4
+                || roadmapStatusDraft.description.trim().length < 10
+                || !request.roadmapStatus
+                || roadmapStatusDraft.status !== request.roadmapStatus
+              )
             );
           const statusKey = `request:${request.id}`;
           return (
@@ -1815,8 +1831,8 @@ function SupportInbox({
                   })()}
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      className={`roadmap-secondary-button ${updateRoadmap.isPending ? "roadmap-secondary-button-disabled" : "roadmap-secondary-button-copy-ready"}`}
-                      disabled={updateRoadmap.isPending}
+                      className={`roadmap-secondary-button ${isPublicCopySaveDisabled ? "roadmap-secondary-button-disabled" : "roadmap-secondary-button-copy-ready"}`}
+                      disabled={isPublicCopySaveDisabled}
                       onClick={() => void saveRoadmapCopy(request)}
                       type="button"
                     >
@@ -1832,7 +1848,7 @@ function SupportInbox({
                     </button>
                     <button
                       className={request.approvedAt ? "rounded-lg border border-[#233a59]/20 px-3 py-2 text-sm font-semibold text-[#233a59] hover:bg-[#f7f8fa]" : "auth-header-primary !min-h-9 !px-3 !py-1.5 !text-sm"}
-                      disabled={updateRoadmap.isPending}
+                      disabled={isRoadmapPublicationDisabled}
                       onClick={() => void setRoadmapPublication(request, !request.approvedAt)}
                       type="button"
                     >

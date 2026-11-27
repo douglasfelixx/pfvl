@@ -448,3 +448,17 @@ mtime_ms = 1795758806223
 storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/a2e577b3-085e-4d42-a91d-d0a8df027787/2f5d7d83-993c-44af-bffb-ac0b9788bf29"
 storage_version_token = "1795758812108828"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "ocnkmE-qqHOSo2TMEyIWD"
+uri = "file://generated-artifacts/PFVL-GitHub-Completo-2026-11-27-identificacao-sugestoes.zip"
+type = "unspecified"
+title = "ZIP atualizado para o GitHub"
+description = "Projeto completo com a correção da ficha de Sugestões. ZIP verificado e sem dependências, builds ou arquivos locais."
+logical_id = "d3e997a0-490a-4290-9a10-98b060c7d0fe"
+content_hash = "sha256:094d2cffd4342bcef6d010064155639b717e5913c2dcbf666fe8de20dfca68a9"
+size = 1212942
+mtime_ms = 1795788524718
+storage_uri = "gcs://replit-rams-assets-reed/rams/assets/repl:ed4953c0-b374-4282-a99f-860d20335ed9/d3e997a0-490a-4290-9a10-98b060c7d0fe/cec8aad4-2976-4618-a53b-2e597d5157a5"
+storage_version_token = "1795788553664981"
+content_type = "application/octet-stream"
